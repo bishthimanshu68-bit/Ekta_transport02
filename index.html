@@ -187,7 +187,8 @@
 </head>
 <body>
 
-    <div class="main-container">
+    <!-- Main Container for Website Home & Login -->
+    <div class="main-container" id="mainWebsiteContainer">
         
         <!-- Left Section (Banner, Navigation & Dynamic Content) -->
         <div class="left-section">
@@ -249,6 +250,9 @@
         </div>
 
     </div>
+
+    <!-- Full-Screen Dashboard Container (Hidden Initially) -->
+    <div id="fullDashboardContainer" style="display: none; width: 100vw; height: 100vh; overflow-y: auto;"></div>
 
     <!-- Lightbox Modal for Big Photo View -->
     <div id="lightboxModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
@@ -452,7 +456,6 @@
         let generatedOtp = '';
         let savedMobile = '', savedOwnerName = '';
 
-        // Real Fast2SMS Integration Function
         async function sendFast2SmsOtp(mobile, otp) {
             try {
                 const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${FAST2SMS_API_KEY}&route=q&message=Your%20Ekta%20Transport%20OTP%20is%20${otp}&language=english&flash=0&numbers=${mobile}`;
@@ -479,7 +482,6 @@
             savedMobile = mobile;
             generatedOtp = Math.floor(1000 + Math.random() * 9000);
             
-            // Trigger actual Fast2SMS API
             await sendFast2SmsOtp(mobile, generatedOtp);
             alert(`OTP has been sent to your mobile number: ${mobile}`);
             
@@ -531,16 +533,14 @@
             closeForgotModal();
         }
 
-        // Connected Login with auth.js
+        // Connected Login with auth.js - Fixed to load dashboard full screen
         async function handleLogin(event) {
             event.preventDefault();
             const userId = document.getElementById('userId').value.trim();
             const pass = document.getElementById('password').value.trim();
             
-            // Determine role based on active tab
             const activeRole = document.getElementById('ownerTabBtn').classList.contains('active') ? 'owner' : 'staff';
 
-            // Call auth.js validation function safely
             if (window.EktaAuth && typeof window.EktaAuth.validateAndLoginUser === 'function') {
                 const isAuthenticated = window.EktaAuth.validateAndLoginUser(userId, pass, activeRole);
                 if (!isAuthenticated) return;
@@ -548,16 +548,21 @@
 
             alert('Login successful! Loading Owner Dashboard...');
             
-            // Load employees.html (or dashboard module) directly using fetch cleanly inside Live Server
             try {
                 const response = await fetch('employees.html');
                 if(response.ok) {
                     const htmlContent = await response.text();
-                    document.getElementById('content-display').className = "w-full h-full flex flex-col";
-                    document.getElementById('content-display').innerHTML = htmlContent;
+                    
+                    // 1. Hide the entire home/login split container completely
+                    document.getElementById('mainWebsiteContainer').style.display = 'none';
+                    
+                    // 2. Show the full-screen dashboard container and load the HTML into it
+                    const dashboardContainer = document.getElementById('fullDashboardContainer');
+                    dashboardContainer.style.display = 'block';
+                    dashboardContainer.innerHTML = htmlContent;
                     
                     // Execute scripts embedded in the loaded file if any
-                    const scripts = document.getElementById('content-display').querySelectorAll('script');
+                    const scripts = dashboardContainer.querySelectorAll('script');
                     scripts.forEach(script => {
                         const newScript = document.createElement('script');
                         newScript.text = script.innerText;
