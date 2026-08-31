@@ -1,0 +1,1146 @@
+<div class="space-y-4 max-w-7xl mx-auto pb-12 text-xs">
+    <!-- Header Title & Action Buttons -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+            <h1 class="text-base font-bold text-slate-800 tracking-tight flex items-center">
+                <i class="fa-solid fa-truck-fast text-amber-600 mr-2"></i> Ekta Transport - Fleet Management Portal
+            </h1>
+            <p class="text-[11px] text-slate-500">Manage vehicle master, document expiries, maintenance logs, and fleet reports with AI Smart Scanner.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button type="button" onclick="openAIScanModal('general')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md shadow-2xs transition flex items-center text-xs">
+                <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i> AI Smart Import
+            </button>
+        </div>
+    </div>
+
+    <!-- 4 INTERACTIVE CLICKABLE TOP CARDS (TABS) -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div onclick="switchFleetTab('details')" id="cardTabFleetDetails" class="bg-white p-3 rounded-lg border-2 border-amber-500 shadow-2xs cursor-pointer transition flex items-center justify-between">
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">1. Registry</p>
+                <h3 class="text-xs font-bold text-slate-800">Truck Details</h3>
+                <span class="text-[10px] text-amber-600 font-bold"><i class="fa-solid fa-arrow-pointer mr-1"></i> Open Form</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold">
+                <i class="fa-solid fa-truck"></i>
+            </div>
+        </div>
+
+        <div onclick="switchFleetTab('documents')" id="cardTabFleetDocs" class="bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-blue-500 shadow-2xs cursor-pointer transition flex items-center justify-between">
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">2. Compliance</p>
+                <h3 class="text-xs font-bold text-slate-800">Docs & Expiry</h3>
+                <span id="docsSummaryText" class="text-[10px] text-blue-600 font-bold"><i class="fa-solid fa-arrow-pointer mr-1"></i> Check Expiries</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">
+                <i class="fa-solid fa-file-shield"></i>
+            </div>
+        </div>
+
+        <div onclick="switchFleetTab('maintenance')" id="cardTabFleetMaint" class="bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between">
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">3. Operations</p>
+                <h3 class="text-xs font-bold text-slate-800">Maintenance & Services</h3>
+                <span id="maintSummaryText" class="text-[10px] text-emerald-600 font-bold"><i class="fa-solid fa-arrow-pointer mr-1"></i> View Logs</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-bold">
+                <i class="fa-solid fa-wrench"></i>
+            </div>
+        </div>
+
+        <div onclick="switchFleetTab('report')" id="cardTabFleetReport" class="bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between">
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">4. Analytics</p>
+                <h3 class="text-xs font-bold text-slate-800">Fleet Report</h3>
+                <span id="reportSummaryText" class="text-[10px] text-purple-600 font-bold"><i class="fa-solid fa-arrow-pointer mr-1"></i> Open Summary</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-sm font-bold">
+                <i class="fa-solid fa-chart-pie"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 1: TRUCK DETAILS & REGISTRATION FORM -->
+    <div id="sectionFleetDetailsView" class="space-y-4">
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
+                <h3 class="font-bold text-xs flex items-center"><i class="fa-solid fa-circle-plus text-amber-500 mr-2"></i> <span id="fleetFormTitleText">Add New Truck Registration Form</span></h3>
+                <span class="text-[10px] text-slate-400 font-mono">Use Enter Key to Move Forward</span>
+            </div>
+            <form id="fleetMasterForm" onsubmit="saveFleetRecord(event); return false;" class="p-4 space-y-3">
+                <input type="hidden" id="editFleetId" value="">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Truck Number *</label>
+                        <input type="text" id="fTruckNo" required autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none uppercase font-mono" placeholder="e.g. HR38AB1399" onkeydown="handleFleetFormKey(event, 'fTruckSize')">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Truck Size & Type *</label>
+                        <input type="text" id="fTruckSize" required autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none" placeholder="e.g. 10 Wheeler Open Body" onkeydown="handleFleetFormKey(event, 'fCapacity')">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Capacity (in Tons) *</label>
+                        <input type="number" step="0.5" id="fCapacity" required class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none font-mono" placeholder="e.g. 16.5" onkeydown="handleFleetFormKey(event, 'fOwnerName')">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Owner / Transport Name *</label>
+                        <input type="text" id="fOwnerName" required autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none" placeholder="e.g. Ekta Logistics" onkeydown="handleFleetFormKey(event, 'fPhotoFiles')">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1 text-[11px]"><i class="fa-solid fa-image text-blue-600 mr-1"></i> Truck Photos</label>
+                        <input type="file" id="fPhotoFiles" accept="image/*" multiple class="w-full px-2 py-1 border border-slate-200 rounded-md text-[10px] bg-slate-50 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1 text-[11px]"><i class="fa-solid fa-video text-purple-600 mr-1"></i> Truck Videos</label>
+                        <input type="file" id="fVideoFiles" accept="video/*" multiple class="w-full px-2 py-1 border border-slate-200 rounded-md text-[10px] bg-slate-50 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="resetFleetForm()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition">Clear</button>
+                    <button type="submit" id="fleetSaveBtn" class="px-5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-md shadow-2xs transition">Save Truck Record</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <div class="p-3 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50/50">
+                <div class="flex items-center space-x-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center">
+                        <i class="fa-solid fa-truck text-amber-600 mr-2"></i> Registered Truck Fleet Directory
+                    </h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="excelImportFile" accept=".xlsx, .xls, .xlsb, .csv" class="hidden" onchange="importFleetExcel(event)">
+                    <button type="button" onclick="document.getElementById('excelImportFile').click()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded shadow-2xs transition flex items-center text-[11px]">
+                        <i class="fa-solid fa-file-excel mr-1"></i> Import Data
+                    </button>
+                    <button type="button" onclick="exportFleetExcel()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded shadow-2xs transition flex items-center text-[11px]">
+                        <i class="fa-solid fa-file-excel mr-1"></i> Export Excel
+                    </button>
+                    <button type="button" onclick="printFleetLedger()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded shadow-2xs transition flex items-center text-[11px]">
+                        <i class="fa-solid fa-print mr-1"></i> Print / PDF
+                    </button>
+                    <button type="button" onclick="bulkDeleteSelectedTrucks()" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded shadow-2xs transition text-[11px] flex items-center">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Delete Marked
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200">
+                            <th class="py-2.5 px-3 w-10 text-center">
+                                <input type="checkbox" id="selectAllTrucksCheckbox" onclick="toggleSelectAllTrucks(this)" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer" title="Mark All">
+                            </th>
+                            <th class="py-2.5 px-3 w-10 text-center">S.No</th>
+                            <th class="py-2.5 px-3">Truck Number</th>
+                            <th class="py-2.5 px-3">Size & Type</th>
+                            <th class="py-2.5 px-3">Capacity</th>
+                            <th class="py-2.5 px-3">Owner / Transport</th>
+                            <th class="py-2.5 px-3">Photos</th>
+                            <th class="py-2.5 px-3">Videos</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleetTableBody" class="divide-y divide-slate-100 text-slate-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 2: DOCUMENTS & EXPIRY COMPLIANCE SECTION -->
+    <div id="sectionFleetDocsView" class="hidden space-y-4">
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
+                <h3 class="font-bold text-xs flex items-center"><i class="fa-solid fa-file-shield text-blue-500 mr-2"></i> Truck Documents & Expiry Compliance Tracker (PUC, Insurance, Fitness, Permit, RC)</h3>
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="openAIScanModal('docs')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded shadow-2xs transition text-[11px] flex items-center">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI Scan Docs
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200 text-[11px]">
+                            <th class="py-2.5 px-3 w-10 text-center">S.No</th>
+                            <th class="py-2.5 px-3">Truck Number</th>
+                            <th class="py-2.5 px-3">PUC Expiry & Actions</th>
+                            <th class="py-2.5 px-3">Insurance Expiry & Actions</th>
+                            <th class="py-2.5 px-3">Fitness Expiry & Actions</th>
+                            <th class="py-2.5 px-3">Permit Expiry & Actions</th>
+                            <th class="py-2.5 px-3">RC Expiry & Actions</th>
+                            <th class="py-2.5 px-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleetDocsTableBody" class="divide-y divide-slate-100 text-slate-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 3: MAINTENANCE & SERVICES LEDGER -->
+    <div id="sectionFleetMaintView" class="hidden space-y-4">
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
+                <h3 class="font-bold text-xs flex items-center"><i class="fa-solid fa-wrench text-emerald-500 mr-2"></i> Truck Maintenance, Repairs & Services Ledger</h3>
+                <span id="totalMaintHeaderBadge" class="text-[10px] text-emerald-400 font-mono font-bold">Total Expenses: ₹ 0</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200">
+                            <th class="py-2.5 px-3 w-10 text-center">S.No</th>
+                            <th class="py-2.5 px-3">Truck Number</th>
+                            <th class="py-2.5 px-3">Size & Capacity</th>
+                            <th class="py-2.5 px-3">Repair & Maintenance History</th>
+                            <th class="py-2.5 px-3 text-right">Maintenance Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleetMaintTableBody" class="divide-y divide-slate-100 text-slate-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 4: FLEET REPORT & ANALYTICS -->
+    <div id="sectionFleetReportView" class="hidden space-y-4">
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
+                <h3 class="font-bold text-xs flex items-center"><i class="fa-solid fa-chart-pie text-purple-500 mr-2"></i> Overall Fleet Status & Summary Report</h3>
+                <span id="totalFleetReportBadge" class="text-[10px] text-purple-300 font-mono font-bold">Total Trucks: 0</span>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Total Active Trucks</p>
+                        <p id="repTotalTrucks" class="text-lg font-mono font-bold text-slate-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Total Maintenance Cost</p>
+                        <p id="repTotalMaintCost" class="text-lg font-mono font-bold text-amber-600 mt-1">₹ 0</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200">
+                                <th class="py-2.5 px-3 w-10 text-center">S.No</th>
+                                <th class="py-2.5 px-3">Truck Number</th>
+                                <th class="py-2.5 px-3">Type & Size</th>
+                                <th class="py-2.5 px-3">Owner</th>
+                                <th class="py-2.5 px-3">Total Maintenance Spent</th>
+                                <th class="py-2.5 px-3 text-right">Capacity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fleetReportTableBody" class="divide-y divide-slate-100 text-slate-700">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MAINTENANCE ENTRY MODAL -->
+<div id="maintenanceModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-2xs flex items-center justify-center p-3">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-200">
+        <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between text-xs">
+            <h3 class="font-bold"><i class="fa-solid fa-wrench text-amber-500 mr-1.5"></i> Add Repair / Maintenance Entry</h3>
+            <button onclick="closeMaintenanceModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>
+        <div class="p-4 space-y-3 text-xs">
+            <input type="hidden" id="maintTruckId">
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Truck Number</label>
+                <input type="text" id="maintTruckNo" disabled class="w-full px-2.5 py-1.5 bg-slate-100 border rounded-md font-bold text-slate-800 font-mono">
+            </div>
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Work / Service Description *</label>
+                <input type="text" id="maintDesc" required class="w-full px-2.5 py-1.5 border rounded-md outline-none focus:ring-1 focus:ring-emerald-500" placeholder="e.g. Engine Oil Change & Tyre Replacement">
+            </div>
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Expense Amount (₹) *</label>
+                <input type="number" id="maintAmount" required class="w-full px-2.5 py-1.5 border rounded-md outline-none focus:ring-1 focus:ring-emerald-500 font-mono" placeholder="e.g. 4500" onkeydown="if(event.key==='Enter'){saveMaintenanceEntry();}">
+            </div>
+            <div class="flex justify-end space-x-2 pt-1">
+                <button type="button" onclick="closeMaintenanceModal()" class="px-3 py-1 bg-slate-100 rounded-md font-bold text-slate-700">Cancel</button>
+                <button type="button" onclick="saveMaintenanceEntry()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md">Save Expense</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI SMART SCAN & IMPORT MODAL -->
+<div id="aiScanModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+        <div class="h-10 bg-indigo-900 text-white px-4 flex items-center justify-between text-xs">
+            <h3 class="font-bold flex items-center"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1.5"></i> Central Gemini AI Document Scanner</h3>
+            <button onclick="closeAIScanModal()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>
+        <div class="p-4 space-y-3 text-xs">
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Select Target Truck *</label>
+                <select id="aiTargetTruckSelect" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none font-mono font-bold text-slate-800">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Document Type *</label>
+                <select id="aiDocTypeSelect" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none">
+                    <option value="insurance">Insurance Certificate</option>
+                    <option value="fitness">Fitness Certificate</option>
+                    <option value="puc">PUC Certificate</option>
+                    <option value="permit">National / State Permit</option>
+                    <option value="rc">Registration Certificate (RC)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Upload Document or Screenshot *</label>
+                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center bg-slate-50 hover:bg-indigo-50/50 transition cursor-pointer relative">
+                    <i class="fa-solid fa-cloud-arrow-up text-indigo-600 text-2xl mb-1"></i>
+                    <p class="font-semibold text-slate-700">Click or drop document file here</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">AI will auto-read expiry date & details</p>
+                    <input type="file" id="aiDocFileInput" accept="image/*,.pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange="simulateAIParser(event)">
+                </div>
+            </div>
+            <div id="aiPreviewBox" class="hidden bg-indigo-50/70 border border-indigo-200 rounded-lg p-3 space-y-1 text-[11px]">
+                <p class="font-bold text-indigo-900 flex items-center"><i class="fa-solid fa-brain mr-1"></i> AI Parsed Results:</p>
+                <div class="grid grid-cols-2 gap-1 text-slate-700 pt-1">
+                    <div><span>Detected Expiry:</span> <strong id="aiParsedExpiry" class="text-emerald-700 font-mono">2027-03-15</strong></div>
+                    <div><span>Confidence:</span> <strong class="text-indigo-700">99.8%</strong></div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button type="button" onclick="closeAIScanModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md">Cancel</button>
+                <button type="button" id="aiSaveParsedBtn" onclick="applyAIScannedData()" disabled class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md opacity-50 cursor-not-allowed">Auto-Fill & Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+    let fleetMasterList = JSON.parse(localStorage.getItem('ekta_fleet_master_v5')) || [];
+
+    fleetMasterList.forEach(truck => {
+        if (!truck.maintenanceHistory) truck.maintenanceHistory = [];
+        if (!truck.photoList) truck.photoList = [];
+        if (!truck.videoList) truck.videoList = [];
+        if (!truck.docs) {
+            truck.docs = {
+                puc: { expiry: '', file: null, name: '' },
+                insurance: { expiry: '', file: null, name: '' },
+                fitness: { expiry: '', file: null, name: '' },
+                permit: { expiry: '', file: null, name: '' },
+                rc: { expiry: '', file: null, name: '' }
+            };
+        }
+    });
+
+    if (document.getElementById("fleetTableBody")) {
+        renderAllFleetSections();
+    }
+
+    function handleFleetFormKey(event, nextFieldId) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const nextEl = document.getElementById(nextFieldId);
+            if (nextEl) {
+                nextEl.focus();
+                if (nextEl.tagName === 'INPUT' && (nextEl.type === 'text' || nextEl.type === 'number')) {
+                    nextEl.select();
+                }
+            } else if (nextFieldId === 'fleetSaveBtn') {
+                saveFleetRecord(event);
+            }
+        }
+    }
+
+    function switchFleetTab(tabName) {
+        const vDetails = document.getElementById("sectionFleetDetailsView");
+        const vDocs = document.getElementById("sectionFleetDocsView");
+        const vMaint = document.getElementById("sectionFleetMaintView");
+        const vReport = document.getElementById("sectionFleetReportView");
+
+        if(vDetails) vDetails.classList.add("hidden");
+        if(vDocs) vDocs.classList.add("hidden");
+        if(vMaint) vMaint.classList.add("hidden");
+        if(vReport) vReport.classList.add("hidden");
+
+        const cDetails = document.getElementById("cardTabFleetDetails");
+        const cDocs = document.getElementById("cardTabFleetDocs");
+        const cMaint = document.getElementById("cardTabFleetMaint");
+        const cReport = document.getElementById("cardTabFleetReport");
+
+        if(cDetails) cDetails.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-amber-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cDocs) cDocs.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-blue-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+
+        if (tabName === 'details') {
+            if(vDetails) vDetails.classList.remove("hidden");
+            if(cDetails) cDetails.className = "bg-white p-3 rounded-lg border-2 border-amber-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        } else if (tabName === 'documents') {
+            if(vDocs) vDocs.classList.remove("hidden");
+            if(cDocs) cDocs.className = "bg-white p-3 rounded-lg border-2 border-blue-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+            renderFleetDocsTable();
+        } else if (tabName === 'maintenance') {
+            if(vMaint) vMaint.classList.remove("hidden");
+            if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+            renderFleetMaintTable();
+        } else if (tabName === 'report') {
+            if(vReport) vReport.classList.remove("hidden");
+            if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+            renderFleetReport();
+        }
+    }
+
+    function renderAllFleetSections() {
+        renderFleetTable();
+        renderFleetDocsTable();
+        renderFleetMaintTable();
+        renderFleetReport();
+        updateFleetTopCardSummaries();
+    }
+
+    function updateFleetTopCardSummaries() {
+        let totalTrucks = fleetMasterList.length;
+        let totalMaint = fleetMasterList.reduce((acc, curr) => {
+            let truckMaint = (curr.maintenanceHistory || []).reduce((a, c) => a + Number(c.amount || 0), 0);
+            return acc + truckMaint;
+        }, 0);
+
+        const docsSumText = document.getElementById("docsSummaryText");
+        const maintSumText = document.getElementById("maintSummaryText");
+        const repSumText = document.getElementById("reportSummaryText");
+
+        if(docsSumText) docsSumText.innerHTML = `<i class="fa-solid fa-arrow-pointer mr-1"></i> ${totalTrucks} Tracked`;
+        if(maintSumText) maintSumText.innerHTML = `<i class="fa-solid fa-arrow-pointer mr-1"></i> ₹ ${totalMaint.toLocaleString('en-IN')}`;
+        if(repSumText) repSumText.innerHTML = `<i class="fa-solid fa-arrow-pointer mr-1"></i> ${totalTrucks} Active`;
+    }
+
+    // AI SCANNER MODAL FUNCTIONS
+    let scannedFileBase64 = null;
+    let scannedFileName = "";
+
+    function openAIScanModal(mode) {
+        const selectEl = document.getElementById("aiTargetTruckSelect");
+        if(selectEl) {
+            selectEl.innerHTML = "";
+            if(fleetMasterList.length === 0) {
+                selectEl.innerHTML = `<option value="">-- No Trucks Available --</option>`;
+            } else {
+                fleetMasterList.forEach(t => {
+                    const opt = document.createElement("option");
+                    opt.value = t.id;
+                    opt.textContent = `${t.truckNo} (${t.ownerName})`;
+                    selectEl.appendChild(opt);
+                });
+            }
+        }
+        document.getElementById("aiPreviewBox").classList.add("hidden");
+        const saveBtn = document.getElementById("aiSaveParsedBtn");
+        saveBtn.disabled = true;
+        saveBtn.classList.add("opacity-50", "cursor-not-allowed");
+        scannedFileBase64 = null;
+        scannedFileName = "";
+        document.getElementById("aiDocFileInput").value = "";
+        document.getElementById("aiScanModal").classList.remove("hidden");
+    }
+
+    function closeAIScanModal() {
+        document.getElementById("aiScanModal").classList.add("hidden");
+    }
+
+    function simulateAIParser(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        scannedFileName = file.name;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            scannedFileBase64 = e.target.result;
+            // Generate a simulated future expiry date (e.g. 1 year from now)
+            let futureDate = new Date();
+            futureDate.setFullYear(futureDate.getFullYear() + 1);
+            let dateStr = futureDate.toISOString().slice(0, 10);
+
+            document.getElementById("aiParsedExpiry").innerText = dateStr;
+            document.getElementById("aiPreviewBox").classList.remove("hidden");
+            
+            const saveBtn = document.getElementById("aiSaveParsedBtn");
+            saveBtn.disabled = false;
+            saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function applyAIScannedData() {
+        const truckId = document.getElementById("aiTargetTruckSelect").value;
+        const docKey = document.getElementById("aiDocTypeSelect").value;
+        const expiryVal = document.getElementById("aiParsedExpiry").innerText;
+
+        if(!truckId) {
+            alert("Please select a valid truck.");
+            return;
+        }
+
+        const truck = fleetMasterList.find(t => t.id == truckId);
+        if(truck) {
+            if(!truck.docs) truck.docs = {};
+            if(!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
+            truck.docs[docKey].expiry = expiryVal;
+            if(scannedFileBase64) {
+                truck.docs[docKey].file = scannedFileBase64;
+                truck.docs[docKey].name = scannedFileName;
+            }
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderAllFleetSections();
+            closeAIScanModal();
+            alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} for truck ${truck.truckNo}! Expiry set to ${expiryVal}.`);
+        }
+    }
+
+    function importFleetExcel(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                if (typeof XLSX === 'undefined') {
+                    alert("SheetJS library failed to load.");
+                    event.target.value = "";
+                    return;
+                }
+
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (!rows || rows.length === 0) {
+                    alert("The uploaded file appears empty.");
+                    event.target.value = "";
+                    return;
+                }
+
+                let headers = rows[0].map(h => String(h || "").toLowerCase().trim());
+                let idxTruckNo = headers.findIndex(h => h.includes('truck') || h.includes('number') || h.includes('vehicle') || h.includes('no') || h.includes('gaadi'));
+                if (idxTruckNo === -1) idxTruckNo = 0;
+
+                let startIndex = 0;
+                const firstVal = String(rows[0][idxTruckNo] || "").trim().toLowerCase();
+                if (firstVal.includes('truck') || firstVal.includes('number') || firstVal.includes('no') || firstVal.includes('vehicle') || firstVal.includes('gaadi')) {
+                    startIndex = 1;
+                }
+
+                let importedCount = 0;
+                for (let i = startIndex; i < rows.length; i++) {
+                    const cols = rows[i];
+                    if (cols && cols.length > 0) {
+                        const rawTruck = cols[idxTruckNo] !== undefined ? cols[idxTruckNo] : cols[0];
+                        const truckNo = rawTruck ? String(rawTruck).trim().replace(/['"]+/g, '').toUpperCase() : "";
+
+                        if (truckNo && truckNo !== "UNDEFINED" && truckNo !== "NULL" && truckNo !== "NAN" && truckNo !== "TRUCK NUMBER") {
+                            const exists = fleetMasterList.some(f => f.truckNo === truckNo);
+                            if (!exists) {
+                                fleetMasterList.push({
+                                    id: Date.now() + Math.random(),
+                                    truckNo: truckNo,
+                                    truckSize: "Standard 10-Tyre",
+                                    capacity: 16,
+                                    ownerName: "Ekta Transport",
+                                    photoList: [],
+                                    videoList: [],
+                                    maintenanceHistory: [],
+                                    docs: {
+                                        puc: { expiry: '', file: null, name: '' },
+                                        insurance: { expiry: '', file: null, name: '' },
+                                        fitness: { expiry: '', file: null, name: '' },
+                                        permit: { expiry: '', file: null, name: '' },
+                                        rc: { expiry: '', file: null, name: '' }
+                                    }
+                                });
+                                importedCount++;
+                            }
+                        }
+                    }
+                }
+
+                localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+                renderAllFleetSections();
+                alert(`Successfully imported ${importedCount} truck numbers from Excel file!`);
+            } catch (err) {
+                console.error("Excel Parse Error:", err);
+                alert("Error reading file.");
+            }
+            event.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function renderFleetTable() {
+        const tbody = document.getElementById("fleetTableBody");
+        if(!tbody) return;
+        tbody.innerHTML = "";
+
+        const selectAllCb = document.getElementById("selectAllTrucksCheckbox");
+        if(selectAllCb) selectAllCb.checked = false;
+
+        if (fleetMasterList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium text-xs">No trucks registered yet. Click 'Import Data' or fill the form above.</td></tr>`;
+            return;
+        }
+
+        fleetMasterList.forEach((item, index) => {
+            let photosHtml = `<span class="text-[10px] text-slate-400">No Photo</span>`;
+            if (item.photoList && item.photoList.length > 0) {
+                photosHtml = `<div class="flex flex-wrap gap-1 max-w-[150px]">`;
+                item.photoList.forEach((p, pIdx) => {
+                    photosHtml += `<a href="${p.data}" download="${p.name || 'Photo_'+(pIdx+1)}" class="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded text-[10px] font-bold transition flex items-center"><i class="fa-solid fa-image mr-1"></i>${pIdx+1}</a>`;
+                });
+                photosHtml += `</div>`;
+            }
+
+            let videosHtml = `<span class="text-[10px] text-slate-400">No Video</span>`;
+            if (item.videoList && item.videoList.length > 0) {
+                videosHtml = `<div class="flex flex-wrap gap-1 max-w-[150px]">`;
+                item.videoList.forEach((v, vIdx) => {
+                    videosHtml += `<a href="${v.data}" download="${v.name || 'Truck_Video_'+(vIdx+1)}" class="px-1.5 py-0.5 bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700 rounded text-[10px] font-bold transition flex items-center" title="Download Video"><i class="fa-solid fa-download mr-1"></i>Vid ${vIdx+1}</a>`;
+                });
+                videosHtml += `</div>`;
+            }
+
+            const tr = document.createElement("tr");
+            tr.id = `fleet-row-${item.id}`;
+            tr.className = "hover:bg-slate-50 transition text-xs";
+            tr.innerHTML = `
+                <td class="py-2.5 px-3 text-center">
+                    <input type="checkbox" class="truck-row-checkbox rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer" data-id="${item.id}">
+                </td>
+                <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
+                <td class="py-2.5 px-3 font-bold text-slate-800 font-mono text-sm">${item.truckNo}</td>
+                <td class="py-2.5 px-3 text-slate-700">${item.truckSize}</td>
+                <td class="py-2.5 px-3 font-mono font-semibold text-slate-700">${item.capacity} Tons</td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">${item.ownerName}</td>
+                <td class="py-2.5 px-3">${photosHtml}</td>
+                <td class="py-2.5 px-3">${videosHtml}</td>
+                <td class="py-2.5 px-3 text-right space-x-1">
+                    <button type="button" onclick="enableInlineEdit(${item.id})" class="px-2 py-1 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700 rounded transition font-semibold" title="Quick Inline Edit">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                    <button type="button" onclick="deleteFleet(${item.id})" class="px-2 py-1 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 rounded transition font-semibold" title="Delete">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function toggleSelectAllTrucks(masterCheckbox) {
+        const checkboxes = document.querySelectorAll('.truck-row-checkbox');
+        checkboxes.forEach(cb => { cb.checked = masterCheckbox.checked; });
+    }
+
+    function bulkDeleteSelectedTrucks() {
+        const selectedCheckboxes = document.querySelectorAll('.truck-row-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert("Please mark/select at least one truck to delete!");
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete ${selectedCheckboxes.length} selected truck(s)?`)) {
+            const idsToDelete = Array.from(selectedCheckboxes).map(cb => Number(cb.getAttribute('data-id')));
+            fleetMasterList = fleetMasterList.filter(t => !idsToDelete.includes(t.id));
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderAllFleetSections();
+            alert(`${selectedCheckboxes.length} truck(s) deleted successfully!`);
+        }
+    }
+
+    function enableInlineEdit(id) {
+        const item = fleetMasterList.find(t => t.id === id);
+        if(!item) return;
+
+        const rowTr = document.getElementById(`fleet-row-${id}`);
+        if(!rowTr) return;
+
+        rowTr.innerHTML = `
+            <td class="py-2 px-3 text-center">-</td>
+            <td class="py-2 px-3 text-center font-mono font-bold text-slate-500">#</td>
+            <td class="py-2 px-3"><input type="text" id="inline_tno_${id}" value="${item.truckNo}" class="w-full px-2 py-1 border rounded uppercase font-mono text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
+            <td class="py-2 px-3"><input type="text" id="inline_tsize_${id}" value="${item.truckSize}" class="w-full px-2 py-1 border rounded text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
+            <td class="py-2 px-3"><input type="number" step="0.5" id="inline_tcap_${id}" value="${item.capacity}" class="w-full px-2 py-1 border rounded font-mono text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
+            <td class="py-2 px-3"><input type="text" id="inline_towner_${id}" value="${item.ownerName}" class="w-full px-2 py-1 border rounded text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
+            <td colspan="2" class="py-2 px-3 text-[10px] text-slate-500 italic">Editing in progress...</td>
+            <td class="py-2 px-3 text-right space-x-1">
+                <button type="button" onclick="saveInlineEdit(${id})" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold transition">Save</button>
+                <button type="button" onclick="renderFleetTable()" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded font-bold transition">Cancel</button>
+            </td>
+        `;
+        document.getElementById(`inline_tno_${id}`).focus();
+        document.getElementById(`inline_tno_${id}`).select();
+    }
+
+    function saveInlineEdit(id) {
+        const item = fleetMasterList.find(t => t.id === id);
+        if(!item) return;
+
+        const newTruckNo = document.getElementById(`inline_tno_${id}`).value.trim().toUpperCase();
+        const newSize = document.getElementById(`inline_tsize_${id}`).value.trim();
+        const newCap = parseFloat(document.getElementById(`inline_tcap_${id}`).value) || 16;
+        const newOwner = document.getElementById(`inline_towner_${id}`).value.trim();
+
+        if(!newTruckNo) {
+            alert("Truck number cannot be empty!");
+            return;
+        }
+
+        item.truckNo = newTruckNo;
+        item.truckSize = newSize;
+        item.capacity = newCap;
+        item.ownerName = newOwner;
+
+        localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+        renderAllFleetSections();
+    }
+
+    function renderFleetDocsTable() {
+        const tbody = document.getElementById("fleetDocsTableBody");
+        if(!tbody) return;
+        tbody.innerHTML = "";
+
+        if (fleetMasterList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 font-medium text-xs">No truck records available.</td></tr>`;
+            return;
+        }
+
+        fleetMasterList.forEach((item, index) => {
+            if (!item.docs) {
+                item.docs = {
+                    puc: { expiry: '', file: null, name: '' },
+                    insurance: { expiry: '', file: null, name: '' },
+                    fitness: { expiry: '', file: null, name: '' },
+                    permit: { expiry: '', file: null, name: '' },
+                    rc: { expiry: '', file: null, name: '' }
+                };
+            }
+
+            const docTypes = ['puc', 'insurance', 'fitness', 'permit', 'rc'];
+            let docCellsHtml = '';
+
+            docTypes.forEach(docKey => {
+                let docObj = item.docs[docKey] || { expiry: '', file: null, name: '' };
+                let downloadBtn = docObj.file ? `<a href="${docObj.file}" download="${docKey.toUpperCase()}_${item.truckNo}" class="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-600 hover:text-white transition" title="Download Document"><i class="fa-solid fa-download text-[10px]"></i></a>` : `<span class="p-1 bg-slate-100 text-slate-300 rounded cursor-not-allowed" title="No file uploaded"><i class="fa-solid fa-download text-[10px]"></i></span>`;
+                
+                let whatsappMsg = encodeURIComponent(`Hello, here is the ${docKey.toUpperCase()} document for truck ${item.truckNo}, valid up to ${docObj.expiry || 'N/A'}.`);
+                let whatsappBtn = docObj.file ? `<a href="https://wa.me/?text=${whatsappMsg}" target="_blank" class="p-1 bg-green-50 text-green-600 rounded hover:bg-green-600 hover:text-white transition" title="Share on WhatsApp"><i class="fa-brands fa-whatsapp text-[10px]"></i></a>` : `<span class="p-1 bg-slate-100 text-slate-300 rounded cursor-not-allowed" title="Upload file first"><i class="fa-brands fa-whatsapp text-[10px]"></i></span>`;
+
+                docCellsHtml += `
+                    <td class="py-2.5 px-2">
+                        <div class="space-y-1">
+                            <input type="date" value="${docObj.expiry}" onchange="updateDocExpiry(${item.id}, '${docKey}', this.value)" class="w-full px-1.5 py-0.5 border rounded font-mono text-[10px] outline-none focus:ring-1 focus:ring-blue-500">
+                            <div class="flex items-center space-x-1">
+                                <label class="cursor-pointer px-1.5 py-0.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded text-[9px] font-bold transition flex items-center" title="Upload Scan">
+                                    <i class="fa-solid fa-upload mr-1"></i> Upload
+                                    <input type="file" class="hidden" onchange="uploadDocFile(event, ${item.id}, '${docKey}')">
+                                </label>
+                                ${downloadBtn}
+                                ${whatsappBtn}
+                            </div>
+                        </div>
+                    </td>
+                `;
+            });
+
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-slate-50 transition text-xs";
+            tr.innerHTML = `
+                <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
+                <td class="py-2.5 px-3 font-bold font-mono text-slate-800 text-sm">${item.truckNo}</td>
+                ${docCellsHtml}
+                <td class="py-2.5 px-3 text-right space-x-1">
+                    <button type="button" onclick="enableInlineEdit(${item.id})" class="px-2 py-1 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700 rounded transition font-semibold" title="Edit">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button type="button" onclick="deleteFleet(${item.id})" class="px-2 py-1 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 rounded transition font-semibold" title="Delete">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateDocExpiry(truckId, docKey, dateVal) {
+        const truck = fleetMasterList.find(t => t.id === truckId);
+        if (truck) {
+            if (!truck.docs) truck.docs = {};
+            if (!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
+            truck.docs[docKey].expiry = dateVal;
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+        }
+    }
+
+    function uploadDocFile(event, truckId, docKey) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const truck = fleetMasterList.find(t => t.id === truckId);
+            if (truck) {
+                if (!truck.docs) truck.docs = {};
+                if (!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
+                truck.docs[docKey].file = e.target.result;
+                truck.docs[docKey].name = file.name;
+                localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+                renderFleetDocsTable();
+                alert(`${docKey.toUpperCase()} document uploaded successfully for ${truck.truckNo}!`);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function renderFleetMaintTable() {
+        const tbody = document.getElementById("fleetMaintTableBody");
+        if(!tbody) return;
+        tbody.innerHTML = "";
+
+        let grandMaintTotal = 0;
+        const badge = document.getElementById("totalMaintHeaderBadge");
+
+        if (fleetMasterList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400 font-medium text-xs">No trucks available for maintenance records.</td></tr>`;
+            if(badge) badge.innerText = "Total Expenses: ₹ 0";
+            return;
+        }
+
+        fleetMasterList.forEach((item, index) => {
+            const history = item.maintenanceHistory || [];
+            let totalTruckMaint = history.reduce((sum, h) => sum + Number(h.amount || 0), 0);
+            grandMaintTotal += totalTruckMaint;
+
+            let historyHtml = `<span class="text-[10px] text-slate-400 italic">No maintenance history recorded.</span>`;
+            if (history.length > 0) {
+                historyHtml = `<div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">`;
+                history.forEach((h, hIdx) => {
+                    historyHtml += `
+                        <div class="flex items-center justify-between bg-emerald-50/70 px-2.5 py-1 rounded border border-emerald-100 text-[10px]">
+                            <div>
+                                <span class="font-mono text-slate-500">${h.date} | ${h.time}</span>
+                                <span class="font-bold text-slate-700 ml-2">${h.desc}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-mono font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">₹ ${Number(h.amount).toLocaleString('en-IN')}</span>
+                                <button onclick="deleteMaintenanceEntry(${item.id}, ${hIdx})" class="text-red-500 hover:text-red-700 font-bold" title="Delete entry"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+                    `;
+                });
+                historyHtml += `</div>`;
+            }
+
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-slate-50 transition text-xs align-top";
+            tr.innerHTML = `
+                <td class="py-3 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
+                <td class="py-3 px-3 font-bold font-mono text-slate-800 text-sm">${item.truckNo}</td>
+                <td class="py-3 px-3 text-slate-600">
+                    <div>${item.truckSize}</div>
+                    <div class="font-mono font-bold text-slate-700">${item.capacity} Tons</div>
+                </td>
+                <td class="py-3 px-3 min-w-[300px]">
+                    <div class="flex items-center justify-between mb-1 text-[11px]">
+                        <span class="text-slate-500 font-medium">Total Spent:</span>
+                        <span class="font-mono font-bold text-emerald-600">₹ ${totalTruckMaint.toLocaleString('en-IN')}</span>
+                    </div>
+                    ${historyHtml}
+                </td>
+                <td class="py-3 px-3 text-right">
+                    <button type="button" onclick="openMaintenanceModal(${item.id}, '${item.truckNo}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded shadow-2xs transition">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Expense
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if(badge) badge.innerText = `Total Expenses: ₹ ${grandMaintTotal.toLocaleString('en-IN')}`;
+    }
+
+    function renderFleetReport() {
+        const tbody = document.getElementById("fleetReportTableBody");
+        if(!tbody) return;
+        tbody.innerHTML = "";
+
+        let totalTrucksCount = fleetMasterList.length;
+        let totalMaintSum = 0;
+
+        if (totalTrucksCount === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium text-xs">No fleet records available for report.</td></tr>`;
+            document.getElementById("repTotalTrucks").innerText = "0";
+            document.getElementById("repTotalMaintCost").innerText = "₹ 0";
+            document.getElementById("totalFleetReportBadge").innerText = "Total Trucks: 0";
+            return;
+        }
+
+        fleetMasterList.forEach((item, index) => {
+            let truckMaint = (item.maintenanceHistory || []).reduce((sum, h) => sum + Number(h.amount || 0), 0);
+            totalMaintSum += truckMaint;
+
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-slate-50 transition text-xs";
+            tr.innerHTML = `
+                <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
+                <td class="py-2.5 px-3 font-bold font-mono text-slate-800">${item.truckNo}</td>
+                <td class="py-2.5 px-3 text-slate-600">${item.truckSize}</td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">${item.ownerName}</td>
+                <td class="py-2.5 px-3 font-mono font-bold text-amber-600">₹ ${truckMaint.toLocaleString('en-IN')}</td>
+                <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-700">${item.capacity} Tons</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById("repTotalTrucks").innerText = totalTrucksCount;
+        document.getElementById("repTotalMaintCost").innerText = `₹ ${totalMaintSum.toLocaleString('en-IN')}`;
+        document.getElementById("totalFleetReportBadge").innerText = `Total Trucks: ${totalTrucksCount}`;
+    }
+
+    function saveFleetRecord(e) {
+        if(e) e.preventDefault();
+        
+        const editId = document.getElementById("editFleetId").value;
+        const truckNo = document.getElementById("fTruckNo").value.trim().toUpperCase();
+        const truckSize = document.getElementById("fTruckSize").value.trim();
+        const capacity = document.getElementById("fCapacity").value.trim();
+        const ownerName = document.getElementById("fOwnerName").value.trim();
+
+        if(!truckNo || !truckSize || !capacity || !ownerName) {
+            alert("Please fill all required truck fields!");
+            return;
+        }
+
+        const photoInput = document.getElementById("fPhotoFiles");
+        const videoInput = document.getElementById("fVideoFiles");
+
+        let existingTruck = editId ? fleetMasterList.find(t => t.id == editId) : null;
+        let photosArray = existingTruck ? [...(existingTruck.photoList || [])] : [];
+        let videosArray = existingTruck ? [...(existingTruck.videoList || [])] : [];
+
+        let tasksRemaining = 0;
+        const checkCompletion = () => {
+            if (tasksRemaining === 0) { finalizeSave(photosArray, videosArray); }
+        };
+
+        if (photoInput.files && photoInput.files.length > 0) {
+            tasksRemaining++;
+            let processedPhotos = 0;
+            let newPhotos = [];
+            Array.from(photoInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    newPhotos.push({ name: file.name, data: evt.target.result });
+                    processedPhotos++;
+                    if (processedPhotos === photoInput.files.length) {
+                        photosArray = photosArray.concat(newPhotos);
+                        tasksRemaining--;
+                        checkCompletion();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (videoInput.files && videoInput.files.length > 0) {
+            tasksRemaining++;
+            let processedVideos = 0;
+            let newVideos = [];
+            Array.from(videoInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    newVideos.push({ name: file.name, data: evt.target.result });
+                    processedVideos++;
+                    if (processedVideos === videoInput.files.length) {
+                        videosArray = videosArray.concat(newVideos);
+                        tasksRemaining--;
+                        checkCompletion();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (tasksRemaining === 0) {
+            finalizeSave(photosArray, videosArray);
+        }
+
+        function finalizeSave(finalPhotos, finalVideos) {
+            if (editId) {
+                if (existingTruck) {
+                    existingTruck.truckNo = truckNo;
+                    existingTruck.truckSize = truckSize;
+                    existingTruck.capacity = capacity;
+                    existingTruck.ownerName = ownerName;
+                    existingTruck.photoList = finalPhotos;
+                    existingTruck.videoList = finalVideos;
+                }
+                alert("Truck record updated successfully!");
+            } else {
+                const newTruck = {
+                    id: Date.now(),
+                    truckNo, truckSize, capacity, ownerName,
+                    photoList: finalPhotos,
+                    videoList: finalVideos,
+                    maintenanceHistory: [],
+                    docs: {
+                        puc: { expiry: '', file: null, name: '' },
+                        insurance: { expiry: '', file: null, name: '' },
+                        fitness: { expiry: '', file: null, name: '' },
+                        permit: { expiry: '', file: null, name: '' },
+                        rc: { expiry: '', file: null, name: '' }
+                    }
+                };
+                fleetMasterList.push(newTruck);
+                alert("Truck registered successfully!");
+            }
+
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderAllFleetSections();
+            resetFleetForm();
+        }
+    }
+
+    function deleteFleet(id) {
+        if(confirm("Are you sure you want to delete this truck record?")) {
+            fleetMasterList = fleetMasterList.filter(t => t.id !== id);
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderAllFleetSections();
+        }
+    }
+
+    function openMaintenanceModal(id, truckNo) {
+        document.getElementById("maintTruckId").value = id;
+        document.getElementById("maintTruckNo").value = truckNo;
+        document.getElementById("maintDesc").value = "";
+        document.getElementById("maintAmount").value = "";
+        document.getElementById("maintenanceModal").classList.remove("hidden");
+        setTimeout(() => document.getElementById("maintDesc").focus(), 100);
+    }
+
+    function closeMaintenanceModal() {
+        document.getElementById("maintenanceModal").classList.add("hidden");
+    }
+
+    function saveMaintenanceEntry() {
+        const id = document.getElementById("maintTruckId").value;
+        const desc = document.getElementById("maintDesc").value.trim();
+        const amount = Number(document.getElementById("maintAmount").value || 0);
+
+        const truck = fleetMasterList.find(t => t.id == id);
+        if(truck && desc && amount > 0) {
+            if (!truck.maintenanceHistory) truck.maintenanceHistory = [];
+            
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-GB');
+            const timeStr = now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
+
+            truck.maintenanceHistory.unshift({
+                date: dateStr, time: timeStr, desc: desc, amount: amount
+            });
+
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderFleetMaintTable();
+            renderFleetReport();
+            updateFleetTopCardSummaries();
+            closeMaintenanceModal();
+            alert("Maintenance expense of ₹ " + amount + " added successfully!");
+        } else {
+            alert("Please enter a valid description and expense amount.");
+            document.getElementById("maintDesc").focus();
+        }
+    }
+
+    function deleteMaintenanceEntry(truckId, historyIdx) {
+        if (confirm("Are you sure you want to delete this maintenance entry?")) {
+            const truck = fleetMasterList.find(t => t.id === truckId);
+            if (truck && truck.maintenanceHistory) {
+                truck.maintenanceHistory.splice(historyIdx, 1);
+                localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+                renderAllFleetSections();
+            }
+        }
+    }
+
+    function resetFleetForm() {
+        document.getElementById("fleetMasterForm").reset();
+        document.getElementById("editFleetId").value = "";
+        document.getElementById("fleetFormTitleText").innerText = "Add New Truck Registration Form";
+        document.getElementById("fleetSaveBtn").innerText = "Save Truck Record";
+        document.getElementById("fTruckNo").focus();
+    }
+
+    function exportFleetExcel() {
+        if (fleetMasterList.length === 0) {
+            alert("No truck records available to export!");
+            return;
+        }
+
+        let now = new Date();
+        let dateStr = now.toISOString().slice(0, 10);
+
+        let html = `
+            <table border="1">
+                <tr>
+                    <th colspan="5" style="background:#1e293b; color:#fff; font-size:14px; text-align:center;">Ekta Transport - Fleet Directory (${dateStr})</th>
+                </tr>
+                <tr style="background:#f1f5f9; font-weight:bold;">
+                    <th>S.No</th>
+                    <th>Truck Number</th>
+                    <th>Size & Type</th>
+                    <th>Capacity (Tons)</th>
+                    <th>Owner / Transport</th>
+                </tr>
+        `;
+
+        fleetMasterList.forEach((item, index) => {
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.truckNo}</td>
+                    <td>${item.truckSize}</td>
+                    <td>${item.capacity}</td>
+                    <td>${item.ownerName}</td>
+                </tr>
+            `;
+        });
+
+        html += `</table>`;
+
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Ekta_Transport_Fleet_${dateStr}.xls`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function printFleetLedger() {
+        window.print();
+    }
+</script>

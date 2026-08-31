@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - Ekta Transport Company</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .content-transition {
+            animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Dynamic Theme Classes */
+        body.theme-dark { background-color: #020617; color: #f8fafc; }
+        body.theme-dark .bg-white { background-color: #0f172a !important; color: #f8fafc !important; border-color: #1e293b !important; }
+        body.theme-dark .text-slate-800 { color: #f8fafc !important; }
+        body.theme-dark .text-slate-600, body.theme-dark .text-slate-500 { color: #94a3b8 !important; }
+        body.theme-dark header { background-color: #0f172a !important; border-color: #1e293b !important; }
+        body.theme-dark input { background-color: #1e293b !important; color: white !important; border-color: #334155 !important; }
+
+        /* Dynamic Font Size Classes */
+        html.font-small { font-size: 13px; }
+        html.font-normal { font-size: 15px; }
+        html.font-large { font-size: 17px; }
+
+        /* Right Drawer Slide Transition */
+        #ownerDrawer {
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #ownerDrawer.open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans antialiased text-slate-800">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-72 bg-slate-950 text-slate-300 flex flex-col transition-all duration-300 z-30 border-r border-slate-800/80 shadow-xl">
+            <!-- Brand Logo Area -->
+            <div class="h-16 flex items-center px-6 bg-slate-900 border-b border-slate-800">
+                <i class="fa-solid fa-truck-fast text-amber-500 text-xl mr-3"></i>
+                <span class="font-bold text-base text-white tracking-wide">Ekta Transport Co.</span>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav id="sidebarNav" class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto text-sm font-medium focus:outline-none focus:ring-1 focus:ring-amber-500/50 rounded-lg" tabindex="0">
+                <a href="#" onclick="loadDefaultDashboardHome(); updateActiveNav(this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg bg-amber-600 text-white transition shadow-sm focus:outline-none focus:ring-2 focus:ring-white">
+                    <i class="fa-solid fa-chart-pie w-6 text-base"></i> Dashboard
+                </a>
+                <a href="#" onclick="loadModule('employees.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="employees.html">
+                    <i class="fa-solid fa-users w-6 text-base"></i> Employees Management
+                </a>
+                <a href="#" onclick="loadModule('fleet.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="fleet.html">
+                    <i class="fa-solid fa-truck w-6 text-base"></i> Fleet Management
+                </a>
+                <a href="#" onclick="loadModule('drivers.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="drivers.html">
+                    <i class="fa-solid fa-id-card w-6 text-base"></i> Drivers Management
+                </a>
+                <a href="#" onclick="loadModule('tracking.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="tracking.html">
+                    <i class="fa-solid fa-satellite-dish w-6 text-base"></i> Live Tracking
+                </a>
+                <a href="#" onclick="loadModule('pod.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="pod.html">
+                    <i class="fa-solid fa-file-invoice w-6 text-base"></i> POD (Proof of Delivery)
+                </a>
+                <a href="#" onclick="loadModule('fuel.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="fuel.html">
+                    <i class="fa-solid fa-gas-pump w-6 text-base"></i> Fuel Management
+                </a>
+                <a href="#" onclick="loadModule('maintenance.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="maintenance.html">
+                    <i class="fa-solid fa-screwdriver-wrench w-6 text-base"></i> Truck Maintenance
+                </a>
+                <a href="#" onclick="loadModule('parties.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="parties.html">
+                    <i class="fa-solid fa-handshake w-6 text-base"></i> Parties & Clients
+                </a>
+                <a href="#" onclick="loadModule('accounts.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="accounts.html">
+                    <i class="fa-solid fa-wallet w-6 text-base"></i> Accounts & Finance
+                </a>
+                <a href="#" onclick="loadModule('cms.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="cms.html">
+                    <i class="fa-solid fa-globe w-6 text-base"></i> Website CMS Control
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer / Logout -->
+            <div class="p-3 border-t border-slate-800 bg-slate-900">
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center px-4 py-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition font-medium text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <i class="fa-solid fa-right-from-bracket mr-2"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN WRAPPER -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100">
+            
+            <!-- TOP HEADER -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-xs">
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-700 md:hidden focus:outline-none">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- TOP CENTER GEMINI AI CHAT & MODERN INPUT BAR (With Plus & Mic Buttons) -->
+                <div class="flex-1 max-w-xl mx-4 relative">
+                    <div class="relative flex items-center">
+                        <!-- Hidden File Input for Plus Button -->
+                        <input type="file" id="aiFileInput" class="hidden" onchange="handleAiFileSelected(event)">
+                        
+                        <!-- Plus (+) Button to attach documents/images -->
+                        <button onclick="document.getElementById('aiFileInput').click()" title="Attach Document or Bill" class="absolute left-2.5 text-slate-400 hover:text-amber-600 transition flex items-center justify-center w-6 h-6 rounded-full hover:bg-slate-100 focus:outline-none">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+
+                        <input type="text" id="topAiChatInput" placeholder="Ask AI or attach ledger/LR data here..." autocomplete="off"
+                            class="w-full pl-9 pr-24 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition text-slate-800 font-medium shadow-2xs"
+                            onkeydown="if(event.key==='Enter') sendTopAiMessage()">
+
+                        <!-- Right Actions inside Search Bar (Mic & Process Button) -->
+                        <div class="absolute right-1.5 flex items-center space-x-1">
+                            <button onclick="toggleVoiceInput()" id="micBtn" title="Voice Search / Dictation" class="p-1.5 text-slate-400 hover:text-amber-600 transition rounded-md hover:bg-slate-100 focus:outline-none">
+                                <i class="fa-solid fa-microphone text-xs"></i>
+                            </button>
+                            <button onclick="sendTopAiMessage()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-bold transition shadow-xs flex items-center">
+                                <span>Process</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Controls -->
+                <div class="flex items-center space-x-3">
+                    <!-- WORKING SETTINGS BUTTON -->
+                    <button onclick="loadSettingsModule()" title="System Settings" class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center transition focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                    </button>
+
+                    <!-- OWNER PROFILE BUTTON (Opens Right Slide Drawer) -->
+                    <div onclick="toggleOwnerDrawer(event)" class="flex items-center space-x-3 border-l pl-3 border-slate-200 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition">
+                        <div id="ownerAvatarBox" class="w-8 h-8 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
+                            <span id="ownerInitial">A</span>
+                        </div>
+                        <div class="hidden md:block text-left leading-tight">
+                            <h4 id="ownerNameDisplay" class="text-xs font-bold text-slate-800">Ashok Sharma</h4>
+                            <span class="text-[10px] text-emerald-600 font-semibold tracking-wide">Transport Owner</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- MAIN CONTENT AREA -->
+            <main id="mainContentArea" class="flex-1 overflow-y-auto p-6 content-transition">
+                <!-- Dynamically injected by loadDefaultDashboardHome() on startup -->
+            </main>
+        </div>
+    </div>
+
+    <!-- AI RESULT MODAL / POPUP OVERLAY (Shows AI Output cleanly) -->
+    <div id="aiResultModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-2xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+                <h3 class="font-bold text-sm flex items-center text-amber-400">
+                    <i class="fa-solid fa-robot mr-2"></i> Ekta Transport - AI Smart Assistant Output
+                </h3>
+                <button onclick="closeAiModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="aiResultContent" class="p-6 overflow-y-auto font-mono text-xs text-slate-700 bg-slate-50 whitespace-pre-wrap leading-relaxed">
+                <!-- AI Response will appear here -->
+            </div>
+            <div class="px-6 py-3 bg-white border-t border-slate-200 flex justify-end">
+                <button onclick="closeAiModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT SLIDE-IN DRAWER (Owner Profile & Security Panel) -->
+    <div id="drawerOverlay" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-2xs transition-opacity"></div>
+    <div id="ownerDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200">
+        <!-- Drawer Header -->
+        <div class="h-16 bg-slate-900 text-white px-6 flex items-center justify-between border-b border-slate-800">
+            <h3 class="font-bold text-sm flex items-center"><i class="fa-solid fa-user-gear text-amber-500 mr-2"></i> Owner Profile & Security</h3>
+            <button onclick="closeOwnerDrawer()" class="text-slate-400 hover:text-white p-2 focus:outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <!-- Drawer Content Body -->
+        <div id="drawerBodyContent" class="flex-1 overflow-y-auto p-6 space-y-6 text-xs" tabindex="0">
+            
+            <!-- Photo & Name Card -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center space-x-4">
+                <div id="drawerAvatarPreview" class="w-16 h-16 rounded-full bg-amber-600 text-white flex items-center justify-center text-xl font-bold overflow-hidden shadow-xs shrink-0">
+                    A
+                </div>
+                <div class="flex-1">
+                    <label class="block font-bold text-slate-700 mb-1">Owner Name</label>
+                    <input type="text" id="profileOwnerName" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg bg-white font-medium focus:ring-1 focus:ring-amber-500 outline-none" value="Ashok Sharma" onchange="updateOwnerName(this.value)">
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Upload Profile Photo</label>
+                <input type="file" id="ownerPhotoInput" accept="image/*" onchange="uploadOwnerPhoto(event)" class="drawer-focusable w-full text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-slate-200 rounded-lg p-1 bg-slate-50">
+            </div>
+
+            <!-- Accordion 1: Mobile Number -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                <button onclick="toggleAccordion('phoneAccordion')" class="drawer-focusable w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-bold text-slate-800 transition focus:outline-none focus:ring-1 focus:ring-amber-500">
+                    <span class="flex items-center"><i class="fa-solid fa-mobile-screen-button text-amber-600 mr-2"></i> Change Registered Mobile Number</span>
+                    <i id="phoneAccordionIcon" class="fa-solid fa-chevron-down text-slate-400"></i>
+                </button>
+                <div id="phoneAccordion" class="hidden p-4 space-y-3 border-t border-slate-100 bg-white">
+                    <p class="text-slate-500">Current Phone: <span id="currentPhoneDisplay" class="font-mono font-bold text-slate-800">+91 9876543210</span></p>
+                    <input type="text" id="newPhoneInput" placeholder="Enter new 10-digit mobile number" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
+                    
+                    <button id="sendOtpButton" onclick="sendPhoneOtp()" class="drawer-focusable w-full bg-amber-600 text-white py-2 rounded-lg font-bold hover:bg-amber-700 transition focus:outline-none focus:ring-2 focus:ring-amber-500">Send OTP to New Number</button>
+
+                    <!-- OTP Small Input Boxes Section -->
+                    <div id="otpBoxSection" class="hidden space-y-3 pt-2">
+                        <label class="block font-semibold text-slate-700">Enter 4-Digit OTP (Demo: 1234)</label>
+                        <div class="flex justify-center space-x-3">
+                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 0)">
+                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 1)">
+                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 2)">
+                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 3)">
+                        </div>
+                        <button onclick="verifyAndSaveNewPhone()" class="drawer-focusable w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500">Verify & Save Number</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accordion 2: Password -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                <button onclick="toggleAccordion('passwordAccordion')" class="drawer-focusable w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-bold text-slate-800 transition focus:outline-none focus:ring-1 focus:ring-amber-500">
+                    <span class="flex items-center"><i class="fa-solid fa-lock text-amber-600 mr-2"></i> Change Password</span>
+                    <i id="passwordAccordionIcon" class="fa-solid fa-chevron-down text-slate-400"></i>
+                </button>
+                <div id="passwordAccordion" class="hidden p-4 space-y-3 border-t border-slate-100 bg-white">
+                    <input type="password" id="oldPasswordInput" placeholder="Current Password" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
+                    <input type="password" id="newPasswordInput" placeholder="New Password" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
+                    <input type="password" id="confirmPasswordInput" placeholder="Confirm New Password" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
+                    <button onclick="saveNewPassword()" class="drawer-focusable w-full bg-slate-900 text-white py-2 rounded-lg font-bold hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-slate-700">Update Password Securely</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FLOATING CHAT WIDGET -->
+    <div id="chatWrapper" class="fixed bottom-6 right-6 z-50">
+        <button id="chatToggleBtn" onclick="toggleChat(event)" class="w-12 h-12 bg-slate-900 hover:bg-slate-800 text-amber-500 border border-amber-500/40 rounded-full flex items-center justify-center shadow-lg transition transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <i class="fa-solid fa-headset text-lg"></i>
+        </button>
+
+        <div id="chatBoxWindow" class="hidden absolute bottom-14 right-0 w-80 sm:w-96 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden flex flex-col h-[400px]">
+            <div class="bg-slate-900 text-white p-3.5 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center space-x-2 text-xs font-semibold">
+                    <i class="fa-solid fa-comments text-amber-500"></i>
+                    <span>Internal Office & Staff Comms</span>
+                </div>
+                <button onclick="toggleChat(event)" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <div id="chatMessages" class="flex-1 p-3.5 overflow-y-auto space-y-2.5 bg-slate-50 text-xs">
+                <div class="flex items-start">
+                    <div class="bg-white border border-slate-200 p-2.5 rounded-lg shadow-2xs max-w-[85%] text-slate-700">
+                        Hello Owner Sir! System is fully active. You can check details of any module here.
+                    </div>
+                </div>
+            </div>
+            <div class="p-2.5 bg-white border-t border-slate-200 flex items-center space-x-2">
+                <input type="text" id="chatInput" placeholder="Type instructions..." autocomplete="off" class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" onkeydown="if(event.key==='Enter') sendChatMessage()">
+                <button onclick="sendChatMessage()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1.5 rounded-md text-xs transition">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost/transport-api/'            
+            : 'https://ektatransportcompany.in/api/';      
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSavedOwnerPreferences();
+            loadDefaultDashboardHome(); 
+            setupKeyboardNav();
+
+            document.addEventListener("click", (event) => {
+                const drawer = document.getElementById("ownerDrawer");
+                const overlay = document.getElementById("drawerOverlay");
+                const chatWrapper = document.getElementById("chatWrapper");
+                const chatBox = document.getElementById("chatBoxWindow");
+
+                if (!drawer.contains(event.target) && !event.target.closest('[onclick="toggleOwnerDrawer(event)"]') && drawer.classList.contains("open")) {
+                    closeOwnerDrawer();
+                }
+
+                if (!chatBox.classList.contains("hidden") && !chatWrapper.contains(event.target)) {
+                    chatBox.classList.add("hidden");
+                }
+            });
+        });
+
+        function loadSavedOwnerPreferences() {
+            const savedName = localStorage.getItem("ownerName") || "Ashok Sharma";
+            document.getElementById("ownerNameDisplay").innerText = savedName;
+            if(document.getElementById("welcomeGreeting")) {
+                document.getElementById("welcomeGreeting").innerText = `Welcome back, ${savedName}!`;
+            }
+            if(document.getElementById("profileOwnerName")) {
+                document.getElementById("profileOwnerName").value = savedName;
+            }
+            document.getElementById("ownerInitial").innerText = savedName.charAt(0).toUpperCase();
+
+            const savedPhone = localStorage.getItem("ownerPhone") || "+91 9876543210";
+            if(document.getElementById("currentPhoneDisplay")) {
+                document.getElementById("currentPhoneDisplay").innerText = savedPhone;
+            }
+
+            const savedPhoto = localStorage.getItem("ownerPhoto");
+            if (savedPhoto) {
+                document.getElementById("ownerAvatarBox").innerHTML = `<img src="${savedPhoto}" class="w-full h-full object-cover">`;
+                if(document.getElementById("drawerAvatarPreview")) {
+                    document.getElementById("drawerAvatarPreview").innerHTML = `<img src="${savedPhoto}" class="w-full h-full object-cover">`;
+                }
+            } else {
+                const init = savedName.charAt(0).toUpperCase();
+                document.getElementById("ownerAvatarBox").innerHTML = `<span>${init}</span>`;
+                if(document.getElementById("drawerAvatarPreview")) {
+                    document.getElementById("drawerAvatarPreview").innerHTML = `<span>${init}</span>`;
+                }
+            }
+
+            const currentTheme = localStorage.getItem("ownerTheme") || "light";
+            if (currentTheme === "dark") document.body.classList.add("theme-dark");
+
+            const currentFont = localStorage.getItem("ownerFont") || "normal";
+            document.getElementById("htmlRoot").className = `font-${currentFont}`;
+        }
+
+        function loadDefaultDashboardHome() {
+            const contentArea = document.getElementById('mainContentArea');
+            contentArea.innerHTML = `
+                <div class="space-y-6 max-w-7xl mx-auto">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-md flex items-center justify-between border-l-4 border-amber-500">
+                        <div>
+                            <h1 id="welcomeGreeting" class="text-xl font-bold tracking-tight">Welcome back, ${localStorage.getItem("ownerName") || "Ashok Sharma"}!</h1>
+                            <p class="text-slate-400 text-xs mt-1">Ekta Transport Company operations dashboard is running live and synced.</p>
+                        </div>
+                        <div class="hidden sm:block text-right">
+                            <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-md font-mono">System Status: Active</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs text-slate-500 font-medium">Active Fleet</p>
+                                <i class="fa-solid fa-truck text-amber-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mt-2">0 Units</h3>
+                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">No active fleet yet</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs text-slate-500 font-medium">On-Duty Drivers</p>
+                                <i class="fa-solid fa-id-card text-blue-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mt-2">0 Active</h3>
+                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">No drivers on duty</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs text-slate-500 font-medium">Pending PODs</p>
+                                <i class="fa-solid fa-file-invoice text-indigo-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mt-2">0 Entries</h3>
+                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">No pending entries</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs text-slate-500 font-medium">Monthly Ledger</p>
+                                <i class="fa-solid fa-wallet text-emerald-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mt-2">₹ 0</h3>
+                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">No transactions yet</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const dashboardNavLink = document.querySelector('nav a');
+            if(dashboardNavLink) updateActiveNav(dashboardNavLink);
+        }
+
+        function loadSettingsModule() {
+            const contentArea = document.getElementById('mainContentArea');
+            const currentTheme = localStorage.getItem("ownerTheme") || "light";
+            const currentFont = localStorage.getItem("ownerFont") || "normal";
+
+            contentArea.innerHTML = `
+                <div class="max-w-3xl mx-auto space-y-6" id="settingsContainer">
+                    <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-xs">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4">
+                            <i class="fa-solid fa-gear text-amber-600 mr-2"></i> System & Dashboard Settings
+                        </h2>
+                        
+                        <div class="mb-6 pb-6 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Dashboard Theme Mode</h3>
+                                <p class="text-xs text-slate-500">Switch instantly between Light Mode and Dark Mode.</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="setTheme('light')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentTheme === 'light' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">
+                                    <i class="fa-solid fa-sun mr-1"></i> Light
+                                </button>
+                                <button onclick="setTheme('dark')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentTheme === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">
+                                    <i class="fa-solid fa-moon mr-1"></i> Dark
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Interface Font Size</h3>
+                            <p class="text-xs text-slate-500 mb-3">Adjust the text size across the entire system.</p>
+                            <div class="flex space-x-3">
+                                <button onclick="setFontSize('small')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'small' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Small</button>
+                                <button onclick="setFontSize('normal')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'normal' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Normal (Default)</button>
+                                <button onclick="setFontSize('large')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'large' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Large</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            updateActiveNav(null);
+
+            setTimeout(() => {
+                const settingsArea = document.getElementById('mainContentArea');
+                settingsArea.onclick = function(e) {
+                    if (e.target === settingsArea) {
+                        loadDefaultDashboardHome();
+                        settingsArea.onclick = null;
+                    }
+                };
+            }, 100);
+        }
+
+        function setTheme(mode) {
+            localStorage.setItem("ownerTheme", mode);
+            if (mode === "dark") document.body.classList.add("theme-dark");
+            else document.body.classList.remove("theme-dark");
+            loadSettingsModule();
+        }
+
+        function setFontSize(size) {
+            localStorage.setItem("ownerFont", size);
+            document.getElementById("htmlRoot").className = `font-${size}`;
+            loadSettingsModule();
+        }
+
+        function toggleOwnerDrawer(event) {
+            if(event) event.stopPropagation();
+            const drawer = document.getElementById("ownerDrawer");
+            const overlay = document.getElementById("drawerOverlay");
+            drawer.classList.toggle("open");
+            overlay.classList.toggle("hidden");
+
+            if (drawer.classList.contains("open")) {
+                setTimeout(() => {
+                    document.getElementById("profileOwnerName").focus();
+                }, 100);
+            }
+        }
+
+        function closeOwnerDrawer() {
+            document.getElementById("ownerDrawer").classList.remove("open");
+            document.getElementById("drawerOverlay").classList.add("hidden");
+        }
+
+        function updateOwnerName(newName) {
+            if(!newName.trim()) return;
+            localStorage.setItem("ownerName", newName);
+            loadSavedOwnerPreferences();
+        }
+
+        function uploadOwnerPhoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    localStorage.setItem("ownerPhoto", e.target.result);
+                    loadSavedOwnerPreferences();
+                    alert("Profile photo updated successfully!");
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function toggleAccordion(id) {
+            const section = document.getElementById(id);
+            section.classList.toggle("hidden");
+        }
+
+        function sendPhoneOtp() {
+            const newPhone = document.getElementById("newPhoneInput").value;
+            if(newPhone.length < 10) { alert("Please enter a valid 10-digit mobile number."); return; }
+            alert("OTP sent successfully to " + newPhone + " (Demo OTP: 1234)");
+            document.getElementById("otpBoxSection").classList.remove("hidden");
+            document.getElementById("sendOtpButton").classList.add("hidden");
+            document.querySelectorAll('.otp-box')[0].focus();
+        }
+
+        function moveToNext(element, index) {
+            const boxes = document.querySelectorAll('.otp-box');
+            if (element.value.length === 1 && index < boxes.length - 1) {
+                boxes[index + 1].focus();
+            }
+        }
+
+        function verifyAndSaveNewPhone() {
+            const boxes = document.querySelectorAll('.otp-box');
+            let enteredOtp = "";
+            boxes.forEach(box => enteredOtp += box.value);
+
+            const newPhone = document.getElementById("newPhoneInput").value;
+            if(enteredOtp === "1234") {
+                localStorage.setItem("ownerPhone", "+91 " + newPhone);
+                document.getElementById("currentPhoneDisplay").innerText = "+91 " + newPhone;
+                alert("Mobile number updated successfully!");
+                document.getElementById("otpBoxSection").classList.add("hidden");
+                document.getElementById("sendOtpButton").classList.remove("hidden");
+                document.getElementById("newPhoneInput").value = "";
+                boxes.forEach(box => box.value = "");
+            } else {
+                alert("Invalid OTP! Please enter 1234.");
+            }
+        }
+
+        function saveNewPassword() {
+            const oldPass = document.getElementById("oldPasswordInput").value;
+            const newPass = document.getElementById("newPasswordInput").value;
+            const confPass = document.getElementById("confirmPasswordInput").value;
+
+            if(!oldPass || !newPass || !confPass) { alert("Please fill all password fields."); return; }
+            if(newPass !== confPass) { alert("New passwords do not match."); return; }
+            
+            localStorage.setItem("ownerPassword", newPass);
+            alert("Password updated successfully!");
+            document.getElementById("oldPasswordInput").value = "";
+            document.getElementById("newPasswordInput").value = "";
+            document.getElementById("confirmPasswordInput").value = "";
+            closeOwnerDrawer();
+        }
+
+        function setupKeyboardNav() {
+            const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+            let navIndex = 0;
+
+            document.addEventListener('keydown', (e) => {
+                const drawer = document.getElementById("ownerDrawer");
+                const isDrawerOpen = drawer.classList.contains("open");
+
+                if (isDrawerOpen) {
+                    const focusables = Array.from(drawer.querySelectorAll('.drawer-focusable')).filter(el => {
+                        return el.offsetParent !== null;
+                    });
+                    let currentIndex = focusables.indexOf(document.activeElement);
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (currentIndex === -1) currentIndex = 0;
+                        else currentIndex = (currentIndex + 1) % focusables.length;
+                        focusables[currentIndex].focus();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (currentIndex === -1) currentIndex = focusables.length - 1;
+                        else currentIndex = (currentIndex - 1 + focusables.length) % focusables.length;
+                        focusables[currentIndex].focus();
+                    }
+                } else {
+                    if (document.activeElement.tagName === 'INPUT') return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        navIndex = (navIndex + 1) % navLinks.length;
+                        navLinks[navIndex].focus();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        navIndex = (navIndex - 1 + navLinks.length) % navLinks.length;
+                        navLinks[navIndex].focus();
+                    } else if (e.key === 'Enter') {
+                        const focusedElement = document.activeElement;
+                        if (navLinks.includes(focusedElement)) {
+                            e.preventDefault();
+                            focusedElement.click();
+                        }
+                    }
+                }
+            });
+        }
+
+        async function loadModule(pageUrl, element) {
+            const contentArea = document.getElementById('mainContentArea');
+            contentArea.onclick = null;
+            contentArea.innerHTML = `
+                <div class="flex items-center justify-center h-64">
+                    <div class="flex flex-col items-center space-y-2">
+                        <i class="fa-solid fa-circle-notch fa-spin text-amber-600 text-2xl"></i>
+                        <span class="text-xs font-medium text-slate-500">Loading module...</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(pageUrl);
+                if (!response.ok) throw new Error('Module file not found.');
+                const htmlContent = await response.text();
+                
+                contentArea.innerHTML = htmlContent;
+                contentArea.classList.remove('content-transition');
+                void contentArea.offsetWidth;
+                contentArea.classList.add('content-transition');
+
+                const scripts = contentArea.querySelectorAll('script');
+                scripts.forEach(script => {
+                    const newScript = document.createElement('script');
+                    newScript.text = script.innerText;
+                    document.body.appendChild(newScript);
+                    document.body.removeChild(newScript);
+                });
+
+            } catch (error) {
+                contentArea.innerHTML = `
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center text-amber-800 max-w-lg mx-auto mt-10">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 text-amber-600"></i>
+                        <h3 class="font-bold text-sm">Module View Ready (${pageUrl})</h3>
+                        <p class="text-xs text-slate-600 mt-1">This module file (${pageUrl}) is pending creation. Once created, your data will load directly from the cloud database.</p>
+                    </div>
+                `;
+            }
+
+            if (element) updateActiveNav(element);
+        }
+
+        function updateActiveNav(element) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('bg-amber-600', 'text-white', 'shadow-sm');
+                link.classList.add('text-slate-400', 'hover:bg-slate-900', 'hover:text-slate-100');
+            });
+            if (element) {
+                element.classList.remove('text-slate-400', 'hover:bg-slate-900', 'hover:text-slate-100');
+                element.classList.add('bg-amber-600', 'text-white', 'shadow-sm');
+            }
+        }
+
+        // --- PLUS (+) BUTTON FILE HANDLER ---
+        function handleAiFileSelected(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const inputField = document.getElementById('topAiChatInput');
+                inputField.value = `[Attached Document: ${file.name}] Please analyze this file content.`;
+                alert(`File "${file.name}" attached successfully! Press Process to send to AI.`);
+            }
+        }
+
+        // --- MICROPHONE SPEECH-TO-TEXT HANDLER ---
+        function toggleVoiceInput() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'hi-IN'; // Supports Hindi & Indian English context
+            const micBtn = document.getElementById('micBtn');
+            const inputField = document.getElementById('topAiChatInput');
+
+            micBtn.classList.add('text-red-500', 'animate-pulse');
+            inputField.placeholder = "Listening... Speak now...";
+
+            recognition.onresult = function(event) {
+                const speechText = event.results[0][0].transcript;
+                inputField.value = speechText;
+                micBtn.classList.remove('text-red-500', 'animate-pulse');
+                inputField.placeholder = "Ask AI or attach ledger/LR data here...";
+            };
+
+            recognition.onerror = function() {
+                micBtn.classList.remove('text-red-500', 'animate-pulse');
+                inputField.placeholder = "Ask AI or attach ledger/LR data here...";
+                alert("Voice recognition error. Please try again.");
+            };
+
+            recognition.onend = function() {
+                micBtn.classList.remove('text-red-500', 'animate-pulse');
+                inputField.placeholder = "Ask AI or attach ledger/LR data here...";
+            };
+
+            recognition.start();
+        }
+
+        // --- SECURE BACKEND PROXY AI FUNCTION (API Key safe from F12 inspection) ---
+        async function sendTopAiMessage() {
+            const inputField = document.getElementById('topAiChatInput');
+            const promptText = inputField.value.trim();
+            if (!promptText) {
+                alert("Please type or paste some data in the chat bar first!");
+                return;
+            }
+
+            const modal = document.getElementById('aiResultModal');
+            const contentBox = document.getElementById('aiResultContent');
+            modal.classList.remove('hidden');
+            contentBox.innerText = "Connecting to Ekta Secure AI Server...";
+
+            try {
+                const proxyUrl = API_BASE_URL + 'ai-proxy.php';
+
+                const response = await fetch(proxyUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: promptText })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+                    contentBox.innerText = data.candidates[0].content.parts[0].text;
+                } else if (data.error) {
+                    contentBox.innerText = `API Error: ${data.error.message}`;
+                } else {
+                    contentBox.innerText = "Received response from server, but format is unexpected.";
+                }
+            } catch (err) {
+                contentBox.innerText = `Network or Server Connection Error: ${err.message}`;
+            }
+        }
+
+        function closeAiModal() {
+            document.getElementById('aiResultModal').classList.add('hidden');
+        }
+
+        function toggleChat(event) {
+            if (event) event.stopPropagation();
+            document.getElementById('chatBoxWindow').classList.toggle('hidden');
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const messagesContainer = document.getElementById('chatMessages');
+            if (!input.value.trim()) return;
+
+            messagesContainer.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-amber-600 text-white p-2 rounded-lg max-w-[85%]">${input.value}</div>
+                </div>
+            `;
+            const textVal = input.value;
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            setTimeout(() => {
+                messagesContainer.innerHTML += `
+                    <div class="flex items-start">
+                        <div class="bg-white border border-slate-200 p-2 rounded-lg shadow-2xs max-w-[85%] text-slate-700">
+                            Message received: "${textVal}". Updating cloud database.
+                        </div>
+                    </div>
+                `;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 700);
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-ml-72');
+        }
+
+        function handleLogout() {
+            if(confirm('Are you sure you want to logout from Owner Dashboard?')) {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>

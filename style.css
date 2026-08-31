@@ -1,0 +1,206 @@
+/* ==========================================
+   EKTA TRANSPORT PORTAL - COMPLETE STYLE.CSS
+========================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    background-color: #f4f6f9;
+    color: #333;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Main Container (Split Screen Layout) */
+.main-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Left Section (Banner, Navigation & Dynamic Content) - Stretched Look */
+.left-section {
+    flex: 1.2; /* Right section ke barabar properly stretch karne ke liye */
+    background: linear-gradient(135deg, #1e3a8a, #0f172a);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 40px;
+    position: relative;
+}
+
+/* Top Navbar */
+.top-navbar {
+    width: 100%;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 25px;
+    justify-content: flex-start;
+}
+
+.nav-links li a {
+    text-decoration: none;
+    color: #cbd5e1;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-links li a:hover, .nav-links li a.active {
+    color: #ffffff;
+    border-bottom: 2px solid #ff6600;
+    padding-bottom: 3px;
+}
+
+/* Banner Content Centered */
+.banner-content {
+    margin: auto;
+    text-align: center; /* "Ekta Transport" ko bilkul center mein laane ke liye */
+    width: 100%;
+}
+
+.brand-box .transport-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 56px; /* Bada aur shandaar font */
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-bottom: 15px;
+    color: #ffffff;
+}
+
+.brand-box .tagline {
+    font-size: 18px;
+    color: #cbd5e1;
+}
+
+/* Right Section (Login Portal) */
+.right-section {
+    width: 420px;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+}
+
+.login-card {
+    width: 100%;
+}
+
+/* Login Tabs (Owner / Staff Switcher) */
+.login-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.login-tabs .tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.login-tabs .tab-btn.active {
+    background: #ff6600;
+    color: white;
+    border-color: #ff6600;
+}
+
+.login-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #1e293b;
+}
+
+/* Input Fields Styling */
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #475569;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+    border-color: #ff6600;
+}
+
+.forgot-pass {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+.forgot-pass a {
+    font-size: 12px;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.forgot-pass a:hover {
+    text-decoration: underline;
+}
+
+/* Secure Login Button */
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    background: #ff6600;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.login-btn:hover {
+    background: #e65c00;
+}
+
+.register-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.register-link a {
+    color: #ff6600;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
