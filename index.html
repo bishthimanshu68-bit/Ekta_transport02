@@ -479,7 +479,6 @@
             savedMobile = mobile;
             generatedOtp = Math.floor(1000 + Math.random() * 9000);
             
-            // Trigger actual Fast2SMS API
             await sendFast2SmsOtp(mobile, generatedOtp);
             alert(`OTP has been sent to your mobile number: ${mobile}`);
             
@@ -531,7 +530,7 @@
             closeForgotModal();
         }
 
-        // Connected Login with auth.js (Updated to load owner-dashboard.html seamlessly)
+        // Connected Login with auth.js & Direct Redirection to owner-dashboard.html
         async function handleLogin(event) {
             event.preventDefault();
             const userId = document.getElementById('userId').value.trim();
@@ -546,26 +545,12 @@
                 if (!isAuthenticated) return;
             }
 
-            // Target page mapping: Owner opens owner-dashboard.html, staff opens employees.html
             const targetPage = (activeRole === 'owner') ? 'owner-dashboard.html' : 'employees.html';
 
-            alert('Login successful! Loading Dashboard...');
+            alert('Login successful! Redirecting to Dashboard...');
             
-            // Fetch and replace entire document cleanly so no nested split layout or extra windows open
-            try {
-                const response = await fetch(targetPage);
-                if(response.ok) {
-                    const htmlContent = await response.text();
-                    document.open();
-                    document.write(htmlContent);
-                    document.close();
-                } else {
-                    alert(`Could not load module file (${targetPage}). Please ensure the file exists in the directory.`);
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Error loading dashboard module. Check Live Server connection.');
-            }
+            // सीधा असली डैशबोर्ड फाइल खोलें ताकि सारे क्लिक, साइडबार और मॉड्यूल्स 100% सही लोड हों!
+            window.location.href = targetPage;
         }
     </script>
 </body>
