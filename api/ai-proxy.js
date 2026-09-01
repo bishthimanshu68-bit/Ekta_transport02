@@ -28,8 +28,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables.' });
     }
 
-    // Updated to gemini-2.5-flash
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Google Gemini 3.6 Flash API Endpoint (As requested by the error message)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',
