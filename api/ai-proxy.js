@@ -29,8 +29,8 @@ export default async function handler(req, res) {
     }
 
     // जेमिनी मॉडल का सही एंडपॉइंट
-    // वर्तमान में एक्टिव जेमिनी फ्लैश मॉडल का इस्तेमाल करें
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // गूगल के नए निर्देश के अनुसार gemini-3.6-flash एंडपॉइंट सेट करें
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     // एकता ट्रांसपोर्ट के लिए सख्त सिस्टम निर्देश (System Instruction) ताकि वह ट्रांसपोर्ट के बाहर न जाए
     const systemInstruction = {
