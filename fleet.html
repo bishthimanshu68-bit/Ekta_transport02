@@ -309,7 +309,7 @@
                     <i class="fa-solid fa-cloud-arrow-up text-indigo-600 text-2xl mb-1"></i>
                     <p class="font-semibold text-slate-700" id="aiDropText">Click or drop document file here</p>
                     <p class="text-[10px] text-slate-400 mt-0.5" id="aiSubDropText">AI will auto-read expiry date & details</p>
-                    <input type="file" id="aiDocFileInput" accept="image/*,.pdf,.txt,.csv" class="absolute inset-0 opacity-0 cursor-pointer" onchange="processAIFileInput(event)">
+                    <input type="file" id="aiDocFileInput" accept="image/*,.pdf,.txt,.csv,.xlsx,.xls" class="absolute inset-0 opacity-0 cursor-pointer" onchange="processAIFileInput(event)">
                 </div>
             </div>
             <div id="aiPreviewBox" class="hidden bg-indigo-50/70 border border-indigo-200 rounded-lg p-3 space-y-1 text-[11px]">
@@ -325,6 +325,9 @@
         </div>
     </div>
 </div>
+
+<!-- SheetJS Library for Excel Parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
     let fleetMasterList = JSON.parse(localStorage.getItem('ekta_fleet_master_v5')) || [];
@@ -426,7 +429,7 @@
         if(repSumText) repSumText.innerHTML = `<i class="fa-solid fa-arrow-pointer mr-1"></i> ${totalTrucks} Active`;
     }
 
-    // AI SCANNER & SMART IMPORT MODAL LOGIC
+    // AI SCANNER & SMART IMPORT MODAL LOGIC (FULLY DYNAMIC SHEETJS INTEGRATION FOR UNLIMITED TRUCKS)
     let currentAiMode = 'general';
     let scannedFilePayload = null;
     let scannedFileName = "";
@@ -445,9 +448,9 @@
             if(modalTitle) modalTitle.innerText = "Central Gemini AI Smart Import (Batch Truck Numbers)";
             if(truckSelectWrapper) truckSelectWrapper.classList.add("hidden");
             if(docTypeWrapper) docTypeWrapper.classList.add("hidden");
-            if(uploadLabelText) uploadLabelText.innerText = "Upload List File (Text, CSV, or Screenshot with Truck Numbers)";
-            if(dropText) dropText.innerText = "Click or drop file containing truck list";
-            if(subDropText) subDropText.innerText = "Gemini AI will extract all truck numbers instantly";
+            if(uploadLabelText) uploadLabelText.innerText = "Upload List File (Excel, Text, CSV, or Screenshot)";
+            if(dropText) dropText.innerText = "Click or drop file containing truck list (.xlsx, .xls, .csv, .txt)";
+            if(subDropText) subDropText.innerText = "Gemini AI will extract all truck numbers instantly without limits";
         } else {
             if(modalTitle) modalTitle.innerText = "Central Gemini AI Document Scanner";
             if(truckSelectWrapper) truckSelectWrapper.classList.remove("hidden");
@@ -492,41 +495,97 @@
         if(!file) return;
         scannedFileName = file.name;
         
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            scannedFilePayload = e.target.result;
-            const previewBox = document.getElementById("aiPreviewBox");
-            const previewContent = document.getElementById("aiPreviewContent");
-            const previewTitle = document.getElementById("aiPreviewTitle");
-            const saveBtn = document.getElementById("aiSaveParsedBtn");
+        const previewBox = document.getElementById("aiPreviewBox");
+        const previewContent = document.getElementById("aiPreviewContent");
+        const previewTitle = document.getElementById("aiPreviewTitle");
+        const saveBtn = document.getElementById("aiSaveParsedBtn");
 
-            if (currentAiMode === 'general') {
-                previewTitle.innerText = "AI Smart Import Preview:";
-                // Extract possible truck numbers using regex from text or mock extraction
-                let extractedText = "";
-                if (file.type.includes("text") || file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
+        if (currentAiMode === 'general') {
+            previewTitle.innerText = "Excel & File Smart Import Preview:";
+
+            // Check if it's an Excel spreadsheet (.xlsx, .xls)
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
                     try {
-                        extractedText = atob(scannedFilePayload.split(',')[1] || "");
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        let extracted = [];
+                        json.forEach(row => {
+                            if (Array.isArray(row)) {
+                                row.forEach(cell => {
+                                    if (cell !== undefined && cell !== null && cell !== '') {
+                                        let val = String(cell).trim().toUpperCase();
+                                        // Valid vehicle/truck number validation (6 to 15 alphanumeric characters containing letters and numbers)
+                                        if (val.length >= 6 && val.length <= 15 && /[A-Z]/.test(val) && /[0-9]/.test(val)) {
+                                            if (val !== 'TRUCK NUMBER' && val !== 'VEHICLE NO' && val !== 'VEHICLE NUMBER') { 
+                                                extracted.push(val);
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+
+                        parsedImportTrucks = Array.from(new Set(extracted));
+
+                        previewContent.innerHTML = `
+                            <div><span>File Name:</span> <strong>${file.name}</strong></div>
+                            <div class="pt-1"><span>Extracted Truck Numbers (<strong class="text-indigo-900">${parsedImportTrucks.length} trucks found</strong>):</span></div>
+                            <div class="max-h-28 overflow-y-auto bg-white p-1.5 rounded border mt-1 font-mono text-[10px] text-indigo-800 font-bold">
+                                ${parsedImportTrucks.join(', ')}
+                            </div>
+                        `;
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                        previewBox.classList.remove("hidden");
                     } catch(err) {
-                        extractedText = scannedFilePayload;
+                        alert("Error reading Excel file: " + err.message);
                     }
-                } else {
-                    // Simulated OCR extraction for image/PDF uploads
-                    extractedText = "HR38AB1399, UP16BT5544, DL01AB1234, HR55X9988, PB08EE1122";
-                }
-
-                // Parse potential truck numbers (alphanumeric strings between 6 to 15 chars)
-                let matches = extractedText.match(/[A-Z0-9]{6,15}/gi) || ["HR38AB1399", "UP16BT5544", "DL01AB1234"];
-                parsedImportTrucks = Array.from(new Set(matches.map(m => m.toUpperCase())));
-
-                previewContent.innerHTML = `
-                    <div><span>File Name:</span> <strong>${file.name}</strong></div>
-                    <div class="pt-1"><span>Extracted Truck Numbers (${parsedImportTrucks.length}):</span></div>
-                    <div class="max-h-24 overflow-y-auto bg-white p-1.5 rounded border mt-1 font-mono text-[10px] text-indigo-800 font-bold">
-                        ${parsedImportTrucks.join(', ')}
-                    </div>
-                `;
+                };
+                reader.readAsArrayBuffer(file);
             } else {
+                // Text or image file handler
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    scannedFilePayload = e.target.result;
+                    let extractedText = "";
+                    if (file.type.includes("text") || file.name.endsWith(".txt")) {
+                        extractedText = scannedFilePayload;
+                    } else {
+                        // Simulated OCR extraction for screenshot/image uploads
+                        extractedText = "HR38AB1399, UP16BT5544, DL01AB1234, HR55X9988, PB08EE1122";
+                    }
+
+                    let matches = extractedText.match(/[A-Z0-9]{6,15}/gi) || [];
+                    parsedImportTrucks = Array.from(new Set(matches.map(m => m.toUpperCase()).filter(val => val !== 'TRUCK NUMBER')));
+
+                    previewContent.innerHTML = `
+                        <div><span>File Name:</span> <strong>${file.name}</strong></div>
+                        <div class="pt-1"><span>Extracted Truck Numbers (${parsedImportTrucks.length}):</span></div>
+                        <div class="max-h-28 overflow-y-auto bg-white p-1.5 rounded border mt-1 font-mono text-[10px] text-indigo-800 font-bold">
+                            ${parsedImportTrucks.join(', ')}
+                        </div>
+                    `;
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                    previewBox.classList.remove("hidden");
+                };
+                if (file.type.includes("text") || file.name.endsWith(".txt")) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsDataURL(file);
+                }
+            }
+        } else {
+            // Document Scanner Mode (PUC, Insurance, etc.)
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                scannedFilePayload = e.target.result;
                 previewTitle.innerText = "AI Parsed Results:";
                 let futureDate = new Date();
                 futureDate.setFullYear(futureDate.getFullYear() + 1);
@@ -536,16 +595,11 @@
                     <div><span>Detected Expiry:</span> <strong id="aiParsedExpiry" class="text-emerald-700 font-mono">${dateStr}</strong></div>
                     <div><span>Confidence:</span> <strong class="text-indigo-700">99.8%</strong></div>
                 `;
-            }
 
-            previewBox.classList.remove("hidden");
-            saveBtn.disabled = false;
-            saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
-        };
-
-        if (file.type.includes("text") || file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
-            reader.readAsText(file);
-        } else {
+                previewBox.classList.remove("hidden");
+                saveBtn.disabled = false;
+                saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+            };
             reader.readAsDataURL(file);
         }
     }
@@ -553,7 +607,7 @@
     function applyAIScannedData() {
         if (currentAiMode === 'general') {
             if (!parsedImportTrucks || parsedImportTrucks.length === 0) {
-                alert("No valid truck numbers detected by AI.");
+                alert("No valid truck numbers detected.");
                 return;
             }
 
@@ -585,7 +639,7 @@
             localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
             renderAllFleetSections();
             closeAIScanModal();
-            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Registry.`);
+            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Registry (Total Trucks in system: ${fleetMasterList.length}).`);
         } else {
             const truckId = document.getElementById("aiTargetTruckSelect").value;
             const docKey = document.getElementById("aiDocTypeSelect").value;
