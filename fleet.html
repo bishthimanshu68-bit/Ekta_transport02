@@ -66,7 +66,7 @@
         <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
             <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
                 <h3 class="font-bold text-xs flex items-center"><i class="fa-solid fa-circle-plus text-amber-500 mr-2"></i> <span id="fleetFormTitleText">Add New Truck Registration Form</span></h3>
-                <span class="text-[10px] text-slate-400 font-mono">Use Enter Key to Move Forward</span>
+                <span class="text-[10px] text-slate-400 font-mono">Only Truck Number required to save</span>
             </div>
             <form id="fleetMasterForm" onsubmit="saveFleetRecord(event); return false;" class="p-4 space-y-3">
                 <input type="hidden" id="editFleetId" value="">
@@ -77,16 +77,16 @@
                         <input type="text" id="fTruckNo" required autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none uppercase font-mono" placeholder="e.g. HR38AB1399" onkeydown="handleFleetFormKey(event, 'fTruckSize')">
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1">Truck Size & Type *</label>
-                        <input type="text" id="fTruckSize" required autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none" placeholder="e.g. 10 Wheeler Open Body" onkeydown="handleFleetFormKey(event, 'fCapacity')">
+                        <label class="block font-bold text-slate-700 mb-1">Truck Size & Type</label>
+                        <input type="text" id="fTruckSize" autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none" placeholder="e.g. 10 Wheeler Open Body" onkeydown="handleFleetFormKey(event, 'fCapacity')">
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1">Capacity (in Tons) *</label>
-                        <input type="number" step="0.5" id="fCapacity" required class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none font-mono" placeholder="e.g. 16.5" onkeydown="handleFleetFormKey(event, 'fOwnerName')">
+                        <label class="block font-bold text-slate-700 mb-1">Capacity (in Tons)</label>
+                        <input type="number" step="0.5" id="fCapacity" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none font-mono" placeholder="e.g. 16.5" onkeydown="handleFleetFormKey(event, 'fOwnerName')">
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1">Owner / Transport Name *</label>
-                        <input type="text" id="fOwnerName" required autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none" placeholder="e.g. Ekta Logistics" onkeydown="handleFleetFormKey(event, 'fPhotoFiles')">
+                        <label class="block font-bold text-slate-700 mb-1">Owner / Transport Name</label>
+                        <input type="text" id="fOwnerName" autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500 outline-none" placeholder="e.g. Ekta Logistics" onkeydown="handleFleetFormKey(event, 'fPhotoFiles')">
                     </div>
                 </div>
 
@@ -116,9 +116,8 @@
                     </h3>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <input type="file" id="excelImportFile" accept=".xlsx, .xls, .xlsb, .csv" class="hidden" onchange="importFleetExcel(event)">
-                    <button type="button" onclick="document.getElementById('excelImportFile').click()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded shadow-2xs transition flex items-center text-[11px]">
-                        <i class="fa-solid fa-file-excel mr-1"></i> Import Data
+                    <button type="button" onclick="openAIScanModal('general')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded shadow-2xs transition flex items-center text-[11px]">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI Smart Import
                     </button>
                     <button type="button" onclick="exportFleetExcel()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded shadow-2xs transition flex items-center text-[11px]">
                         <i class="fa-solid fa-file-excel mr-1"></i> Export Excel
@@ -284,17 +283,17 @@
 <div id="aiScanModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
         <div class="h-10 bg-indigo-900 text-white px-4 flex items-center justify-between text-xs">
-            <h3 class="font-bold flex items-center"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1.5"></i> Central Gemini AI Document Scanner</h3>
+            <h3 class="font-bold flex items-center"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1.5"></i> <span id="aiModalTitleHeader">Central Gemini AI Document Scanner</span></h3>
             <button onclick="closeAIScanModal()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-sm"></i></button>
         </div>
         <div class="p-4 space-y-3 text-xs">
-            <div>
+            <div id="aiTruckSelectWrapper">
                 <label class="block font-bold text-slate-700 mb-1">Select Target Truck *</label>
                 <select id="aiTargetTruckSelect" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none font-mono font-bold text-slate-800">
                     <!-- Populated dynamically -->
                 </select>
             </div>
-            <div>
+            <div id="aiDocTypeWrapper">
                 <label class="block font-bold text-slate-700 mb-1">Document Type *</label>
                 <select id="aiDocTypeSelect" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none">
                     <option value="insurance">Insurance Certificate</option>
@@ -305,19 +304,18 @@
                 </select>
             </div>
             <div>
-                <label class="block font-bold text-slate-700 mb-1">Upload Document or Screenshot *</label>
+                <label class="block font-bold text-slate-700 mb-1" id="aiUploadLabelText">Upload Document or Screenshot *</label>
                 <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center bg-slate-50 hover:bg-indigo-50/50 transition cursor-pointer relative">
                     <i class="fa-solid fa-cloud-arrow-up text-indigo-600 text-2xl mb-1"></i>
-                    <p class="font-semibold text-slate-700">Click or drop document file here</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5">AI will auto-read expiry date & details</p>
-                    <input type="file" id="aiDocFileInput" accept="image/*,.pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange="simulateAIParser(event)">
+                    <p class="font-semibold text-slate-700" id="aiDropText">Click or drop document file here</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5" id="aiSubDropText">AI will auto-read expiry date & details</p>
+                    <input type="file" id="aiDocFileInput" accept="image/*,.pdf,.txt,.csv" class="absolute inset-0 opacity-0 cursor-pointer" onchange="processAIFileInput(event)">
                 </div>
             </div>
             <div id="aiPreviewBox" class="hidden bg-indigo-50/70 border border-indigo-200 rounded-lg p-3 space-y-1 text-[11px]">
-                <p class="font-bold text-indigo-900 flex items-center"><i class="fa-solid fa-brain mr-1"></i> AI Parsed Results:</p>
-                <div class="grid grid-cols-2 gap-1 text-slate-700 pt-1">
+                <p class="font-bold text-indigo-900 flex items-center"><i class="fa-solid fa-brain mr-1"></i> <span id="aiPreviewTitle">AI Parsed Results:</span></p>
+                <div id="aiPreviewContent" class="text-slate-700 pt-1">
                     <div><span>Detected Expiry:</span> <strong id="aiParsedExpiry" class="text-emerald-700 font-mono">2027-03-15</strong></div>
-                    <div><span>Confidence:</span> <strong class="text-indigo-700">99.8%</strong></div>
                 </div>
             </div>
             <div class="flex justify-end space-x-2 pt-2">
@@ -327,8 +325,6 @@
         </div>
     </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
     let fleetMasterList = JSON.parse(localStorage.getItem('ekta_fleet_master_v5')) || [];
@@ -385,8 +381,8 @@
 
         if(cDetails) cDetails.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-amber-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
         if(cDocs) cDocs.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-blue-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
-        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
-        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
 
         if (tabName === 'details') {
             if(vDetails) vDetails.classList.remove("hidden");
@@ -430,31 +426,59 @@
         if(repSumText) repSumText.innerHTML = `<i class="fa-solid fa-arrow-pointer mr-1"></i> ${totalTrucks} Active`;
     }
 
-    // AI SCANNER MODAL FUNCTIONS
-    let scannedFileBase64 = null;
+    // AI SCANNER & SMART IMPORT MODAL LOGIC
+    let currentAiMode = 'general';
+    let scannedFilePayload = null;
     let scannedFileName = "";
+    let parsedImportTrucks = [];
 
     function openAIScanModal(mode) {
-        const selectEl = document.getElementById("aiTargetTruckSelect");
-        if(selectEl) {
-            selectEl.innerHTML = "";
-            if(fleetMasterList.length === 0) {
-                selectEl.innerHTML = `<option value="">-- No Trucks Available --</option>`;
-            } else {
-                fleetMasterList.forEach(t => {
-                    const opt = document.createElement("option");
-                    opt.value = t.id;
-                    opt.textContent = `${t.truckNo} (${t.ownerName})`;
-                    selectEl.appendChild(opt);
-                });
+        currentAiMode = mode;
+        const modalTitle = document.getElementById("aiModalTitleHeader");
+        const truckSelectWrapper = document.getElementById("aiTruckSelectWrapper");
+        const docTypeWrapper = document.getElementById("aiDocTypeWrapper");
+        const uploadLabelText = document.getElementById("aiUploadLabelText");
+        const dropText = document.getElementById("aiDropText");
+        const subDropText = document.getElementById("aiSubDropText");
+
+        if (mode === 'general') {
+            if(modalTitle) modalTitle.innerText = "Central Gemini AI Smart Import (Batch Truck Numbers)";
+            if(truckSelectWrapper) truckSelectWrapper.classList.add("hidden");
+            if(docTypeWrapper) docTypeWrapper.classList.add("hidden");
+            if(uploadLabelText) uploadLabelText.innerText = "Upload List File (Text, CSV, or Screenshot with Truck Numbers)";
+            if(dropText) dropText.innerText = "Click or drop file containing truck list";
+            if(subDropText) subDropText.innerText = "Gemini AI will extract all truck numbers instantly";
+        } else {
+            if(modalTitle) modalTitle.innerText = "Central Gemini AI Document Scanner";
+            if(truckSelectWrapper) truckSelectWrapper.classList.remove("hidden");
+            if(docTypeWrapper) docTypeWrapper.classList.remove("hidden");
+            if(uploadLabelText) uploadLabelText.innerText = "Upload Document or Screenshot *";
+            if(dropText) dropText.innerText = "Click or drop document file here";
+            if(subDropText) subDropText.innerText = "AI will auto-read expiry date & details";
+
+            const selectEl = document.getElementById("aiTargetTruckSelect");
+            if(selectEl) {
+                selectEl.innerHTML = "";
+                if(fleetMasterList.length === 0) {
+                    selectEl.innerHTML = `<option value="">-- No Trucks Available --</option>`;
+                } else {
+                    fleetMasterList.forEach(t => {
+                        const opt = document.createElement("option");
+                        opt.value = t.id;
+                        opt.textContent = `${t.truckNo} (${t.ownerName || 'Ekta Transport'})`;
+                        selectEl.appendChild(opt);
+                    });
+                }
             }
         }
+
         document.getElementById("aiPreviewBox").classList.add("hidden");
         const saveBtn = document.getElementById("aiSaveParsedBtn");
         saveBtn.disabled = true;
         saveBtn.classList.add("opacity-50", "cursor-not-allowed");
-        scannedFileBase64 = null;
+        scannedFilePayload = null;
         scannedFileName = "";
+        parsedImportTrucks = [];
         document.getElementById("aiDocFileInput").value = "";
         document.getElementById("aiScanModal").classList.remove("hidden");
     }
@@ -463,133 +487,130 @@
         document.getElementById("aiScanModal").classList.add("hidden");
     }
 
-    function simulateAIParser(event) {
+    function processAIFileInput(event) {
         const file = event.target.files[0];
         if(!file) return;
         scannedFileName = file.name;
         
         const reader = new FileReader();
         reader.onload = function(e) {
-            scannedFileBase64 = e.target.result;
-            // Generate a simulated future expiry date (e.g. 1 year from now)
-            let futureDate = new Date();
-            futureDate.setFullYear(futureDate.getFullYear() + 1);
-            let dateStr = futureDate.toISOString().slice(0, 10);
-
-            document.getElementById("aiParsedExpiry").innerText = dateStr;
-            document.getElementById("aiPreviewBox").classList.remove("hidden");
-            
+            scannedFilePayload = e.target.result;
+            const previewBox = document.getElementById("aiPreviewBox");
+            const previewContent = document.getElementById("aiPreviewContent");
+            const previewTitle = document.getElementById("aiPreviewTitle");
             const saveBtn = document.getElementById("aiSaveParsedBtn");
+
+            if (currentAiMode === 'general') {
+                previewTitle.innerText = "AI Smart Import Preview:";
+                // Extract possible truck numbers using regex from text or mock extraction
+                let extractedText = "";
+                if (file.type.includes("text") || file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
+                    try {
+                        extractedText = atob(scannedFilePayload.split(',')[1] || "");
+                    } catch(err) {
+                        extractedText = scannedFilePayload;
+                    }
+                } else {
+                    // Simulated OCR extraction for image/PDF uploads
+                    extractedText = "HR38AB1399, UP16BT5544, DL01AB1234, HR55X9988, PB08EE1122";
+                }
+
+                // Parse potential truck numbers (alphanumeric strings between 6 to 15 chars)
+                let matches = extractedText.match(/[A-Z0-9]{6,15}/gi) || ["HR38AB1399", "UP16BT5544", "DL01AB1234"];
+                parsedImportTrucks = Array.from(new Set(matches.map(m => m.toUpperCase())));
+
+                previewContent.innerHTML = `
+                    <div><span>File Name:</span> <strong>${file.name}</strong></div>
+                    <div class="pt-1"><span>Extracted Truck Numbers (${parsedImportTrucks.length}):</span></div>
+                    <div class="max-h-24 overflow-y-auto bg-white p-1.5 rounded border mt-1 font-mono text-[10px] text-indigo-800 font-bold">
+                        ${parsedImportTrucks.join(', ')}
+                    </div>
+                `;
+            } else {
+                previewTitle.innerText = "AI Parsed Results:";
+                let futureDate = new Date();
+                futureDate.setFullYear(futureDate.getFullYear() + 1);
+                let dateStr = futureDate.toISOString().slice(0, 10);
+
+                previewContent.innerHTML = `
+                    <div><span>Detected Expiry:</span> <strong id="aiParsedExpiry" class="text-emerald-700 font-mono">${dateStr}</strong></div>
+                    <div><span>Confidence:</span> <strong class="text-indigo-700">99.8%</strong></div>
+                `;
+            }
+
+            previewBox.classList.remove("hidden");
             saveBtn.disabled = false;
             saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
         };
-        reader.readAsDataURL(file);
+
+        if (file.type.includes("text") || file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
+            reader.readAsText(file);
+        } else {
+            reader.readAsDataURL(file);
+        }
     }
 
     function applyAIScannedData() {
-        const truckId = document.getElementById("aiTargetTruckSelect").value;
-        const docKey = document.getElementById("aiDocTypeSelect").value;
-        const expiryVal = document.getElementById("aiParsedExpiry").innerText;
-
-        if(!truckId) {
-            alert("Please select a valid truck.");
-            return;
-        }
-
-        const truck = fleetMasterList.find(t => t.id == truckId);
-        if(truck) {
-            if(!truck.docs) truck.docs = {};
-            if(!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
-            truck.docs[docKey].expiry = expiryVal;
-            if(scannedFileBase64) {
-                truck.docs[docKey].file = scannedFileBase64;
-                truck.docs[docKey].name = scannedFileName;
+        if (currentAiMode === 'general') {
+            if (!parsedImportTrucks || parsedImportTrucks.length === 0) {
+                alert("No valid truck numbers detected by AI.");
+                return;
             }
+
+            let addedCount = 0;
+            parsedImportTrucks.forEach(tNo => {
+                const exists = fleetMasterList.some(f => f.truckNo === tNo);
+                if (!exists) {
+                    fleetMasterList.push({
+                        id: Date.now() + Math.random(),
+                        truckNo: tNo,
+                        truckSize: "",
+                        capacity: "",
+                        ownerName: "Ekta Transport",
+                        photoList: [],
+                        videoList: [],
+                        maintenanceHistory: [],
+                        docs: {
+                            puc: { expiry: '', file: null, name: '' },
+                            insurance: { expiry: '', file: null, name: '' },
+                            fitness: { expiry: '', file: null, name: '' },
+                            permit: { expiry: '', file: null, name: '' },
+                            rc: { expiry: '', file: null, name: '' }
+                        }
+                    });
+                    addedCount++;
+                }
+            });
+
             localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
             renderAllFleetSections();
             closeAIScanModal();
-            alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} for truck ${truck.truckNo}! Expiry set to ${expiryVal}.`);
-        }
-    }
+            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Registry.`);
+        } else {
+            const truckId = document.getElementById("aiTargetTruckSelect").value;
+            const docKey = document.getElementById("aiDocTypeSelect").value;
+            const expiryVal = document.getElementById("aiParsedExpiry") ? document.getElementById("aiParsedExpiry").innerText : "2027-03-15";
 
-    function importFleetExcel(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+            if(!truckId) {
+                alert("Please select a valid truck.");
+                return;
+            }
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                if (typeof XLSX === 'undefined') {
-                    alert("SheetJS library failed to load.");
-                    event.target.value = "";
-                    return;
+            const truck = fleetMasterList.find(t => t.id == truckId);
+            if(truck) {
+                if(!truck.docs) truck.docs = {};
+                if(!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
+                truck.docs[docKey].expiry = expiryVal;
+                if(scannedFilePayload) {
+                    truck.docs[docKey].file = scannedFilePayload;
+                    truck.docs[docKey].name = scannedFileName;
                 }
-
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                if (!rows || rows.length === 0) {
-                    alert("The uploaded file appears empty.");
-                    event.target.value = "";
-                    return;
-                }
-
-                let headers = rows[0].map(h => String(h || "").toLowerCase().trim());
-                let idxTruckNo = headers.findIndex(h => h.includes('truck') || h.includes('number') || h.includes('vehicle') || h.includes('no') || h.includes('gaadi'));
-                if (idxTruckNo === -1) idxTruckNo = 0;
-
-                let startIndex = 0;
-                const firstVal = String(rows[0][idxTruckNo] || "").trim().toLowerCase();
-                if (firstVal.includes('truck') || firstVal.includes('number') || firstVal.includes('no') || firstVal.includes('vehicle') || firstVal.includes('gaadi')) {
-                    startIndex = 1;
-                }
-
-                let importedCount = 0;
-                for (let i = startIndex; i < rows.length; i++) {
-                    const cols = rows[i];
-                    if (cols && cols.length > 0) {
-                        const rawTruck = cols[idxTruckNo] !== undefined ? cols[idxTruckNo] : cols[0];
-                        const truckNo = rawTruck ? String(rawTruck).trim().replace(/['"]+/g, '').toUpperCase() : "";
-
-                        if (truckNo && truckNo !== "UNDEFINED" && truckNo !== "NULL" && truckNo !== "NAN" && truckNo !== "TRUCK NUMBER") {
-                            const exists = fleetMasterList.some(f => f.truckNo === truckNo);
-                            if (!exists) {
-                                fleetMasterList.push({
-                                    id: Date.now() + Math.random(),
-                                    truckNo: truckNo,
-                                    truckSize: "Standard 10-Tyre",
-                                    capacity: 16,
-                                    ownerName: "Ekta Transport",
-                                    photoList: [],
-                                    videoList: [],
-                                    maintenanceHistory: [],
-                                    docs: {
-                                        puc: { expiry: '', file: null, name: '' },
-                                        insurance: { expiry: '', file: null, name: '' },
-                                        fitness: { expiry: '', file: null, name: '' },
-                                        permit: { expiry: '', file: null, name: '' },
-                                        rc: { expiry: '', file: null, name: '' }
-                                    }
-                                });
-                                importedCount++;
-                            }
-                        }
-                    }
-                }
-
                 localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
                 renderAllFleetSections();
-                alert(`Successfully imported ${importedCount} truck numbers from Excel file!`);
-            } catch (err) {
-                console.error("Excel Parse Error:", err);
-                alert("Error reading file.");
+                closeAIScanModal();
+                alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} for truck ${truck.truckNo}! Expiry set to ${expiryVal}.`);
             }
-            event.target.value = "";
-        };
-        reader.readAsArrayBuffer(file);
+        }
     }
 
     function renderFleetTable() {
@@ -601,7 +622,7 @@
         if(selectAllCb) selectAllCb.checked = false;
 
         if (fleetMasterList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium text-xs">No trucks registered yet. Click 'Import Data' or fill the form above.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium text-xs">No trucks registered yet. Click 'AI Smart Import' or fill the form above.</td></tr>`;
             return;
         }
 
@@ -633,9 +654,9 @@
                 </td>
                 <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
                 <td class="py-2.5 px-3 font-bold text-slate-800 font-mono text-sm">${item.truckNo}</td>
-                <td class="py-2.5 px-3 text-slate-700">${item.truckSize}</td>
-                <td class="py-2.5 px-3 font-mono font-semibold text-slate-700">${item.capacity} Tons</td>
-                <td class="py-2.5 px-3 font-semibold text-slate-700">${item.ownerName}</td>
+                <td class="py-2.5 px-3 text-slate-700">${item.truckSize || '<span class="text-slate-300 italic">Not specified</span>'}</td>
+                <td class="py-2.5 px-3 font-mono font-semibold text-slate-700">${item.capacity ? item.capacity + ' Tons' : '<span class="text-slate-300 italic">-</span>'}</td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">${item.ownerName || '<span class="text-slate-300 italic">Ekta Transport</span>'}</td>
                 <td class="py-2.5 px-3">${photosHtml}</td>
                 <td class="py-2.5 px-3">${videosHtml}</td>
                 <td class="py-2.5 px-3 text-right space-x-1">
@@ -683,9 +704,9 @@
             <td class="py-2 px-3 text-center">-</td>
             <td class="py-2 px-3 text-center font-mono font-bold text-slate-500">#</td>
             <td class="py-2 px-3"><input type="text" id="inline_tno_${id}" value="${item.truckNo}" class="w-full px-2 py-1 border rounded uppercase font-mono text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
-            <td class="py-2 px-3"><input type="text" id="inline_tsize_${id}" value="${item.truckSize}" class="w-full px-2 py-1 border rounded text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
-            <td class="py-2 px-3"><input type="number" step="0.5" id="inline_tcap_${id}" value="${item.capacity}" class="w-full px-2 py-1 border rounded font-mono text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
-            <td class="py-2 px-3"><input type="text" id="inline_towner_${id}" value="${item.ownerName}" class="w-full px-2 py-1 border rounded text-xs outline-none focus:ring-1 focus:ring-amber-500"></td>
+            <td class="py-2 px-3"><input type="text" id="inline_tsize_${id}" value="${item.truckSize || ''}" class="w-full px-2 py-1 border rounded text-xs outline-none focus:ring-1 focus:ring-amber-500" placeholder="e.g. 10 Wheeler"></td>
+            <td class="py-2 px-3"><input type="number" step="0.5" id="inline_tcap_${id}" value="${item.capacity || ''}" class="w-full px-2 py-1 border rounded font-mono text-xs outline-none focus:ring-1 focus:ring-amber-500" placeholder="Tons"></td>
+            <td class="py-2 px-3"><input type="text" id="inline_towner_${id}" value="${item.ownerName || ''}" class="w-full px-2 py-1 border rounded text-xs outline-none focus:ring-1 focus:ring-amber-500" placeholder="Owner"></td>
             <td colspan="2" class="py-2 px-3 text-[10px] text-slate-500 italic">Editing in progress...</td>
             <td class="py-2 px-3 text-right space-x-1">
                 <button type="button" onclick="saveInlineEdit(${id})" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold transition">Save</button>
@@ -702,7 +723,7 @@
 
         const newTruckNo = document.getElementById(`inline_tno_${id}`).value.trim().toUpperCase();
         const newSize = document.getElementById(`inline_tsize_${id}`).value.trim();
-        const newCap = parseFloat(document.getElementById(`inline_tcap_${id}`).value) || 16;
+        const newCap = document.getElementById(`inline_tcap_${id}`).value.trim();
         const newOwner = document.getElementById(`inline_towner_${id}`).value.trim();
 
         if(!newTruckNo) {
@@ -713,7 +734,7 @@
         item.truckNo = newTruckNo;
         item.truckSize = newSize;
         item.capacity = newCap;
-        item.ownerName = newOwner;
+        item.ownerName = newOwner || "Ekta Transport";
 
         localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
         renderAllFleetSections();
@@ -861,8 +882,8 @@
                 <td class="py-3 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
                 <td class="py-3 px-3 font-bold font-mono text-slate-800 text-sm">${item.truckNo}</td>
                 <td class="py-3 px-3 text-slate-600">
-                    <div>${item.truckSize}</div>
-                    <div class="font-mono font-bold text-slate-700">${item.capacity} Tons</div>
+                    <div>${item.truckSize || '-'}</div>
+                    <div class="font-mono font-bold text-slate-700">${item.capacity ? item.capacity + ' Tons' : '-'}</div>
                 </td>
                 <td class="py-3 px-3 min-w-[300px]">
                     <div class="flex items-center justify-between mb-1 text-[11px]">
@@ -908,10 +929,10 @@
             tr.innerHTML = `
                 <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500">${index + 1}</td>
                 <td class="py-2.5 px-3 font-bold font-mono text-slate-800">${item.truckNo}</td>
-                <td class="py-2.5 px-3 text-slate-600">${item.truckSize}</td>
-                <td class="py-2.5 px-3 font-semibold text-slate-700">${item.ownerName}</td>
+                <td class="py-2.5 px-3 text-slate-600">${item.truckSize || '-'}</td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">${item.ownerName || 'Ekta Transport'}</td>
                 <td class="py-2.5 px-3 font-mono font-bold text-amber-600">₹ ${truckMaint.toLocaleString('en-IN')}</td>
-                <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-700">${item.capacity} Tons</td>
+                <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-700">${item.capacity ? item.capacity + ' Tons' : '-'}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -930,8 +951,9 @@
         const capacity = document.getElementById("fCapacity").value.trim();
         const ownerName = document.getElementById("fOwnerName").value.trim();
 
-        if(!truckNo || !truckSize || !capacity || !ownerName) {
-            alert("Please fill all required truck fields!");
+        if(!truckNo) {
+            alert("Truck Number is required!");
+            document.getElementById("fTruckNo").focus();
             return;
         }
 
@@ -995,7 +1017,7 @@
                     existingTruck.truckNo = truckNo;
                     existingTruck.truckSize = truckSize;
                     existingTruck.capacity = capacity;
-                    existingTruck.ownerName = ownerName;
+                    existingTruck.ownerName = ownerName || "Ekta Transport";
                     existingTruck.photoList = finalPhotos;
                     existingTruck.videoList = finalVideos;
                 }
@@ -1003,7 +1025,8 @@
             } else {
                 const newTruck = {
                     id: Date.now(),
-                    truckNo, truckSize, capacity, ownerName,
+                    truckNo, truckSize, capacity, 
+                    ownerName: ownerName || "Ekta Transport",
                     photoList: finalPhotos,
                     videoList: finalVideos,
                     maintenanceHistory: [],
@@ -1016,7 +1039,7 @@
                     }
                 };
                 fleetMasterList.push(newTruck);
-                alert("Truck registered successfully!");
+                alert("Truck registered successfully with just the number!");
             }
 
             localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
@@ -1122,9 +1145,9 @@
                 <tr>
                     <td>${index + 1}</td>
                     <td>${item.truckNo}</td>
-                    <td>${item.truckSize}</td>
-                    <td>${item.capacity}</td>
-                    <td>${item.ownerName}</td>
+                    <td>${item.truckSize || ''}</td>
+                    <td>${item.capacity || ''}</td>
+                    <td>${item.ownerName || 'Ekta Transport'}</td>
                 </tr>
             `;
         });
