@@ -1,190 +1,103 @@
-// ai-widget.js - Ekta Transport Management System AI Assistant (Updated with Chat History)
-
-(function () {
-    const style = document.createElement('style');
-    style.innerHTML = `
-        #ekta-ai-fab {
-            position: fixed; bottom: 25px; right: 25px;
-            background: #2563eb; color: white; border: none;
-            border-radius: 500px; width: 60px; height: 60px;
-            font-size: 24px; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-            z-index: 9999; display: flex; align-items: center;
-            justify-content: center; transition: transform 0.2s;
-        }
-        #ekta-ai-fab:hover { transform: scale(1.05); }
-        #ekta-ai-window {
-            position: fixed; bottom: 95px; right: 25px;
-            width: 380px; height: 520px; background: #ffffff;
-            border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-            z-index: 9999; display: none; flex-direction: column;
-            overflow: hidden; font-family: system-ui, -apple-system, sans-serif;
-        }
-        #ekta-ai-header {
-            background: #1e40af; color: white; padding: 14px 16px;
-            font-weight: 600; display: flex; justify-content: space-between; align-items: center;
-        }
-        #ekta-ai-close { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
-        #ekta-ai-messages {
-            flex: 1; padding: 16px; overflow-y: auto; background: #f8fafc;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .ekta-msg { max-width: 80%; padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.4; }
-        .ekta-msg.user { background: #2563eb; color: white; align-self: flex-end; }
-        .ekta-msg.ai { background: #e2e8f0; color: #1e293b; align-self: flex-start; }
-        #ekta-ai-input-area {
-            padding: 12px; background: #ffffff; border-top: 1px solid #e2e8f0;
-            display: flex; gap: 8px; align-items: center;
-        }
-        #ekta-ai-input { flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px; }
-        .ekta-ai-btn { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .ekta-ai-btn:hover { background: #1d4ed8; }
-        #ekta-mic-btn.recording { background: #dc2626 !important; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+(function() {
+    // 1. Create Floating AI Robot Button
+    const floatBtn = document.createElement('div');
+    floatBtn.innerHTML = '<i class="fa-solid fa-robot"></i>';
+    floatBtn.style.cssText = `
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #d97706, #b45309);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        z-index: 9999;
+        transition: transform 0.3s ease;
     `;
-    document.head.appendChild(style);
+    floatBtn.onmouseover = () => floatBtn.style.transform = 'scale(1.1)';
+    floatBtn.onmouseout = () => floatBtn.style.transform = 'scale(1)';
+    document.body.appendChild(floatBtn);
 
-    const widgetHTML = `
-        <button id="ekta-ai-fab" title="Ekta Transport AI Assistant">🤖</button>
-        <div id="ekta-ai-window">
-            <div id="ekta-ai-header">
-                <span>Ekta Transport AI</span>
-                <button id="ekta-ai-close">&times;</button>
-            </div>
-            <div id="ekta-ai-messages">
-                <div class="ekta-msg ai">नमस्ते गुरुजी! एकता ट्रांसपोर्ट सिस्टम में मैं आपकी क्या मदद करूँ? ट्रक, ड्राइवर या लेजर के बारे में पूछिए।</div>
-            </div>
-            <div id="ekta-ai-input-area">
-                <input type="file" id="ekta-file-input" style="display:none" accept="image/*,.pdf" />
-                <button class="ekta-ai-btn" id="ekta-upload-btn" title="डॉक्यूमेंट या फोटो अपलोड करें">📎</button>
-                <input type="text" id="ekta-ai-input" placeholder="यहाँ टाइप करें या माइक दबाएं..." />
-                <button class="ekta-ai-btn" id="ekta-mic-btn" title="बोलकर पूछें">🎙️</button>
-                <button class="ekta-ai-btn" id="ekta-send-btn">भेजें</button>
+    // 2. Create Chat Window Box (Initially Hidden)
+    const chatWindow = document.createElement('div');
+    chatWindow.innerHTML = `
+        <div id="aiWidgetHeader" style="background: #0f172a; color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-top-left-radius: 12px; border-top-right-radius: 12px;">
+            <span style="display: flex; align-items: center;"><i class="fa-solid fa-robot" style="color: #fbbf24; margin-right: 8px;"></i> Ekta AI Assistant</span>
+            <button id="closeAiWidget" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="aiWidgetMessages" style="flex: 1; padding: 15px; overflow-y: auto; font-size: 13px; background: #f8fafc; display: flex; flex-direction: column; gap: 10px;">
+            <div style="background: #e2e8f0; padding: 10px 12px; border-radius: 8px; max-width: 80%; align-self: flex-start; color: #334155;">
+                नमस्ते गुरुजी! मैं आपका ट्रांसपोर्ट AI असिस्टेंट हूँ। बोलिए, आज फ्लीट, ड्राइवर या लेजर में क्या मदद करूँ?
             </div>
         </div>
+        <div style="padding: 12px; background: white; border-top: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+            <label style="cursor: pointer; color: #64748b; font-size: 16px;"><i class="fa-solid fa-paperclip"></i><input type="file" id="aiFileAttach" style="display: none;"></label>
+            <input type="text" id="aiWidgetInput" placeholder="यहाँ AI से पूछें..." style="flex: 1; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; outline: none; font-size: 13px;">
+            <button id="aiMicBtn" style="background: none; border: none; color: #64748b; font-size: 16px; cursor: pointer;"><i class="fa-solid fa-microphone"></i></button>
+            <button id="aiSendBtn" style="background: #d97706; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
     `;
-    const container = document.createElement('div');
-    container.innerHTML = widgetHTML;
-    document.body.appendChild(container);
+    chatWindow.style.cssText = `
+        position: fixed;
+        bottom: 95px;
+        right: 25px;
+        width: 360px;
+        height: 480px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        z-index: 9999;
+        display: none;
+        flex-direction: column;
+        border: 1px solid #cbd5e1;
+    `;
+    document.body.appendChild(chatWindow);
 
-    const fab = document.getElementById('ekta-ai-fab');
-    const win = document.getElementById('ekta-ai-window');
-    const closeBtn = document.getElementById('ekta-ai-close');
-    const sendBtn = document.getElementById('ekta-send-btn');
-    const inputField = document.getElementById('ekta-ai-input');
-    const messagesArea = document.getElementById('ekta-ai-messages');
-    const micBtn = document.getElementById('ekta-mic-btn');
-    const uploadBtn = document.getElementById('ekta-upload-btn');
-    const fileInput = document.getElementById('ekta-file-input');
-
-    let currentFilePayload = null;
-    
-    // बातचीत की हिस्ट्री मेन्टेन करने के लिए ऐरे
-    let chatHistory = [
-        { role: "assistant", content: "नमस्ते गुरुजी! एकता ट्रांसपोर्ट सिस्टम में मैं आपकी क्या मदद करूँ? ट्रक, ड्राइवर या लेजर के बारे में पूछिए।" }
-    ];
-
-    fab.onclick = () => { win.style.display = win.style.display === 'flex' ? 'none' : 'flex'; };
-    closeBtn.onclick = () => { win.style.display = 'none'; };
-
-    uploadBtn.onclick = () => fileInput.click();
-    fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(uploadEvent) {
-                currentFilePayload = uploadEvent.target.result;
-                appendMessage(`📁 फाइल अटैच हो गई: ${file.name}`, 'user');
-            };
-            reader.readAsDataURL(file);
-        }
+    // 3. Toggle Chat Window Open/Close Logic
+    floatBtn.onclick = () => {
+        chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
+    };
+    document.getElementById('closeAiWidget').onclick = () => {
+        chatWindow.style.display = 'none';
     };
 
-    async function handleSend() {
+    // 4. Send Message Logic (Connects to your backend/proxy)
+    const sendBtn = document.getElementById('aiSendBtn');
+    const inputField = document.getElementById('aiWidgetInput');
+    const msgContainer = document.getElementById('aiWidgetMessages');
+
+    async function handleUserMessage() {
         const text = inputField.value.trim();
-        if (!text && !currentFilePayload) return;
+        if(!text) return;
 
-        let displayTxt = text;
-        if (currentFilePayload) displayTxt += " [साथ में फाइल संलग्न है]";
-        
-        appendMessage(displayTxt, 'user');
-        chatHistory.push({ role: "user", content: text || "[Document Attached]" });
+        // Append User Message
+        msgContainer.innerHTML += `<div style="background: #d97706; color: white; padding: 10px 12px; border-radius: 8px; max-width: 80%; align-self: flex-end;">${text}</div>`;
         inputField.value = '';
+        msgContainer.scrollTop = msgContainer.scrollHeight;
 
-        const loadingId = appendMessage('AI सोच रहा है...', 'ai');
-
+        // API Call to AI Proxy
         try {
             const response = await fetch('/api/ai-proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    messages: chatHistory, // अब पूरी चैट हिस्ट्री जाएगी ताकि कॉन्टेक्स्ट बना रहे
-                    prompt: text,
-                    fileData: currentFilePayload,
-                    currentPage: window.location.pathname
-                })
+                body: JSON.stringify({ prompt: text })
             });
-
             const data = await response.json();
-            const replyText = data.reply || data.error || "कोई जवाब नहीं मिला।";
+            const reply = data.reply || data.result || "जवाब मिल गया है।";
             
-            document.getElementById(loadingId).innerText = replyText;
-            chatHistory.push({ role: "assistant", content: replyText });
+            msgContainer.innerHTML += `<div style="background: #e2e8f0; padding: 10px 12px; border-radius: 8px; max-width: 80%; align-self: flex-start; color: #334155;">${reply}</div>`;
+            msgContainer.scrollTop = msgContainer.scrollHeight;
         } catch (err) {
-            document.getElementById(loadingId).innerText = "कनेक्शन एरर! कृपया सर्वर जांचें।";
+            msgContainer.innerHTML += `<div style="background: #fee2e2; color: #991b1b; padding: 10px 12px; border-radius: 8px; max-width: 80%; align-self: flex-start;">कनेक्शन एरर आ रहा है, गुरुजी। कृपया दोबारा चेक करें।</div>`;
         }
-
-        currentFilePayload = null;
-        fileInput.value = '';
     }
 
-    sendBtn.onclick = handleSend;
-    inputField.onkeypress = (e) => { if (e.key === 'Enter') handleSend(); };
-
-    let recognition;
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = 'hi-IN';
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onstart = () => { micBtn.classList.add('recording'); };
-        recognition.onresult = (event) => {
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                }
-            }
-            if (finalTranscript) {
-                inputField.value += (inputField.value ? ' ' : '') + finalTranscript;
-            }
-        };
-        recognition.onerror = () => { micBtn.classList.remove('recording'); };
-        recognition.onend = () => { micBtn.classList.remove('recording'); };
-
-        let isRecording = false;
-        micBtn.onclick = () => {
-            if (isRecording) {
-                recognition.stop();
-                isRecording = false;
-            } else {
-                try { recognition.start(); isRecording = true; } catch(e) {}
-            }
-        };
-    } else {
-        micBtn.style.display = 'none';
-    }
-
-    function appendMessage(text, sender) {
-        const msgDiv = document.createElement('div');
-        const msgId = 'msg-' + Date.now();
-        msgDiv.id = msgId;
-        msgDiv.className = `ekta-msg ${sender}`;
-        msgDiv.innerText = text;
-        messagesArea.appendChild(msgDiv);
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-        return msgId;
-    }
+    sendBtn.onclick = handleUserMessage;
+    inputField.onkeypress = (e) => { if(e.key === 'Enter') handleUserMessage(); };
 })();
