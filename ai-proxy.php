@@ -11,15 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // सुरक्षित तरीके से .env या सर्वर एनवायरनमेंट से की रीड करना
 $apiKey = getenv('GEMINI_API_KEY');
 
-// अगर लोकल चला रहे हैं और getenv खाली है, तो डायरेक्ट .env फाइल से पढ़ लेगा
+// अगर लोकल चला रहे हैं और getenv खाली है, तो डायरेक्ट .env फाइल से पढ़ लेगा
 if (empty($apiKey) && file_exists(__DIR__ . '/.env')) {
     $envLines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($envLines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
-        list($name, $value) = explode('=', $line, 2);
-        if (trim($name) === 'GEMINI_API_KEY') {
-            $apiKey = trim($value, "\"' ");
-            break;
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            list($name, $value) = $parts;
+            if (trim($name) === 'GEMINI_API_KEY') {
+                $apiKey = trim($value, "\"' ");
+                break;
+            }
         }
     }
 }
@@ -37,7 +40,7 @@ if (empty($promptText)) {
     exit();
 }
 
-$targetModel = "gemini-3.5-flash";
+$targetModel = "gemini-1.5-flash";
 $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$targetModel}:generateContent?key=" . $apiKey;
 
 $payload = json_encode([
