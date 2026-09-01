@@ -289,10 +289,6 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-            ? 'http://localhost/transport-api/'            
-            : window.location.origin + '/api/';      
-
         document.addEventListener("DOMContentLoaded", () => {
             loadSavedOwnerPreferences();
             loadDefaultDashboardHome(); 
@@ -712,7 +708,7 @@
             recognition.start();
         }
 
-        // --- SECURE BACKEND PROXY AI FUNCTION (Using your ai-proxy.php setup) ---
+        // --- SECURE VERCEL SERVERLESS AI FUNCTION CALL (/api/ai-proxy) ---
         async function sendTopAiMessage() {
             const inputField = document.getElementById('topAiChatInput');
             const promptText = inputField.value.trim();
@@ -727,9 +723,8 @@
             contentBox.innerText = "Connecting to Ekta Secure AI Server...";
 
             try {
-                const proxyUrl = API_BASE_URL + 'ai-proxy.php';
-
-                const response = await fetch(proxyUrl, {
+                // सीधे Vercel सर्वरलेस फंक्शन को कॉल कर रहा है (कोई PHP नहीं)
+                const response = await fetch('/api/ai-proxy', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ prompt: promptText })
@@ -739,7 +734,7 @@
                 if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
                     contentBox.innerText = data.candidates[0].content.parts[0].text;
                 } else if (data.error) {
-                    contentBox.innerText = `API Error: ${data.error.message}`;
+                    contentBox.innerText = `API Error: ${data.error.message || JSON.stringify(data.error)}`;
                 } else {
                     contentBox.innerText = "Received response from server, but format is unexpected.";
                 }
