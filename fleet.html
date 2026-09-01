@@ -429,7 +429,6 @@
         if(repSumText) repSumText.innerHTML = `<i class="fa-solid fa-arrow-pointer mr-1"></i> ${totalTrucks} Active`;
     }
 
-    // AI SCANNER & SMART IMPORT MODAL LOGIC (FULLY DYNAMIC SHEETJS INTEGRATION FOR UNLIMITED TRUCKS)
     let currentAiMode = 'general';
     let scannedFilePayload = null;
     let scannedFileName = "";
@@ -503,7 +502,6 @@
         if (currentAiMode === 'general') {
             previewTitle.innerText = "Excel & File Smart Import Preview:";
 
-            // Check if it's an Excel spreadsheet (.xlsx, .xls)
             if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -520,7 +518,6 @@
                                 row.forEach(cell => {
                                     if (cell !== undefined && cell !== null && cell !== '') {
                                         let val = String(cell).trim().toUpperCase();
-                                        // Valid vehicle/truck number validation (6 to 15 alphanumeric characters containing letters and numbers)
                                         if (val.length >= 6 && val.length <= 15 && /[A-Z]/.test(val) && /[0-9]/.test(val)) {
                                             if (val !== 'TRUCK NUMBER' && val !== 'VEHICLE NO' && val !== 'VEHICLE NUMBER') { 
                                                 extracted.push(val);
@@ -549,7 +546,6 @@
                 };
                 reader.readAsArrayBuffer(file);
             } else {
-                // Text or image file handler
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     scannedFilePayload = e.target.result;
@@ -557,7 +553,6 @@
                     if (file.type.includes("text") || file.name.endsWith(".txt")) {
                         extractedText = scannedFilePayload;
                     } else {
-                        // Simulated OCR extraction for screenshot/image uploads
                         extractedText = "HR38AB1399, UP16BT5544, DL01AB1234, HR55X9988, PB08EE1122";
                     }
 
@@ -582,7 +577,6 @@
                 }
             }
         } else {
-            // Document Scanner Mode (PUC, Insurance, etc.)
             const reader = new FileReader();
             reader.onload = function(e) {
                 scannedFilePayload = e.target.result;
@@ -639,7 +633,7 @@
             localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
             renderAllFleetSections();
             closeAIScanModal();
-            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Registry (Total Trucks in system: ${fleetMasterList.length}).`);
+            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Registry.`);
         } else {
             const truckId = document.getElementById("aiTargetTruckSelect").value;
             const docKey = document.getElementById("aiDocTypeSelect").value;
@@ -662,7 +656,7 @@
                 localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
                 renderAllFleetSections();
                 closeAIScanModal();
-                alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} for truck ${truck.truckNo}! Expiry set to ${expiryVal}.`);
+                alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} for truck ${truck.truckNo}!`);
             }
         }
     }
