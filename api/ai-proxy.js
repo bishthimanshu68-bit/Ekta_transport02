@@ -30,7 +30,8 @@ export default async function handler(req, res) {
 
     // जेमिनी मॉडल का सही एंडपॉइंट
     // सही मॉडल एंडपॉइंट जहाँ -flash साफ-साफ जुड़ा हो
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // मॉडल का नाम बदलकर gemini-2.5-flash कर दें
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     // एकता ट्रांसपोर्ट के लिए सख्त सिस्टम निर्देश (System Instruction) ताकि वह ट्रांसपोर्ट के बाहर न जाए
     const systemInstruction = {
