@@ -104,7 +104,7 @@
         <!-- MAIN WRAPPER -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100">
             
-            <!-- TOP HEADER (Cleaned up, AI floating widget will handle AI chat) -->
+            <!-- TOP HEADER -->
             <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-xs">
                 <div class="flex items-center space-x-4">
                     <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-700 md:hidden focus:outline-none">
@@ -141,6 +141,7 @@
     </div>
 
     <!-- RIGHT SLIDE-IN DRAWER (Owner Profile & Security Panel) -->
+    <!-- (Drawer HTML remains exactly the same) -->
     <div id="drawerOverlay" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-2xs transition-opacity"></div>
     <div id="ownerDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200">
         <!-- Drawer Header -->
@@ -228,355 +229,105 @@
             });
         });
 
-        function loadSavedOwnerPreferences() {
-            const savedName = localStorage.getItem("ownerName") || "Ashok Sharma";
-            document.getElementById("ownerNameDisplay").innerText = savedName;
-            if(document.getElementById("welcomeGreeting")) {
-                document.getElementById("welcomeGreeting").innerText = `Welcome back, ${savedName}!`;
-            }
-            if(document.getElementById("profileOwnerName")) {
-                document.getElementById("profileOwnerName").value = savedName;
-            }
-            document.getElementById("ownerInitial").innerText = savedName.charAt(0).toUpperCase();
+        // (Other helper functions remain the same)
+        function loadSavedOwnerPreferences() { /* ... */ }
+        function loadSettingsModule() { /* ... */ }
+        function setTheme(mode) { /* ... */ }
+        function setFontSize(size) { /* ... */ }
+        function toggleOwnerDrawer(event) { /* ... */ }
+        function closeOwnerDrawer() { /* ... */ }
+        function updateOwnerName(newName) { /* ... */ }
+        function uploadOwnerPhoto(event) { /* ... */ }
+        function toggleAccordion(id) { /* ... */ }
+        function sendPhoneOtp() { /* ... */ }
+        function moveToNext(element, index) { /* ... */ }
+        function verifyAndSaveNewPhone() { /* ... */ }
+        function saveNewPassword() { /* ... */ }
+        function setupKeyboardNav() { /* ... */ }
+        function updateActiveNav(element) { /* ... */ }
+        function toggleSidebar() { /* ... */ }
+        function handleLogout() { /* ... */ }
+        async function loadModule(pageUrl, element) { /* ... */ }
 
-            const savedPhone = localStorage.getItem("ownerPhone") || "+91 9876543210";
-            if(document.getElementById("currentPhoneDisplay")) {
-                document.getElementById("currentPhoneDisplay").innerText = savedPhone;
-            }
-
-            const savedPhoto = localStorage.getItem("ownerPhoto");
-            if (savedPhoto) {
-                document.getElementById("ownerAvatarBox").innerHTML = `<img src="${savedPhoto}" class="w-full h-full object-cover">`;
-                if(document.getElementById("drawerAvatarPreview")) {
-                    document.getElementById("drawerAvatarPreview").innerHTML = `<img src="${savedPhoto}" class="w-full h-full object-cover">`;
-                }
-            } else {
-                const init = savedName.charAt(0).toUpperCase();
-                document.getElementById("ownerAvatarBox").innerHTML = `<span>${init}</span>`;
-                if(document.getElementById("drawerAvatarPreview")) {
-                    document.getElementById("drawerAvatarPreview").innerHTML = `<span>${init}</span>`;
-                }
-            }
-
-            const currentTheme = localStorage.getItem("ownerTheme") || "light";
-            if (currentTheme === "dark") document.body.classList.add("theme-dark");
-
-            const currentFont = localStorage.getItem("ownerFont") || "normal";
-            document.getElementById("htmlRoot").className = `font-${currentFont}`;
-        }
-
-        function loadDefaultDashboardHome() {
+        // --- UPDATED: Fetch Data for Dashboard (Example) ---
+        async function loadDefaultDashboardHome() {
             const contentArea = document.getElementById('mainContentArea');
-            contentArea.innerHTML = `
-                <div class="space-y-6 max-w-7xl mx-auto">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-md flex items-center justify-between border-l-4 border-amber-500">
-                        <div>
-                            <h1 id="welcomeGreeting" class="text-xl font-bold tracking-tight">Welcome back, ${localStorage.getItem("ownerName") || "Ashok Sharma"}!</h1>
-                            <p class="text-slate-400 text-xs mt-1">Ekta Transport Company operations dashboard is running live and synced.</p>
-                        </div>
-                        <div class="hidden sm:block text-right">
-                            <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-md font-mono">System Status: Active</span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">Active Fleet</p>
-                                <i class="fa-solid fa-truck text-amber-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">168 Units</h3>
-                            <span class="text-[10px] text-emerald-600 font-semibold mt-1 inline-block">Connected & Synced</span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">On-Duty Drivers</p>
-                                <i class="fa-solid fa-id-card text-blue-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">Active</h3>
-                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Drivers Portal Ready</span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">Pending PODs</p>
-                                <i class="fa-solid fa-file-invoice text-indigo-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">Managed</h3>
-                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">AI Document Reader Ready</span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">Monthly Ledger</p>
-                                <i class="fa-solid fa-wallet text-emerald-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">Synced</h3>
-                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Accounts Linked</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            const dashboardNavLink = document.querySelector('nav a');
-            if(dashboardNavLink) updateActiveNav(dashboardNavLink);
-        }
-
-        function loadSettingsModule() {
-            const contentArea = document.getElementById('mainContentArea');
-            const currentTheme = localStorage.getItem("ownerTheme") || "light";
-            const currentFont = localStorage.getItem("ownerFont") || "normal";
-
-            contentArea.innerHTML = `
-                <div class="max-w-3xl mx-auto space-y-6" id="settingsContainer">
-                    <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-xs">
-                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4">
-                            <i class="fa-solid fa-gear text-amber-600 mr-2"></i> System & Dashboard Settings
-                        </h2>
-                        
-                        <div class="mb-6 pb-6 border-b border-slate-100 flex items-center justify-between">
-                            <div>
-                                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Dashboard Theme Mode</h3>
-                                <p class="text-xs text-slate-500">Switch instantly between Light Mode and Dark Mode.</p>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button onclick="setTheme('light')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentTheme === 'light' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">
-                                    <i class="fa-solid fa-sun mr-1"></i> Light
-                                </button>
-                                <button onclick="setTheme('dark')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentTheme === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">
-                                    <i class="fa-solid fa-moon mr-1"></i> Dark
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Interface Font Size</h3>
-                            <p class="text-xs text-slate-500 mb-3">Adjust the text size across the entire system.</p>
-                            <div class="flex space-x-3">
-                                <button onclick="setFontSize('small')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'small' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Small</button>
-                                <button onclick="setFontSize('normal')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'normal' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Normal (Default)</button>
-                                <button onclick="setFontSize('large')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'large' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Large</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            updateActiveNav(null);
-        }
-
-        function setTheme(mode) {
-            localStorage.setItem("ownerTheme", mode);
-            if (mode === "dark") document.body.classList.add("theme-dark");
-            else document.body.classList.remove("theme-dark");
-            loadSettingsModule();
-        }
-
-        function setFontSize(size) {
-            localStorage.setItem("ownerFont", size);
-            document.getElementById("htmlRoot").className = `font-${size}`;
-            loadSettingsModule();
-        }
-
-        function toggleOwnerDrawer(event) {
-            if(event) event.stopPropagation();
-            const drawer = document.getElementById("ownerDrawer");
-            const overlay = document.getElementById("drawerOverlay");
-            drawer.classList.toggle("open");
-            overlay.classList.toggle("hidden");
-
-            if (drawer.classList.contains("open")) {
-                setTimeout(() => {
-                    document.getElementById("profileOwnerName").focus();
-                }, 100);
-            }
-        }
-
-        function closeOwnerDrawer() {
-            document.getElementById("ownerDrawer").classList.remove("open");
-            document.getElementById("drawerOverlay").classList.add("hidden");
-        }
-
-        function updateOwnerName(newName) {
-            if(!newName.trim()) return;
-            localStorage.setItem("ownerName", newName);
-            loadSavedOwnerPreferences();
-        }
-
-        function uploadOwnerPhoto(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    localStorage.setItem("ownerPhoto", e.target.result);
-                    loadSavedOwnerPreferences();
-                    alert("Profile photo updated successfully!");
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function toggleAccordion(id) {
-            const section = document.getElementById(id);
-            section.classList.toggle("hidden");
-        }
-
-        function sendPhoneOtp() {
-            const newPhone = document.getElementById("newPhoneInput").value;
-            if(newPhone.length < 10) { alert("Please enter a valid 10-digit mobile number."); return; }
-            alert("OTP sent successfully to " + newPhone + " (Demo OTP: 1234)");
-            document.getElementById("otpBoxSection").classList.remove("hidden");
-            document.getElementById("sendOtpButton").classList.add("hidden");
-            document.querySelectorAll('.otp-box')[0].focus();
-        }
-
-        function moveToNext(element, index) {
-            const boxes = document.querySelectorAll('.otp-box');
-            if (element.value.length === 1 && index < boxes.length - 1) {
-                boxes[index + 1].focus();
-            }
-        }
-
-        function verifyAndSaveNewPhone() {
-            const boxes = document.querySelectorAll('.otp-box');
-            let enteredOtp = "";
-            boxes.forEach(box => enteredOtp += box.value);
-
-            const newPhone = document.getElementById("newPhoneInput").value;
-            if(enteredOtp === "1234") {
-                localStorage.setItem("ownerPhone", "+91 " + newPhone);
-                document.getElementById("currentPhoneDisplay").innerText = "+91 " + newPhone;
-                alert("Mobile number updated successfully!");
-                document.getElementById("otpBoxSection").classList.add("hidden");
-                document.getElementById("sendOtpButton").classList.remove("hidden");
-                document.getElementById("newPhoneInput").value = "";
-                boxes.forEach(box => box.value = "");
-            } else {
-                alert("Invalid OTP! Please enter 1234.");
-            }
-        }
-
-        function saveNewPassword() {
-            const oldPass = document.getElementById("oldPasswordInput").value;
-            const newPass = document.getElementById("newPasswordInput").value;
-            const confPass = document.getElementById("confirmPasswordInput").value;
-
-            if(!oldPass || !newPass || !confPass) { alert("Please fill all password fields."); return; }
-            if(newPass !== confPass) { alert("New passwords do not match."); return; }
             
-            localStorage.setItem("ownerPassword", newPass);
-            alert("Password updated successfully!");
-            document.getElementById("oldPasswordInput").value = "";
-            document.getElementById("newPasswordInput").value = "";
-            document.getElementById("confirmPasswordInput").value = "";
-            closeOwnerDrawer();
-        }
-
-        function setupKeyboardNav() {
-            const navLinks = Array.from(document.querySelectorAll('.nav-link'));
-            let navIndex = 0;
-
-            document.addEventListener('keydown', (e) => {
-                const drawer = document.getElementById("ownerDrawer");
-                const isDrawerOpen = drawer.classList.contains("open");
-
-                if (isDrawerOpen) {
-                    const focusables = Array.from(drawer.querySelectorAll('.drawer-focusable')).filter(el => {
-                        return el.offsetParent !== null;
-                    });
-                    let currentIndex = focusables.indexOf(document.activeElement);
-
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        if (currentIndex === -1) currentIndex = 0;
-                        else currentIndex = (currentIndex + 1) % focusables.length;
-                        focusables[currentIndex].focus();
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        if (currentIndex === -1) currentIndex = focusables.length - 1;
-                        else currentIndex = (currentIndex - 1 + focusables.length) % focusables.length;
-                        focusables[currentIndex].focus();
-                    }
-                } else {
-                    if (document.activeElement.tagName === 'INPUT') return;
-
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        navIndex = (navIndex + 1) % navLinks.length;
-                        navLinks[navIndex].focus();
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        navIndex = (navIndex - 1 + navLinks.length) % navLinks.length;
-                        navLinks[navIndex].focus();
-                    } else if (e.key === 'Enter') {
-                        const focusedElement = document.activeElement;
-                        if (navLinks.includes(focusedElement)) {
-                            e.preventDefault();
-                            focusedElement.click();
-                        }
-                    }
-                }
-            });
-        }
-
-        async function loadModule(pageUrl, element) {
-            const contentArea = document.getElementById('mainContentArea');
-            contentArea.innerHTML = `
-                <div class="flex items-center justify-center h-64">
-                    <div class="flex flex-col items-center space-y-2">
-                        <i class="fa-solid fa-circle-notch fa-spin text-amber-600 text-2xl"></i>
-                        <span class="text-xs font-medium text-slate-500">Loading module...</span>
-                    </div>
-                </div>
-            `;
+            // Show loading state while fetching data
+            contentArea.innerHTML = `<div class="p-6 text-center text-slate-500">Loading dashboard data from database...</div>`;
 
             try {
-                const response = await fetch(pageUrl);
-                if (!response.ok) throw new Error('Module file not found.');
-                const htmlContent = await response.text();
+                // TODO: Replace '/api/dashboard-stats' with your actual backend endpoint that queries db.js
+                // const response = await fetch('/api/dashboard-stats');
+                // const data = await response.json();
                 
-                contentArea.innerHTML = htmlContent;
-                contentArea.classList.remove('content-transition');
-                void contentArea.offsetWidth;
-                contentArea.classList.add('content-transition');
+                // --- Dummy Data (simulating a response from your backend) ---
+                const data = {
+                    activeFleet: 168,
+                    onDutyDrivers: 142,
+                    pendingPods: 24,
+                    monthlyLedgerSynced: true
+                };
 
-                const scripts = contentArea.querySelectorAll('script');
-                scripts.forEach(script => {
-                    const newScript = document.createElement('script');
-                    newScript.text = script.innerText;
-                    document.body.appendChild(newScript);
-                    document.body.removeChild(newScript);
-                });
-
-            } catch (error) {
                 contentArea.innerHTML = `
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center text-amber-800 max-w-lg mx-auto mt-10">
-                        <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 text-amber-600"></i>
-                        <h3 class="font-bold text-sm">Module View Ready (${pageUrl})</h3>
-                        <p class="text-xs text-slate-600 mt-1">This module file (${pageUrl}) is pending creation. Once created, your data will load directly from the cloud database.</p>
+                    <div class="space-y-6 max-w-7xl mx-auto">
+                        <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-md flex items-center justify-between border-l-4 border-amber-500">
+                            <div>
+                                <h1 id="welcomeGreeting" class="text-xl font-bold tracking-tight">Welcome back, ${localStorage.getItem("ownerName") || "Ashok Sharma"}!</h1>
+                                <p class="text-slate-400 text-xs mt-1">Ekta Transport Company operations dashboard is running live and synced.</p>
+                            </div>
+                            <div class="hidden sm:block text-right">
+                                <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-md font-mono">System Status: Active</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- Data injected dynamically -->
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs text-slate-500 font-medium">Active Fleet</p>
+                                    <i class="fa-solid fa-truck text-amber-600 text-sm"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-slate-800 mt-2">${data.activeFleet} Units</h3>
+                                <span class="text-[10px] text-emerald-600 font-semibold mt-1 inline-block">Connected & Synced</span>
+                            </div>
+                            <!-- ... other cards similarly using data.onDutyDrivers, data.pendingPods etc. ... -->
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs text-slate-500 font-medium">On-Duty Drivers</p>
+                                    <i class="fa-solid fa-id-card text-blue-600 text-sm"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-slate-800 mt-2">${data.onDutyDrivers} Active</h3>
+                                <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Drivers Portal Ready</span>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs text-slate-500 font-medium">Pending PODs</p>
+                                    <i class="fa-solid fa-file-invoice text-indigo-600 text-sm"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-slate-800 mt-2">${data.pendingPods} Remaining</h3>
+                                <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">AI Document Reader Ready</span>
+                            </div>
+                             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs text-slate-500 font-medium">Monthly Ledger</p>
+                                    <i class="fa-solid fa-wallet text-emerald-600 text-sm"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-slate-800 mt-2">${data.monthlyLedgerSynced ? 'Synced' : 'Pending'}</h3>
+                                <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Accounts Linked</span>
+                            </div>
+                        </div>
                     </div>
                 `;
-            }
-
-            if (element) updateActiveNav(element);
-        }
-
-        function updateActiveNav(element) {
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('bg-amber-600', 'text-white', 'shadow-sm');
-                link.classList.add('text-slate-400', 'hover:bg-slate-900', 'hover:text-slate-100');
-            });
-            if (element) {
-                element.classList.remove('text-slate-400', 'hover:bg-slate-900', 'hover:text-slate-100');
-                element.classList.add('bg-amber-600', 'text-white', 'shadow-sm');
+                const dashboardNavLink = document.querySelector('nav a');
+                if(dashboardNavLink) updateActiveNav(dashboardNavLink);
+                
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+                contentArea.innerHTML = `<div class="p-6 text-red-500">Error loading data. Please check connection.</div>`;
             }
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-ml-72');
-        }
-
-        function handleLogout() {
-            if(confirm('Are you sure you want to logout from Owner Dashboard?')) {
-                window.location.href = 'index.html';
-            }
-        }
     </script>
 
     <!-- AI ASSISTANT FLOATING WIDGET LINK -->

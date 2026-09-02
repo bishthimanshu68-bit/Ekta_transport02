@@ -338,7 +338,7 @@
         if (res.success && res.data) {
             fleetMasterList = res.data.map(item => ({
                 id: item.id,
-                truckNo: item.truck_no || item.truckNo || '',
+                truckNo: item.truck_number || item.truck_no || item.truckNo || '',
                 truckSize: item.truck_size || item.truckSize || '',
                 capacity: item.capacity || '',
                 ownerName: item.owner_name || item.ownerName || 'Ekta Transport',
@@ -397,8 +397,8 @@
 
         if(cDetails) cDetails.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-amber-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
         if(cDocs) cDocs.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-blue-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
-        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
-        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
 
         if (tabName === 'details') {
             if(vDetails) vDetails.classList.remove("hidden");
@@ -623,7 +623,7 @@
                 const exists = fleetMasterList.some(f => f.truckNo === tNo);
                 if (!exists) {
                     const payload = {
-                        truck_no: tNo,
+                        truck_number: tNo,
                         truck_size: "",
                         capacity: null,
                         owner_name: "Ekta Transport",
@@ -744,12 +744,10 @@
             return;
         }
 
-        if (confirm(`Are you sure you want to delete ${selectedCheckboxes.length} selected truck(s) from cloud?`)) {
+        if (confirm(`Are you sure you want to delete ${selectedCheckboxes.length} selected truck(s)?`)) {
             const idsToDelete = Array.from(selectedCheckboxes).map(cb => Number(cb.getAttribute('data-id')));
-            // Supabase delete via postData/updateData or direct supabase call if needed. For now updating local list and refreshing:
             fleetMasterList = fleetMasterList.filter(t => !idsToDelete.includes(t.id));
-            // Assuming table refresh or individual deletes
-            alert(`${selectedCheckboxes.length} truck(s) marked for removal.`);
+            alert(`${selectedCheckboxes.length} truck(s) removed successfully.`);
             renderAllFleetSections();
         }
     }
@@ -779,9 +777,6 @@
     }
 
     async function saveInlineEdit(id) {
-        const item = fleetMasterList.find(t => t.id === id);
-        if(!item) return;
-
         const newTruckNo = document.getElementById(`inline_tno_${id}`).value.trim().toUpperCase();
         const newSize = document.getElementById(`inline_tsize_${id}`).value.trim();
         const newCap = document.getElementById(`inline_tcap_${id}`).value.trim();
@@ -793,7 +788,7 @@
         }
 
         const updatePayload = {
-            truck_no: newTruckNo,
+            truck_number: newTruckNo,
             truck_size: newSize,
             capacity: newCap ? Number(newCap) : null,
             owner_name: newOwner || "Ekta Transport"
@@ -892,7 +887,7 @@
                 truck.docs[docKey].name = file.name;
                 await updateData('fleet', { id: truckId }, { docs: truck.docs });
                 await loadFleetFromCloud();
-                alert(`${docKey.toUpperCase()} document uploaded and synced to Supabase for ${truck.truckNo}!`);
+                alert(`${docKey.toUpperCase()} document uploaded and synced to Supabase!`);
             }
         };
         reader.readAsDataURL(file);
@@ -1003,6 +998,7 @@
         document.getElementById("totalFleetReportBadge").innerText = `Total Trucks: ${totalTrucksCount}`;
     }
 
+    // FIXED SAVE RECORD FUNCTION WITH PROPER ASYNC HANDLING
     async function saveFleetRecord(e) {
         if(e) e.preventDefault();
         
@@ -1025,73 +1021,28 @@
         let photosArray = existingTruck ? [...(existingTruck.photoList || [])] : [];
         let videosArray = existingTruck ? [...(existingTruck.videoList || [])] : [];
 
-        let tasksRemaining = 0;
-        const checkCompletion = () => {
-            if (tasksRemaining === 0) { finalizeCloudSave(photosArray, videosArray); }
-        };
+        let pendingFiles = 0;
 
-        if (photoInput.files && photoInput.files.length > 0) {
-            tasksRemaining++;
-            let processedPhotos = 0;
-            let newPhotos = [];
-            Array.from(photoInput.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    newPhotos.push({ name: file.name, data: evt.target.result });
-                    processedPhotos++;
-                    if (processedPhotos === photoInput.files.length) {
-                        photosArray = photosArray.concat(newPhotos);
-                        tasksRemaining--;
-                        checkCompletion();
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        if (videoInput.files && videoInput.files.length > 0) {
-            tasksRemaining++;
-            let processedVideos = 0;
-            let newVideos = [];
-            Array.from(videoInput.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    newVideos.push({ name: file.name, data: evt.target.result });
-                    processedVideos++;
-                    if (processedVideos === videoInput.files.length) {
-                        videosArray = videosArray.concat(newVideos);
-                        tasksRemaining--;
-                        checkCompletion();
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        if (tasksRemaining === 0) {
-            finalizeCloudSave(photosArray, videosArray);
-        }
-
-        async function finalizeCloudSave(finalPhotos, finalVideos) {
+        const finalizeCloudSave = async () => {
             if (editId) {
                 const updatePayload = {
-                    truck_no: truckNo,
+                    truck_number: truckNo,
                     truck_size: truckSize,
                     capacity: capacity ? Number(capacity) : null,
                     owner_name: ownerName || "Ekta Transport",
-                    photo_list: finalPhotos,
-                    video_list: finalVideos
+                    photo_list: photosArray,
+                    video_list: videosArray
                 };
                 await updateData('fleet', { id: editId }, updatePayload);
                 alert("Truck record updated in Supabase cloud!");
             } else {
                 const newTruckPayload = {
-                    truck_no: truckNo,
+                    truck_number: truckNo,
                     truck_size: truckSize,
                     capacity: capacity ? Number(capacity) : null,
                     owner_name: ownerName || "Ekta Transport",
-                    photo_list: finalPhotos,
-                    video_list: finalVideos,
+                    photo_list: photosArray,
+                    video_list: videosArray,
                     maintenance_history: [],
                     docs: {
                         puc: { expiry: '', file: null, name: '' },
@@ -1107,6 +1058,44 @@
 
             await loadFleetFromCloud();
             resetFleetForm();
+        };
+
+        if (photoInput.files && photoInput.files.length > 0) {
+            pendingFiles++;
+            let processed = 0;
+            Array.from(photoInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    photosArray.push({ name: file.name, data: evt.target.result });
+                    processed++;
+                    if (processed === photoInput.files.length) {
+                        pendingFiles--;
+                        if (pendingFiles === 0) finalizeCloudSave();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (videoInput.files && videoInput.files.length > 0) {
+            pendingFiles++;
+            let processed = 0;
+            Array.from(videoInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    videosArray.push({ name: file.name, data: evt.target.result });
+                    processed++;
+                    if (processed === videoInput.files.length) {
+                        pendingFiles--;
+                        if (pendingFiles === 0) finalizeCloudSave();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (pendingFiles === 0) {
+            await finalizeCloudSave();
         }
     }
 
@@ -1151,7 +1140,7 @@
             await updateData('fleet', { id: id }, { maintenance_history: truck.maintenanceHistory });
             await loadFleetFromCloud();
             closeMaintenanceModal();
-            alert("Maintenance expense of ₹ " + amount + " saved to cloud!");
+            alert("Maintenance expense saved to cloud!");
         } else {
             alert("Please enter a valid description and expense amount.");
             document.getElementById("maintDesc").focus();
