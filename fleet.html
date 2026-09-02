@@ -3,9 +3,9 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
             <h1 class="text-base font-bold text-slate-800 tracking-tight flex items-center">
-                <i class="fa-solid fa-truck-fast text-amber-600 mr-2"></i> Ekta Transport - Fleet Management Portal (Cloud Connected)
+                <i class="fa-solid fa-truck-fast text-amber-600 mr-2"></i> Ekta Transport - Fleet Management Portal
             </h1>
-            <p class="text-[11px] text-slate-500">Manage vehicle master, document expiries, maintenance logs, and fleet reports synced via Supabase.</p>
+            <p class="text-[11px] text-slate-500">Manage vehicle master, document expiries, maintenance logs, and fleet reports with AI Smart Scanner.</p>
         </div>
         <div class="flex items-center space-x-2">
             <button type="button" onclick="openAIScanModal('general')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md shadow-2xs transition flex items-center text-xs">
@@ -66,7 +66,7 @@
         <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
             <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
                 <h3 class="font-bold text-xs flex items-center"><i class="fa-solid fa-circle-plus text-amber-500 mr-2"></i> <span id="fleetFormTitleText">Add New Truck Registration Form</span></h3>
-                <span class="text-[10px] text-slate-400 font-mono">Connected to Supabase Cloud DB</span>
+                <span class="text-[10px] text-slate-400 font-mono">Only Truck Number required to save</span>
             </div>
             <form id="fleetMasterForm" onsubmit="saveFleetRecord(event); return false;" class="p-4 space-y-3">
                 <input type="hidden" id="editFleetId" value="">
@@ -112,7 +112,7 @@
             <div class="p-3 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50/50">
                 <div class="flex items-center space-x-2">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center">
-                        <i class="fa-solid fa-truck text-amber-600 mr-2"></i> Registered Truck Fleet Directory (Cloud)
+                        <i class="fa-solid fa-truck text-amber-600 mr-2"></i> Registered Truck Fleet Directory
                     </h3>
                 </div>
                 <div class="flex items-center space-x-2">
@@ -330,38 +330,25 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
-    let fleetMasterList = [];
+    let fleetMasterList = JSON.parse(localStorage.getItem('ekta_fleet_master_v5')) || [];
 
-    // Supabase Se Data Load Karna On Page Load
-    async function loadFleetFromCloud() {
-        const res = await fetchData('fleet'); // db.js ka fetchData function
-        if (res.success && res.data) {
-            fleetMasterList = res.data.map(item => ({
-                id: item.id,
-                truckNo: item.truck_number || item.truck_no || item.truckNo || '',
-                truckSize: item.truck_size || item.truckSize || '',
-                capacity: item.capacity || '',
-                ownerName: item.owner_name || item.ownerName || 'Ekta Transport',
-                photoList: item.photo_list || item.photoList || [],
-                videoList: item.video_list || item.videoList || [],
-                maintenanceHistory: item.maintenance_history || item.maintenanceHistory || [],
-                docs: item.docs || {
-                    puc: { expiry: '', file: null, name: '' },
-                    insurance: { expiry: '', file: null, name: '' },
-                    fitness: { expiry: '', file: null, name: '' },
-                    permit: { expiry: '', file: null, name: '' },
-                    rc: { expiry: '', file: null, name: '' }
-                }
-            }));
-        } else {
-            console.error("Cloud fetch failed, using empty array:", res.message);
-            fleetMasterList = [];
+    fleetMasterList.forEach(truck => {
+        if (!truck.maintenanceHistory) truck.maintenanceHistory = [];
+        if (!truck.photoList) truck.photoList = [];
+        if (!truck.videoList) truck.videoList = [];
+        if (!truck.docs) {
+            truck.docs = {
+                puc: { expiry: '', file: null, name: '' },
+                insurance: { expiry: '', file: null, name: '' },
+                fitness: { expiry: '', file: null, name: '' },
+                permit: { expiry: '', file: null, name: '' },
+                rc: { expiry: '', file: null, name: '' }
+            };
         }
-        renderAllFleetSections();
-    }
+    });
 
     if (document.getElementById("fleetTableBody")) {
-        loadFleetFromCloud();
+        renderAllFleetSections();
     }
 
     function handleFleetFormKey(event, nextFieldId) {
@@ -397,8 +384,8 @@
 
         if(cDetails) cDetails.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-amber-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
         if(cDocs) cDocs.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-blue-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
-        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
-        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-slate-200 hover:border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cMaint) cMaint.className = "bg-white p-3 rounded-lg border-2 border-emerald-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
+        if(cReport) cReport.className = "bg-white p-3 rounded-lg border-2 border-purple-500 shadow-2xs cursor-pointer transition flex items-center justify-between";
 
         if (tabName === 'details') {
             if(vDetails) vDetails.classList.remove("hidden");
@@ -611,7 +598,7 @@
         }
     }
 
-    async function applyAIScannedData() {
+    function applyAIScannedData() {
         if (currentAiMode === 'general') {
             if (!parsedImportTrucks || parsedImportTrucks.length === 0) {
                 alert("No valid truck numbers detected.");
@@ -619,17 +606,18 @@
             }
 
             let addedCount = 0;
-            for (const tNo of parsedImportTrucks) {
+            parsedImportTrucks.forEach(tNo => {
                 const exists = fleetMasterList.some(f => f.truckNo === tNo);
                 if (!exists) {
-                    const payload = {
-                        truck_number: tNo,
-                        truck_size: "",
-                        capacity: null,
-                        owner_name: "Ekta Transport",
-                        photo_list: [],
-                        video_list: [],
-                        maintenance_history: [],
+                    fleetMasterList.push({
+                        id: Date.now() + Math.random(),
+                        truckNo: tNo,
+                        truckSize: "",
+                        capacity: "",
+                        ownerName: "Ekta Transport",
+                        photoList: [],
+                        videoList: [],
+                        maintenanceHistory: [],
                         docs: {
                             puc: { expiry: '', file: null, name: '' },
                             insurance: { expiry: '', file: null, name: '' },
@@ -637,15 +625,15 @@
                             permit: { expiry: '', file: null, name: '' },
                             rc: { expiry: '', file: null, name: '' }
                         }
-                    };
-                    await postData('fleet', payload);
+                    });
                     addedCount++;
                 }
-            }
+            });
 
-            await loadFleetFromCloud();
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderAllFleetSections();
             closeAIScanModal();
-            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Supabase Cloud DB.`);
+            alert(`AI Smart Import successful! Added ${addedCount} new trucks to Registry.`);
         } else {
             const truckId = document.getElementById("aiTargetTruckSelect").value;
             const docKey = document.getElementById("aiDocTypeSelect").value;
@@ -659,16 +647,16 @@
             const truck = fleetMasterList.find(t => t.id == truckId);
             if(truck) {
                 if(!truck.docs) truck.docs = {};
+                if(!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
                 truck.docs[docKey].expiry = expiryVal;
                 if(scannedFilePayload) {
                     truck.docs[docKey].file = scannedFilePayload;
                     truck.docs[docKey].name = scannedFileName;
                 }
-                
-                await updateData('fleet', { id: truckId }, { docs: truck.docs });
-                await loadFleetFromCloud();
+                localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+                renderAllFleetSections();
                 closeAIScanModal();
-                alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} in Supabase for truck ${truck.truckNo}!`);
+                alert(`AI Successfully Scanned & Updated ${docKey.toUpperCase()} for truck ${truck.truckNo}!`);
             }
         }
     }
@@ -682,7 +670,7 @@
         if(selectAllCb) selectAllCb.checked = false;
 
         if (fleetMasterList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium text-xs">No trucks found in cloud database. Click 'AI Smart Import' or fill the form above.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium text-xs">No trucks registered yet. Click 'AI Smart Import' or fill the form above.</td></tr>`;
             return;
         }
 
@@ -737,7 +725,7 @@
         checkboxes.forEach(cb => { cb.checked = masterCheckbox.checked; });
     }
 
-    async function bulkDeleteSelectedTrucks() {
+    function bulkDeleteSelectedTrucks() {
         const selectedCheckboxes = document.querySelectorAll('.truck-row-checkbox:checked');
         if (selectedCheckboxes.length === 0) {
             alert("Please mark/select at least one truck to delete!");
@@ -747,8 +735,9 @@
         if (confirm(`Are you sure you want to delete ${selectedCheckboxes.length} selected truck(s)?`)) {
             const idsToDelete = Array.from(selectedCheckboxes).map(cb => Number(cb.getAttribute('data-id')));
             fleetMasterList = fleetMasterList.filter(t => !idsToDelete.includes(t.id));
-            alert(`${selectedCheckboxes.length} truck(s) removed successfully.`);
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
             renderAllFleetSections();
+            alert(`${selectedCheckboxes.length} truck(s) deleted successfully!`);
         }
     }
 
@@ -776,7 +765,10 @@
         document.getElementById(`inline_tno_${id}`).select();
     }
 
-    async function saveInlineEdit(id) {
+    function saveInlineEdit(id) {
+        const item = fleetMasterList.find(t => t.id === id);
+        if(!item) return;
+
         const newTruckNo = document.getElementById(`inline_tno_${id}`).value.trim().toUpperCase();
         const newSize = document.getElementById(`inline_tsize_${id}`).value.trim();
         const newCap = document.getElementById(`inline_tcap_${id}`).value.trim();
@@ -787,15 +779,13 @@
             return;
         }
 
-        const updatePayload = {
-            truck_number: newTruckNo,
-            truck_size: newSize,
-            capacity: newCap ? Number(newCap) : null,
-            owner_name: newOwner || "Ekta Transport"
-        };
+        item.truckNo = newTruckNo;
+        item.truckSize = newSize;
+        item.capacity = newCap;
+        item.ownerName = newOwner || "Ekta Transport";
 
-        await updateData('fleet', { id: id }, updatePayload);
-        await loadFleetFromCloud();
+        localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+        renderAllFleetSections();
     }
 
     function renderFleetDocsTable() {
@@ -804,7 +794,7 @@
         tbody.innerHTML = "";
 
         if (fleetMasterList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 font-medium text-xs">No truck records available in cloud.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 font-medium text-xs">No truck records available.</td></tr>`;
             return;
         }
 
@@ -865,29 +855,31 @@
         });
     }
 
-    async function updateDocExpiry(truckId, docKey, dateVal) {
+    function updateDocExpiry(truckId, docKey, dateVal) {
         const truck = fleetMasterList.find(t => t.id === truckId);
         if (truck) {
             if (!truck.docs) truck.docs = {};
+            if (!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
             truck.docs[docKey].expiry = dateVal;
-            await updateData('fleet', { id: truckId }, { docs: truck.docs });
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
         }
     }
 
-    async function uploadDocFile(event, truckId, docKey) {
+    function uploadDocFile(event, truckId, docKey) {
         const file = event.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = async function(e) {
+        reader.onload = function(e) {
             const truck = fleetMasterList.find(t => t.id === truckId);
             if (truck) {
                 if (!truck.docs) truck.docs = {};
+                if (!truck.docs[docKey]) truck.docs[docKey] = { expiry: '', file: null, name: '' };
                 truck.docs[docKey].file = e.target.result;
                 truck.docs[docKey].name = file.name;
-                await updateData('fleet', { id: truckId }, { docs: truck.docs });
-                await loadFleetFromCloud();
-                alert(`${docKey.toUpperCase()} document uploaded and synced to Supabase!`);
+                localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+                renderFleetDocsTable();
+                alert(`${docKey.toUpperCase()} document uploaded successfully for ${truck.truckNo}!`);
             }
         };
         reader.readAsDataURL(file);
@@ -998,8 +990,7 @@
         document.getElementById("totalFleetReportBadge").innerText = `Total Trucks: ${totalTrucksCount}`;
     }
 
-    // FIXED SAVE RECORD FUNCTION WITH PROPER ASYNC HANDLING
-    async function saveFleetRecord(e) {
+    function saveFleetRecord(e) {
         if(e) e.preventDefault();
         
         const editId = document.getElementById("editFleetId").value;
@@ -1021,29 +1012,72 @@
         let photosArray = existingTruck ? [...(existingTruck.photoList || [])] : [];
         let videosArray = existingTruck ? [...(existingTruck.videoList || [])] : [];
 
-        let pendingFiles = 0;
+        let tasksRemaining = 0;
+        const checkCompletion = () => {
+            if (tasksRemaining === 0) { finalizeSave(photosArray, videosArray); }
+        };
 
-        const finalizeCloudSave = async () => {
-            if (editId) {
-                const updatePayload = {
-                    truck_number: truckNo,
-                    truck_size: truckSize,
-                    capacity: capacity ? Number(capacity) : null,
-                    owner_name: ownerName || "Ekta Transport",
-                    photo_list: photosArray,
-                    video_list: videosArray
+        if (photoInput.files && photoInput.files.length > 0) {
+            tasksRemaining++;
+            let processedPhotos = 0;
+            let newPhotos = [];
+            Array.from(photoInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    newPhotos.push({ name: file.name, data: evt.target.result });
+                    processedPhotos++;
+                    if (processedPhotos === photoInput.files.length) {
+                        photosArray = photosArray.concat(newPhotos);
+                        tasksRemaining--;
+                        checkCompletion();
+                    }
                 };
-                await updateData('fleet', { id: editId }, updatePayload);
-                alert("Truck record updated in Supabase cloud!");
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (videoInput.files && videoInput.files.length > 0) {
+            tasksRemaining++;
+            let processedVideos = 0;
+            let newVideos = [];
+            Array.from(videoInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    newVideos.push({ name: file.name, data: evt.target.result });
+                    processedVideos++;
+                    if (processedVideos === videoInput.files.length) {
+                        videosArray = videosArray.concat(newVideos);
+                        tasksRemaining--;
+                        checkCompletion();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (tasksRemaining === 0) {
+            finalizeSave(photosArray, videosArray);
+        }
+
+        function finalizeSave(finalPhotos, finalVideos) {
+            if (editId) {
+                if (existingTruck) {
+                    existingTruck.truckNo = truckNo;
+                    existingTruck.truckSize = truckSize;
+                    existingTruck.capacity = capacity;
+                    existingTruck.ownerName = ownerName || "Ekta Transport";
+                    existingTruck.photoList = finalPhotos;
+                    existingTruck.videoList = finalVideos;
+                }
+                alert("Truck record updated successfully!");
             } else {
-                const newTruckPayload = {
-                    truck_number: truckNo,
-                    truck_size: truckSize,
-                    capacity: capacity ? Number(capacity) : null,
-                    owner_name: ownerName || "Ekta Transport",
-                    photo_list: photosArray,
-                    video_list: videosArray,
-                    maintenance_history: [],
+                const newTruck = {
+                    id: Date.now(),
+                    truckNo, truckSize, capacity, 
+                    ownerName: ownerName || "Ekta Transport",
+                    photoList: finalPhotos,
+                    videoList: finalVideos,
+                    maintenanceHistory: [],
                     docs: {
                         puc: { expiry: '', file: null, name: '' },
                         insurance: { expiry: '', file: null, name: '' },
@@ -1052,58 +1086,21 @@
                         rc: { expiry: '', file: null, name: '' }
                     }
                 };
-                await postData('fleet', newTruckPayload);
-                alert("Truck registered successfully in Supabase cloud!");
+                fleetMasterList.push(newTruck);
+                alert("Truck registered successfully with just the number!");
             }
 
-            await loadFleetFromCloud();
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderAllFleetSections();
             resetFleetForm();
-        };
-
-        if (photoInput.files && photoInput.files.length > 0) {
-            pendingFiles++;
-            let processed = 0;
-            Array.from(photoInput.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    photosArray.push({ name: file.name, data: evt.target.result });
-                    processed++;
-                    if (processed === photoInput.files.length) {
-                        pendingFiles--;
-                        if (pendingFiles === 0) finalizeCloudSave();
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        if (videoInput.files && videoInput.files.length > 0) {
-            pendingFiles++;
-            let processed = 0;
-            Array.from(videoInput.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    videosArray.push({ name: file.name, data: evt.target.result });
-                    processed++;
-                    if (processed === videoInput.files.length) {
-                        pendingFiles--;
-                        if (pendingFiles === 0) finalizeCloudSave();
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        if (pendingFiles === 0) {
-            await finalizeCloudSave();
         }
     }
 
-    async function deleteFleet(id) {
+    function deleteFleet(id) {
         if(confirm("Are you sure you want to delete this truck record?")) {
             fleetMasterList = fleetMasterList.filter(t => t.id !== id);
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
             renderAllFleetSections();
-            alert("Truck record deleted.");
         }
     }
 
@@ -1120,7 +1117,7 @@
         document.getElementById("maintenanceModal").classList.add("hidden");
     }
 
-    async function saveMaintenanceEntry() {
+    function saveMaintenanceEntry() {
         const id = document.getElementById("maintTruckId").value;
         const desc = document.getElementById("maintDesc").value.trim();
         const amount = Number(document.getElementById("maintAmount").value || 0);
@@ -1137,23 +1134,25 @@
                 date: dateStr, time: timeStr, desc: desc, amount: amount
             });
 
-            await updateData('fleet', { id: id }, { maintenance_history: truck.maintenanceHistory });
-            await loadFleetFromCloud();
+            localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+            renderFleetMaintTable();
+            renderFleetReport();
+            updateFleetTopCardSummaries();
             closeMaintenanceModal();
-            alert("Maintenance expense saved to cloud!");
+            alert("Maintenance expense of ₹ " + amount + " added successfully!");
         } else {
             alert("Please enter a valid description and expense amount.");
             document.getElementById("maintDesc").focus();
         }
     }
 
-    async function deleteMaintenanceEntry(truckId, historyIdx) {
+    function deleteMaintenanceEntry(truckId, historyIdx) {
         if (confirm("Are you sure you want to delete this maintenance entry?")) {
             const truck = fleetMasterList.find(t => t.id === truckId);
             if (truck && truck.maintenanceHistory) {
                 truck.maintenanceHistory.splice(historyIdx, 1);
-                await updateData('fleet', { id: truckId }, { maintenance_history: truck.maintenanceHistory });
-                await loadFleetFromCloud();
+                localStorage.setItem('ekta_fleet_master_v5', JSON.stringify(fleetMasterList));
+                renderAllFleetSections();
             }
         }
     }
