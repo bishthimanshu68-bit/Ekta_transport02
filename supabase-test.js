@@ -1,0 +1,1 @@
+console.log("Supabase test file loaded successfully");
