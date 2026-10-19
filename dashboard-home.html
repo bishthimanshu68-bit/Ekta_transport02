@@ -1,0 +1,3314 @@
+<!-- =========================================================
+     EKTA TRANSPORT COMPANY
+     DASHBOARD HOME
+     REAL DATA READY - NO DUMMY DATA
+     ========================================================= -->
+
+<style>
+    /* =========================================================
+       DASHBOARD HOME - BASE
+       ========================================================= */
+
+    .ekta-dashboard {
+        width: 100%;
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 2px 0 24px;
+        color: #142744;
+    }
+
+    .ekta-dashboard * {
+        box-sizing: border-box;
+    }
+
+    /* =========================================================
+       HEADER
+       ========================================================= */
+
+    .ekta-dashboard-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 18px;
+    }
+
+    .ekta-welcome-title {
+        margin: 0;
+        font-size: clamp(26px, 2.4vw, 38px);
+        line-height: 1.08;
+        font-weight: 800;
+        letter-spacing: -0.8px;
+        color: #142744;
+    }
+
+    .ekta-welcome-subtitle {
+        margin: 7px 0 0;
+        font-size: 14px;
+        color: #70819a;
+        font-weight: 500;
+    }
+
+    .ekta-date-box {
+        text-align: right;
+        white-space: nowrap;
+        padding-top: 3px;
+    }
+
+    .ekta-date {
+        font-size: 14px;
+        font-weight: 750;
+        color: #172945;
+    }
+
+    .ekta-time {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #77879d;
+        font-weight: 500;
+    }
+
+    /* =========================================================
+       TOP SUMMARY CARDS
+       ========================================================= */
+
+    .ekta-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .ekta-summary-card {
+        min-width: 0;
+        min-height: 108px;
+        background: #ffffff;
+        border: 1px solid #e2eaf2;
+        border-radius: 15px;
+        padding: 13px 14px 11px;
+        box-shadow: 0 4px 14px rgba(22, 43, 70, 0.045);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ekta-summary-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .ekta-summary-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        font-size: 15px;
+    }
+
+    .ekta-icon-blue {
+        background: #e7f2ff;
+        color: #2f7bc5;
+    }
+
+    .ekta-icon-green {
+        background: #e8f8ef;
+        color: #20a66a;
+    }
+
+    .ekta-icon-orange {
+        background: #fff1dc;
+        color: #ef9519;
+    }
+
+    .ekta-icon-purple {
+        background: #f0e8ff;
+        color: #8255dc;
+    }
+
+    .ekta-icon-red {
+        background: #ffe7e7;
+        color: #eb5050;
+    }
+
+    .ekta-summary-label {
+        margin: 0;
+        font-size: 11px;
+        color: #718198;
+        font-weight: 650;
+        line-height: 1.2;
+    }
+
+    .ekta-summary-value {
+        margin: 7px 0 1px;
+        font-size: 25px;
+        line-height: 1;
+        font-weight: 800;
+        color: #142744;
+        letter-spacing: -0.5px;
+    }
+
+    .ekta-summary-note {
+        margin: 0;
+        font-size: 10px;
+        color: #8a99ab;
+        font-weight: 500;
+        min-height: 13px;
+    }
+
+    .ekta-summary-bottom {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+        font-weight: 650;
+        color: #70819a;
+    }
+
+    .ekta-summary-bottom strong {
+        font-weight: 750;
+    }
+
+    .ekta-green-text {
+        color: #18a467;
+    }
+
+    .ekta-blue-text {
+        color: #2b7bd0;
+    }
+
+    .ekta-orange-text {
+        color: #e98b12;
+    }
+
+    .ekta-purple-text {
+        color: #8054d9;
+    }
+
+    .ekta-red-text {
+        color: #e64e4e;
+    }
+
+    /* =========================================================
+       MAIN 3-COLUMN ROW
+       ========================================================= */
+
+    .ekta-main-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr) minmax(260px, 0.88fr);
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .ekta-card {
+        background: #ffffff;
+        border: 1px solid #e2eaf2;
+        border-radius: 17px;
+        box-shadow: 0 4px 14px rgba(22, 43, 70, 0.045);
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .ekta-card-header {
+        height: 54px;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border-bottom: 1px solid #edf1f5;
+    }
+
+    .ekta-card-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 15px;
+        font-weight: 800;
+        color: #142744;
+        white-space: nowrap;
+    }
+
+    .ekta-card-title i {
+        color: #3b7fc2;
+        font-size: 14px;
+    }
+
+    .ekta-view-all {
+        border: 0;
+        background: transparent;
+        color: #2779cf;
+        font-size: 11px;
+        font-weight: 750;
+        cursor: pointer;
+        padding: 4px;
+    }
+
+    .ekta-view-all:hover {
+        text-decoration: underline;
+    }
+
+    /* =========================================================
+       EMPTY STATE
+       ========================================================= */
+
+    .ekta-empty {
+        min-height: 210px;
+        padding: 28px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #7b8ba0;
+    }
+
+    .ekta-empty-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: #f1f6fa;
+        color: #7b91a8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        font-size: 18px;
+    }
+
+    .ekta-empty-title {
+        font-size: 13px;
+        font-weight: 750;
+        color: #52657c;
+    }
+
+    .ekta-empty-text {
+        margin-top: 4px;
+        max-width: 280px;
+        font-size: 11px;
+        line-height: 1.5;
+        color: #91a0b1;
+    }
+
+    /* =========================================================
+       LIVE LOCATION
+       ========================================================= */
+
+    .ekta-map-area {
+        height: 250px;
+        position: relative;
+        background:
+            linear-gradient(90deg, rgba(65, 128, 175, .08) 1px, transparent 1px),
+            linear-gradient(rgba(65, 128, 175, .08) 1px, transparent 1px),
+            #f3f8fb;
+        background-size: 52px 52px;
+        overflow: hidden;
+    }
+
+    .ekta-map-area::after {
+        content: "";
+        position: absolute;
+        inset: 30px 20px;
+        border-radius: 45% 55% 48% 52%;
+        background: rgba(87, 159, 198, .055);
+        transform: rotate(-8deg);
+        pointer-events: none;
+    }
+
+    .ekta-map-empty {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .ekta-map-empty-box {
+        background: rgba(255,255,255,.94);
+        border: 1px solid #e1eaf0;
+        border-radius: 13px;
+        padding: 14px 18px;
+        text-align: center;
+        box-shadow: 0 6px 18px rgba(40,70,90,.08);
+    }
+
+    .ekta-map-empty-box i {
+        color: #3c7fc0;
+        font-size: 18px;
+        margin-bottom: 7px;
+    }
+
+    .ekta-map-empty-box strong {
+        display: block;
+        font-size: 12px;
+        color: #425873;
+    }
+
+    .ekta-map-empty-box span {
+        display: block;
+        margin-top: 3px;
+        font-size: 10px;
+        color: #8a9aac;
+    }
+
+    /* =========================================================
+       RECENT TRIPS
+       ========================================================= */
+
+    .ekta-trips-wrap {
+        overflow-x: auto;
+    }
+
+    .ekta-trips-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .ekta-trips-table th {
+        background: #f8fafc;
+        color: #6d7f95;
+        font-size: 9px;
+        font-weight: 750;
+        text-align: left;
+        padding: 10px 10px;
+        white-space: nowrap;
+    }
+
+    .ekta-trips-table td {
+        padding: 10px;
+        border-top: 1px solid #edf1f5;
+        font-size: 10px;
+        color: #52657d;
+        vertical-align: middle;
+    }
+
+    .ekta-trips-table th:nth-child(1),
+    .ekta-trips-table td:nth-child(1) {
+        width: 22%;
+    }
+
+    .ekta-trips-table th:nth-child(2),
+    .ekta-trips-table td:nth-child(2) {
+        width: 23%;
+    }
+
+    .ekta-trips-table th:nth-child(3),
+    .ekta-trips-table td:nth-child(3) {
+        width: 34%;
+    }
+
+    .ekta-trips-table th:nth-child(4),
+    .ekta-trips-table td:nth-child(4) {
+        width: 21%;
+    }
+
+    .ekta-truck-number {
+        font-weight: 750;
+        color: #344b67;
+    }
+
+    .ekta-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 7px;
+        border-radius: 999px;
+        font-size: 8px;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    .ekta-status-green {
+        background: #e4f7eb;
+        color: #158653;
+    }
+
+    .ekta-status-blue {
+        background: #e6f1ff;
+        color: #2877c5;
+    }
+
+    .ekta-status-orange {
+        background: #fff1dc;
+        color: #d98008;
+    }
+
+    .ekta-status-gray {
+        background: #edf1f5;
+        color: #66778c;
+    }
+
+    /* =========================================================
+       PENDING ACTIONS
+       ========================================================= */
+
+    .ekta-action-list {
+        padding: 2px 14px 7px;
+    }
+
+    .ekta-action-row {
+        min-height: 43px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        border-bottom: 1px solid #edf1f5;
+    }
+
+    .ekta-action-row:last-child {
+        border-bottom: 0;
+    }
+
+    .ekta-action-number {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: #f2f6fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #66809c;
+        font-size: 10px;
+        font-weight: 800;
+        flex: 0 0 auto;
+    }
+
+    .ekta-action-label {
+        flex: 1;
+        font-size: 10px;
+        color: #52657b;
+        font-weight: 650;
+    }
+
+    .ekta-action-arrow {
+        color: #8ea0b2;
+        font-size: 10px;
+    }
+
+
+    /* Driver App pending approvals — Dashboard Home only */
+    .ekta-driver-request {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 0;
+        border-bottom: 1px solid #edf1f5;
+    }
+
+    .ekta-driver-request:last-child {
+        border-bottom: 0;
+    }
+
+    .ekta-driver-request-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: #fff1f1;
+        color: #c91f2c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .ekta-driver-request-main {
+        min-width: 0;
+    }
+
+    .ekta-driver-request-title {
+        font-size: 11px;
+        line-height: 1.35;
+        font-weight: 800;
+        color: #26384c;
+    }
+
+    .ekta-driver-request-meta {
+        margin-top: 3px;
+        font-size: 9px;
+        line-height: 1.35;
+        color: #7c8da0;
+    }
+
+    .ekta-driver-status {
+        color: #c91f2c;
+        font-weight: 900;
+    }
+
+    .ekta-approve-btn {
+        border: 0;
+        border-radius: 9px;
+        padding: 8px 10px;
+        background: #158653;
+        color: #fff;
+        font-size: 9px;
+        font-weight: 850;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .ekta-approve-btn:disabled {
+        opacity: .55;
+        cursor: wait;
+    }
+
+    /* Compact, professional approval rows for the narrow dashboard card. */
+    .ekta-dashboard .ekta-compact-request,
+    .ekta-dashboard .ekta-driver-request {
+        display:flex;align-items:center;gap:8px;padding:12px 3px;
+        border-bottom:1px solid #e7edf4;background:transparent;
+        min-width:0;
+    }
+    .ekta-dashboard .ekta-driver-request-icon {display:none;}
+    .ekta-dashboard .ekta-driver-request-main {flex:1;min-width:0;}
+    .ekta-dashboard .ekta-driver-request-title {
+        font-size:12px;line-height:1.35;font-weight:750;color:#173653;
+        overflow-wrap:anywhere;
+    }
+    .ekta-dashboard .ekta-request-type {font-size:10px;color:#58718b;font-weight:650;margin-top:2px;}
+    .ekta-dashboard .ekta-driver-request-meta {font-size:10px;line-height:1.4;margin-top:3px;color:#71849b;overflow-wrap:anywhere;}
+    .ekta-dashboard .ekta-driver-status {display:block;font-size:10px;font-weight:650;color:#58718b;margin-top:2px;}
+    .ekta-dashboard .ekta-approve-btn {
+        flex:0 0 auto;max-width:94px;white-space:normal;text-align:center;
+        border-radius:7px;padding:8px 9px;font-size:10px;font-weight:750;
+        background:#177d59;line-height:1.25;
+    }
+
+    .ekta-dashboard .ekta-request-buttons {display:flex;flex-direction:column;gap:5px;flex:0 0 76px;}
+    .ekta-dashboard .ekta-request-buttons .ekta-approve-btn {width:100%;max-width:none;padding:7px 5px;}
+    .ekta-dashboard .ekta-reject-btn {width:100%;border:1px solid #efc8cd;border-radius:7px;background:#fff7f8;color:#bd3342;padding:6px 5px;font-size:10px;font-weight:750;cursor:pointer;}
+    .ekta-dashboard .ekta-reject-btn:disabled {opacity:.55;cursor:wait;}
+
+    .ekta-pending-error {
+        padding: 18px 8px;
+        text-align: center;
+        color: #b42318;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    /* =========================================================
+       BOTTOM ANALYTICS
+       ========================================================= */
+
+    .ekta-bottom-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .ekta-analytics-body {
+        padding: 15px;
+        min-height: 225px;
+    }
+
+    /* =========================================================
+       TRIP STATUS
+       ========================================================= */
+
+    .ekta-trip-status-layout {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        min-height: 190px;
+    }
+
+    .ekta-donut {
+        width: 142px;
+        height: 142px;
+        border-radius: 50%;
+        position: relative;
+        flex: 0 0 auto;
+        background: conic-gradient(
+            #dce7ef 0deg 360deg
+        );
+    }
+
+    .ekta-donut::after {
+        content: "";
+        position: absolute;
+        inset: 30px;
+        border-radius: 50%;
+        background: #ffffff;
+    }
+
+    .ekta-donut-center {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ekta-donut-number {
+        font-size: 25px;
+        font-weight: 800;
+        color: #142744;
+        line-height: 1;
+    }
+
+    .ekta-donut-label {
+        margin-top: 4px;
+        font-size: 9px;
+        color: #7c8da0;
+        font-weight: 650;
+    }
+
+    .ekta-legend {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ekta-legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 10px;
+        color: #62758b;
+    }
+
+    .ekta-legend-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+    }
+
+    .ekta-legend-name {
+        flex: 1;
+    }
+
+    .ekta-legend-value {
+        font-weight: 750;
+        color: #354b65;
+    }
+
+    /* =========================================================
+       REVENUE
+       ========================================================= */
+
+    .ekta-revenue-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .ekta-revenue-value {
+        font-size: 26px;
+        font-weight: 800;
+        color: #142744;
+        letter-spacing: -0.5px;
+    }
+
+    .ekta-revenue-period {
+        font-size: 10px;
+        color: #6f8197;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .ekta-chart {
+        height: 135px;
+        margin-top: 20px;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        border-bottom: 1px solid #dce5ed;
+        padding: 0 4px;
+    }
+
+    .ekta-chart-empty {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #92a1b2;
+        font-size: 10px;
+        text-align: center;
+    }
+
+    .ekta-bar {
+        flex: 1;
+        min-width: 10px;
+        background: #cfe2f3;
+        border-radius: 5px 5px 0 0;
+        position: relative;
+    }
+
+    .ekta-bar.current {
+        background: #3a7db9;
+    }
+
+    .ekta-month-labels {
+        display: flex;
+        gap: 8px;
+        padding: 7px 4px 0;
+    }
+
+    .ekta-month-label {
+        flex: 1;
+        text-align: center;
+        font-size: 8px;
+        color: #8292a5;
+    }
+
+    /* =========================================================
+       TOP PARTIES
+       ========================================================= */
+
+    .ekta-party-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 14px;
+    }
+
+    .ekta-party-name {
+        width: 62px;
+        flex: 0 0 62px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #50647c;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ekta-party-track {
+        flex: 1;
+        height: 8px;
+        background: #eaf1f6;
+        border-radius: 99px;
+        overflow: hidden;
+    }
+
+    .ekta-party-fill {
+        height: 100%;
+        border-radius: 99px;
+        background: #4e9bd9;
+    }
+
+    .ekta-party-value {
+        width: 76px;
+        flex: 0 0 76px;
+        text-align: right;
+        font-size: 9px;
+        font-weight: 750;
+        color: #435972;
+    }
+
+    /* =========================================================
+       LOADING
+       ========================================================= */
+
+    .ekta-loading {
+        min-height: 210px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #7c8ea3;
+        font-size: 11px;
+        gap: 8px;
+    }
+
+    .ekta-loading i {
+        color: #347bbb;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
+    @media (max-width: 1200px) {
+        .ekta-summary-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ekta-main-grid {
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+        }
+
+        .ekta-main-grid .ekta-card:last-child {
+            grid-column: 1 / -1;
+        }
+
+        .ekta-bottom-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 850px) {
+        .ekta-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .ekta-main-grid,
+        .ekta-bottom-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ekta-main-grid .ekta-card:last-child {
+            grid-column: auto;
+        }
+
+        .ekta-header {
+            flex-direction: column;
+        }
+
+        .ekta-date-box {
+            text-align: left;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .ekta-dashboard-header {
+            flex-direction: column;
+        }
+
+        .ekta-date-box {
+            text-align: left;
+        }
+
+        .ekta-summary-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+
+        .ekta-summary-card {
+            min-height: 101px;
+            padding: 11px;
+        }
+
+        .ekta-summary-value {
+            font-size: 22px;
+        }
+
+        .ekta-trip-status-layout {
+            flex-direction: column;
+            justify-content: center;
+        }
+    }
+
+/* =========================================================
+   2026 COMPACT DASHBOARD — EKTA TRANSPORT
+   ========================================================= */
+.ekta-dashboard{max-width:none;padding:0 0 18px;color:#10233f}
+.ekta-dashboard-header{align-items:center;margin-bottom:8px;gap:12px}
+.ekta-welcome-title{font-size:clamp(20px,1.65vw,28px);line-height:1.05;letter-spacing:-.55px}
+.ekta-welcome-subtitle{margin:3px 0 0;font-size:11px}
+.ekta-date-box{padding-top:0}.ekta-date{font-size:11px}.ekta-time{margin-top:2px;font-size:10px}
+.ekta-commandbar{display:flex;align-items:center;gap:10px;margin:0 0 9px}
+.ekta-global-search{height:38px;flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #dce6f0;border-radius:12px;padding:0 12px;box-shadow:0 3px 12px rgba(24,55,90,.035)}
+.ekta-global-search i{color:#7890aa;font-size:12px}.ekta-global-search input{width:100%;border:0!important;outline:0;background:transparent!important;color:#18304f;font-size:11px;padding:0!important}
+.ekta-key-hint{white-space:nowrap;font-size:9px;color:#7d8ea4}.ekta-key-hint kbd{border:1px solid #d9e3ed;background:#fff;border-radius:5px;padding:3px 5px;color:#425b76;font:700 9px/1 sans-serif;box-shadow:0 1px 2px rgba(20,40,60,.05)}
+.ekta-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-bottom:10px}
+.ekta-summary-card{min-height:78px;border-radius:13px;padding:10px 11px 8px;box-shadow:0 4px 16px rgba(25,48,77,.04)}
+.ekta-summary-icon{width:30px;height:30px;font-size:12px}.ekta-summary-label{font-size:9px}.ekta-summary-value{margin:4px 0 0;font-size:21px}.ekta-summary-bottom{margin-top:5px;font-size:8.5px}
+.ekta-main-grid{grid-template-columns:minmax(0,1.6fr) minmax(250px,.8fr) minmax(250px,.8fr);gap:10px;margin-bottom:10px}
+.ekta-card{border-radius:14px;box-shadow:0 4px 16px rgba(25,48,77,.04)}.ekta-card-header{height:42px;padding:0 12px}.ekta-card-title{gap:7px;font-size:12px}.ekta-card-title i{font-size:12px}.ekta-view-all{font-size:9px}
+.ekta-map-area{height:258px;background:#eef5f8}.ekta-map-area::after{display:none}.ekta-live-map{position:absolute;inset:0;z-index:1}.ekta-map-empty{z-index:2}.ekta-map-empty-box{font-size:10px}
+.ekta-bottom-grid{gap:10px}.ekta-analytics-body{padding:11px;min-height:190px}.ekta-empty{min-height:190px;padding:20px 14px}
+body.theme-dark .ekta-dashboard{color:#e5edf7}body.theme-dark .ekta-welcome-title,body.theme-dark .ekta-date,body.theme-dark .ekta-card-title,body.theme-dark .ekta-summary-value{color:#eef5ff}
+body.theme-dark .ekta-welcome-subtitle,body.theme-dark .ekta-time{color:#8fa1b8}body.theme-dark .ekta-card,body.theme-dark .ekta-summary-card,body.theme-dark .ekta-global-search{background:#111c2e;border-color:#27364b}
+body.theme-dark .ekta-global-search input{color:#e7eef8!important}body.theme-dark .ekta-card-header{border-color:#27364b}body.theme-dark .ekta-trips-table th{background:#162338;color:#94a6bd}body.theme-dark .ekta-map-area{background:#172538}
+body.theme-dark .ekta-map-empty-box{background:rgba(17,28,46,.94);border-color:#304158}body.theme-dark .ekta-map-empty-box strong{color:#dce8f6}body.theme-dark .ekta-map-empty-box span{color:#91a3ba}
+@media(max-width:1100px){.ekta-key-hint{display:none}.ekta-main-grid{grid-template-columns:1.4fr 1fr}.ekta-main-grid .ekta-card:last-child{grid-column:1/-1}}
+
+</style>
+
+
+<div class="ekta-dashboard">
+
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
+
+    <div class="ekta-dashboard-header">
+
+        <div>
+            <h1 class="ekta-welcome-title">
+                Welcome Back, <span id="ektaOwnerName">Owner</span>! 👋
+            </h1>
+
+            <p class="ekta-welcome-subtitle">
+                Here's what's happening with your fleet today.
+            </p>
+        </div>
+
+        <div class="ekta-date-box">
+            <div class="ekta-date" id="ektaCurrentDate">
+                Loading date...
+            </div>
+
+            <div class="ekta-time" id="ektaCurrentTime">
+                Loading time...
+            </div>
+        </div>
+
+    </div>
+
+    <div class="ekta-commandbar">
+        <label class="ekta-global-search" aria-label="Dashboard search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="ektaDashboardSearch" type="search" placeholder="Search trucks, trips, requests, parties..." autocomplete="off">
+        </label>
+    </div>
+
+
+    <!-- =====================================================
+         SUMMARY CARDS
+         ===================================================== -->
+
+    <div class="ekta-summary-grid">
+
+        <!-- TOTAL TRUCKS -->
+
+        <div class="ekta-summary-card">
+
+            <div class="ekta-summary-top">
+
+                <div>
+                    <p class="ekta-summary-label">
+                        Total Trucks
+                    </p>
+
+                    <div
+                        class="ekta-summary-value"
+                        id="ektaTotalTrucks"
+                    >
+                        —
+                    </div>
+                </div>
+
+                <div class="ekta-summary-icon ekta-icon-blue">
+                    <i class="fa-solid fa-truck"></i>
+                </div>
+
+            </div>
+
+            <div class="ekta-summary-bottom">
+                <span
+                    class="ekta-blue-text"
+                    id="ektaActiveTrucks"
+                >
+                    —
+                </span>
+
+                <span>|</span>
+
+                <span
+                    id="ektaInactiveTrucks"
+                >
+                    —
+                </span>
+            </div>
+
+        </div>
+
+
+        <!-- ON TRIP -->
+
+        <div class="ekta-summary-card">
+
+            <div class="ekta-summary-top">
+
+                <div>
+                    <p class="ekta-summary-label">
+                        On Trip
+                    </p>
+
+                    <div
+                        class="ekta-summary-value"
+                        id="ektaOnTrip"
+                    >
+                        —
+                    </div>
+                </div>
+
+                <div class="ekta-summary-icon ekta-icon-green">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+
+            </div>
+
+            <div class="ekta-summary-bottom">
+                <span
+                    class="ekta-green-text"
+                    id="ektaOnTripPercent"
+                >
+                    —
+                </span>
+            </div>
+
+        </div>
+
+
+        <!-- POD -->
+
+        <div class="ekta-summary-card">
+
+            <div class="ekta-summary-top">
+
+                <div>
+                    <p class="ekta-summary-label">
+                        POD Pending
+                    </p>
+
+                    <div
+                        class="ekta-summary-value"
+                        id="ektaPodPending"
+                    >
+                        —
+                    </div>
+                </div>
+
+                <div class="ekta-summary-icon ekta-icon-orange">
+                    <i class="fa-solid fa-file-lines"></i>
+                </div>
+
+            </div>
+
+            <div class="ekta-summary-bottom">
+                <span class="ekta-orange-text">
+                    —
+                </span>
+            </div>
+
+        </div>
+
+
+        <!-- PAYMENT -->
+
+        <div class="ekta-summary-card">
+
+            <div class="ekta-summary-top">
+
+                <div>
+                    <p class="ekta-summary-label">
+                        Payment Pending
+                    </p>
+
+                    <div
+                        class="ekta-summary-value"
+                        id="ektaPaymentPending"
+                    >
+                        —
+                    </div>
+                </div>
+
+                <div class="ekta-summary-icon ekta-icon-purple">
+                    <i class="fa-solid fa-indian-rupee-sign"></i>
+                </div>
+
+            </div>
+
+            <div class="ekta-summary-bottom">
+                <span class="ekta-purple-text">
+                    Database connection pending
+                </span>
+            </div>
+
+        </div>
+
+
+        <!-- MAINTENANCE -->
+
+        <div class="ekta-summary-card">
+
+            <div class="ekta-summary-top">
+
+                <div>
+                    <p class="ekta-summary-label">
+                        Under Maintenance
+                    </p>
+
+                    <div
+                        class="ekta-summary-value"
+                        id="ektaMaintenance"
+                    >
+                        —
+                    </div>
+                </div>
+
+                <div class="ekta-summary-icon ekta-icon-red">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+
+            </div>
+
+            <div class="ekta-summary-bottom">
+                <span class="ekta-red-text">
+                    Database connection pending
+                </span>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         MAIN ROW
+         ===================================================== -->
+
+    <div class="ekta-main-grid">
+
+
+        <!-- =================================================
+             FLEET LIVE LOCATION
+             ================================================= -->
+
+        <div class="ekta-card">
+
+            <div class="ekta-card-header">
+
+                <div class="ekta-card-title">
+                    <i class="fa-solid fa-location-dot"></i>
+                    Fleet Live Location
+                </div>
+
+                <button
+                    type="button"
+                    class="ekta-view-all"
+                    onclick="window.loadModule && window.loadModule('tracking.html')"
+                >
+                    View All
+                </button>
+
+            </div>
+
+            <div class="ekta-map-area" id="ektaDashboardMapArea">
+                <div id="ektaDashboardLiveMap" class="ekta-live-map" aria-label="Fleet live location map"></div>
+                <div class="ekta-map-empty" id="ektaDashboardMapState">
+                    <div class="ekta-map-empty-box">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        <strong>Loading live fleet map...</strong>
+                        <span>Live truck positions</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             RECENT TRIPS
+             ================================================= -->
+
+        <div class="ekta-card">
+
+            <div class="ekta-card-header">
+
+                <div class="ekta-card-title">
+                    <i class="fa-solid fa-road"></i>
+                    Recent Trips
+                </div>
+
+                <button
+                    type="button"
+                    class="ekta-view-all"
+                    onclick="window.loadModule && window.loadModule('pod.html')"
+                >
+                    View All
+                </button>
+
+            </div>
+
+            <div
+                id="ektaRecentTripsContainer"
+                class="ekta-trips-wrap"
+            >
+
+                <div class="ekta-loading">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    Loading trips...
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             PENDING ACTIONS
+             ================================================= -->
+
+        <div class="ekta-card">
+
+            <div class="ekta-card-header">
+
+                <div class="ekta-card-title">
+                    <i class="fa-solid fa-bell"></i>
+                    Pending Actions
+                </div>
+
+                <button
+                    type="button"
+                    class="ekta-view-all"
+                >
+                    View All
+                </button>
+
+            </div>
+
+            <div
+                id="ektaPendingActions"
+                class="ekta-action-list"
+            >
+
+                <div class="ekta-empty" style="min-height:210px;">
+                    <div class="ekta-empty-icon">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+
+                    <div class="ekta-empty-title">
+                        No pending data
+                    </div>
+
+                    <div class="ekta-empty-text">
+                        Pending actions will appear automatically
+                        when the relevant modules are connected.
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         BOTTOM ANALYTICS
+         ===================================================== -->
+
+    <div class="ekta-bottom-grid">
+
+
+        <!-- =================================================
+             TRIP STATUS
+             ================================================= -->
+
+        <div class="ekta-card">
+
+            <div class="ekta-card-header">
+
+                <div class="ekta-card-title">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    Trip Status Overview
+                </div>
+
+                <span
+                    id="ektaTripStatusPeriod"
+                    style="
+                        font-size:10px;
+                        color:#72849a;
+                        font-weight:700;
+                    "
+                >
+                    Today
+                </span>
+
+            </div>
+
+            <div class="ekta-analytics-body">
+
+                <div class="ekta-trip-status-layout">
+
+                    <div
+                        class="ekta-donut"
+                        id="ektaTripDonut"
+                    >
+
+                        <div class="ekta-donut-center">
+
+                            <div
+                                class="ekta-donut-number"
+                                id="ektaDonutTotal"
+                            >
+                                —
+                            </div>
+
+                            <div class="ekta-donut-label">
+                                Trucks
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="ekta-legend"
+                        id="ektaTripLegend"
+                    >
+
+                        <div class="ekta-legend-row">
+
+                            <span
+                                class="ekta-legend-dot"
+                                style="background:#22b573;"
+                            ></span>
+
+                            <span class="ekta-legend-name">
+                                On Trip
+                            </span>
+
+                            <span
+                                class="ekta-legend-value"
+                                id="ektaLegendOnTrip"
+                            >
+                                —
+                            </span>
+
+                        </div>
+
+
+                        <div class="ekta-legend-row">
+
+                            <span
+                                class="ekta-legend-dot"
+                                style="background:#3b83ca;"
+                            ></span>
+
+                            <span class="ekta-legend-name">
+                                Available
+                            </span>
+
+                            <span
+                                class="ekta-legend-value"
+                                id="ektaLegendAvailable"
+                            >
+                                —
+                            </span>
+
+                        </div>
+
+
+                        <div class="ekta-legend-row">
+
+                            <span
+                                class="ekta-legend-dot"
+                                style="background:#f19a1a;"
+                            ></span>
+
+                            <span class="ekta-legend-name">
+                                Maintenance
+                            </span>
+
+                            <span
+                                class="ekta-legend-value"
+                                id="ektaLegendMaintenance"
+                            >
+                                —
+                            </span>
+
+                        </div>
+
+
+                        <div class="ekta-legend-row">
+
+                            <span
+                                class="ekta-legend-dot"
+                                style="background:#8a9bad;"
+                            ></span>
+
+                            <span class="ekta-legend-name">
+                                Inactive
+                            </span>
+
+                            <span
+                                class="ekta-legend-value"
+                                id="ektaLegendInactive"
+                            >
+                                —
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             MONTHLY REVENUE
+             ================================================= -->
+
+        <div class="ekta-card">
+
+            <div class="ekta-card-header">
+
+                <div class="ekta-card-title">
+                    <i class="fa-solid fa-chart-column"></i>
+                    Monthly Revenue
+                </div>
+
+                <span
+                    id="ektaRevenueMonth"
+                    style="
+                        font-size:10px;
+                        color:#72849a;
+                        font-weight:700;
+                    "
+                >
+                    —
+                </span>
+
+            </div>
+
+            <div class="ekta-analytics-body">
+
+                <div class="ekta-revenue-top">
+
+                    <div
+                        class="ekta-revenue-value"
+                        id="ektaMonthlyRevenue"
+                    >
+                        —
+                    </div>
+
+                    <div class="ekta-revenue-period">
+                        Actual database data
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="ekta-chart"
+                    id="ektaRevenueChart"
+                >
+
+                    <div class="ekta-chart-empty">
+                        Revenue chart will appear when
+                        trip/freight data is available.
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="ekta-month-labels"
+                    id="ektaRevenueLabels"
+                ></div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             TOP PARTIES
+             ================================================= -->
+
+        <div class="ekta-card">
+
+            <div class="ekta-card-header">
+
+                <div class="ekta-card-title">
+                    <i class="fa-solid fa-users"></i>
+                    Top 5 Parties
+                </div>
+
+                <button
+                    type="button"
+                    class="ekta-view-all"
+                    onclick="window.loadModule && window.loadModule('parties.html')"
+                >
+                    View All
+                </button>
+
+            </div>
+
+            <div
+                class="ekta-analytics-body"
+                id="ektaTopParties"
+            >
+
+                <div class="ekta-empty">
+                    <div class="ekta-empty-icon">
+                        <i class="fa-solid fa-building"></i>
+                    </div>
+
+                    <div class="ekta-empty-title">
+                        No party data yet
+                    </div>
+
+                    <div class="ekta-empty-text">
+                        Top parties will appear here automatically
+                        when party billing data is available.
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     DASHBOARD HOME JAVASCRIPT
+     ========================================================= -->
+
+<script>
+
+(function () {
+
+    "use strict";
+
+
+    /* =========================================================
+       DATE & TIME
+       Browser current date/time
+       ========================================================= */
+
+    function updateEktaDateTime() {
+
+        const dateElement =
+            document.getElementById("ektaCurrentDate");
+
+        const timeElement =
+            document.getElementById("ektaCurrentTime");
+
+        if (!dateElement || !timeElement) {
+            return;
+        }
+
+        const now = new Date();
+
+        const dateFormatter =
+            new Intl.DateTimeFormat(
+                "en-IN",
+                {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                }
+            );
+
+        const timeFormatter =
+            new Intl.DateTimeFormat(
+                "en-IN",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true
+                }
+            );
+
+        dateElement.textContent =
+            dateFormatter.format(now);
+
+        timeElement.textContent =
+            timeFormatter.format(now);
+    }
+
+
+    /* =========================================================
+       OWNER NAME
+       Existing dashboard already stores ownerName locally.
+       ========================================================= */
+
+    function loadOwnerName() {
+
+        const element =
+            document.getElementById("ektaOwnerName");
+
+        if (!element) {
+            return;
+        }
+
+        const savedName =
+            localStorage.getItem("ownerName");
+
+        if (savedName && savedName.trim()) {
+            element.textContent =
+                savedName.trim();
+        } else {
+            element.textContent =
+                "Owner";
+        }
+    }
+
+
+    /* =========================================================
+       NUMBER FORMAT
+       ========================================================= */
+
+    function formatNumber(value) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            Number.isNaN(Number(value))
+        ) {
+            return "—";
+        }
+
+        return Number(value).toLocaleString("en-IN");
+    }
+
+
+    /* =========================================================
+       CURRENCY FORMAT
+       ========================================================= */
+
+    function formatCurrency(value) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            Number.isNaN(Number(value))
+        ) {
+            return "—";
+        }
+
+        return "₹" +
+            Number(value).toLocaleString(
+                "en-IN",
+                {
+                    maximumFractionDigits: 0
+                }
+            );
+    }
+
+
+    /* =========================================================
+       NORMALIZE STATUS
+       ========================================================= */
+
+    function normalizeStatus(status) {
+
+        return String(status || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[_-]+/g, " ");
+    }
+
+
+    /* =========================================================
+       LOAD DATABASE CONNECTOR
+       
+       owner-dashboard loads this module dynamically.
+       db.js itself needs supabase-js first.
+       ========================================================= */
+
+    function loadExternalScript(src) {
+
+        return new Promise(
+            function (resolve, reject) {
+
+                const existing =
+                    document.querySelector(
+                        'script[src="' + src + '"]'
+                    );
+
+                if (existing) {
+
+                    resolve();
+
+                    return;
+                }
+
+                const script =
+                    document.createElement("script");
+
+                script.src = src;
+
+                script.onload = function () {
+                    resolve();
+                };
+
+                script.onerror = function () {
+                    reject(
+                        new Error(
+                            "Unable to load " + src
+                        )
+                    );
+                };
+
+                document.body.appendChild(script);
+            }
+        );
+    }
+
+
+    /* =========================================================
+       FETCH REAL FLEET DATA — SUPABASE DIRECT
+       ---------------------------------------------------------
+       LOCKED SOURCE:
+       public.trucks
+
+       Fleet, Drivers and Parties already use window.supabaseClient.
+       Dashboard Home now reads the same trucks table directly.
+       ========================================================= */
+
+    async function loadFleetData() {
+
+        const supabaseClient =
+            window.supabaseClient;
+
+        if (
+            !supabaseClient ||
+            typeof supabaseClient.from !== "function"
+        ) {
+            console.warn(
+                "[DASHBOARD HOME] Supabase client is not available for Fleet."
+            );
+
+            return [];
+        }
+
+        const { data, error } =
+            await supabaseClient
+                .from("trucks")
+                .select("*")
+                .order(
+                    "truck_number",
+                    { ascending: true }
+                );
+
+        if (error) {
+
+            console.error(
+                "[DASHBOARD HOME] Fleet Supabase read failed:",
+                error
+            );
+
+            return [];
+        }
+
+        return Array.isArray(data)
+            ? data
+            : [];
+    }
+
+
+    /* =========================================================
+       FETCH REAL TRIP DATA — SUPABASE DIRECT
+       ---------------------------------------------------------
+       LOCKED SOURCE:
+       public.trips + public.trucks
+
+       Existing Dashboard UI is preserved. This loader adapts
+       Supabase trip rows to the display keys already used below.
+       ========================================================= */
+
+    async function loadTripData() {
+
+        const supabaseClient =
+            window.supabaseClient;
+
+        if (
+            !supabaseClient ||
+            typeof supabaseClient.from !== "function"
+        ) {
+            console.warn(
+                "[DASHBOARD HOME] Supabase client is not available for Trips."
+            );
+
+            throw new Error("Supabase unavailable for POD and trip counts.");
+        }
+
+        const [
+            tripResult,
+            truckResult
+        ] =
+            await Promise.all([
+
+                supabaseClient
+                    .from("trips")
+                    .select("*")
+                    .order(
+                        "created_at",
+                        { ascending: false }
+                    ),
+
+                supabaseClient
+                    .from("trucks")
+                    .select(
+                        "id,truck_number"
+                    )
+            ]);
+
+
+        if (tripResult.error) {
+
+            console.error(
+                "[DASHBOARD HOME] Trips Supabase read failed:",
+                tripResult.error
+            );
+
+            throw tripResult.error;
+        }
+
+
+        if (truckResult.error) {
+
+            console.error(
+                "[DASHBOARD HOME] Truck lookup read failed:",
+                truckResult.error
+            );
+        }
+
+
+        const truckNumberById =
+            new Map(
+                (truckResult.data || [])
+                    .map(
+                        truck => [
+                            String(truck.id),
+                            truck.truck_number || "—"
+                        ]
+                    )
+            );
+
+
+        return (tripResult.data || [])
+            .map(
+                trip => {
+
+                    const displayStatus =
+                        trip.tracking_status ||
+                        trip.trip_status ||
+                        "—";
+
+                    return {
+                        ...trip,
+
+                        lr_number:
+                            trip.lr_number ||
+                            trip.trip_number ||
+                            "—",
+
+                        truck_number:
+                            truckNumberById.get(
+                                String(trip.truck_id)
+                            ) ||
+                            "—",
+
+                        lr_status:
+                            trip.lr_status ||
+                            displayStatus,
+
+                        freight_amount:
+                            trip.freight_amount ??
+                            trip.revenue ??
+                            0
+                    };
+                }
+            );
+    }
+
+
+    /* POD Dashboard count: mirrors pod.js podRecords()/podStatus().
+       Only trips sent to POD are eligible; missing POD_STATUS means PENDING. */
+    function dashboardPODTag(notes, key) {
+        const escaped = key;
+        const match = String(notes ?? "").match(new RegExp("\\[TRACKING:" + escaped + "=([^\\]]+)\\]", "i"));
+        return match ? match[1].trim() : "";
+    }
+
+    function updateDashboardPODPending(trips) {
+        const countEl = document.getElementById("ektaPodPending");
+        if (!countEl) return;
+        const sent = trips.filter(t => dashboardPODTag(t.notes, "POD_SENT").toUpperCase() === "YES");
+        const pending = sent.filter(t => (dashboardPODTag(t.notes, "POD_STATUS") || "PENDING").toUpperCase() === "PENDING");
+        countEl.textContent = String(pending.length);
+        const foot = countEl.closest(".ekta-summary-card")?.querySelector(".ekta-summary-bottom span");
+        if (foot) foot.textContent = sent.length + " sent to POD";
+    }
+
+    /* =========================================================
+       UPDATE FLEET SUMMARY
+       ========================================================= */
+
+    function updateFleetSummary(fleet) {
+
+        const total =
+            fleet.length;
+
+        let onTrip = 0;
+        let active = 0;
+        let inactive = 0;
+        let available = 0;
+        let maintenance = 0;
+
+        fleet.forEach(
+            function (truck) {
+
+                const status =
+                    normalizeStatus(
+                        truck.status
+                    );
+
+                if (
+                    status.includes("trip") ||
+                    status.includes("dispatch")
+                ) {
+                    onTrip++;
+                    active++;
+                }
+
+                else if (
+                    status.includes("maint")
+                ) {
+                    maintenance++;
+                    active++;
+                }
+
+                else if (
+                    status.includes("inactive") ||
+                    status.includes("off")
+                ) {
+                    inactive++;
+                }
+
+                else {
+                    available++;
+                    active++;
+                }
+
+            }
+        );
+
+
+        const totalElement =
+            document.getElementById(
+                "ektaTotalTrucks"
+            );
+
+        const activeElement =
+            document.getElementById(
+                "ektaActiveTrucks"
+            );
+
+        const inactiveElement =
+            document.getElementById(
+                "ektaInactiveTrucks"
+            );
+
+        const onTripElement =
+            document.getElementById(
+                "ektaOnTrip"
+            );
+
+        const onTripPercentElement =
+            document.getElementById(
+                "ektaOnTripPercent"
+            );
+
+        const maintenanceElement =
+            document.getElementById(
+                "ektaMaintenance"
+            );
+
+
+        if (totalElement) {
+            totalElement.textContent =
+                formatNumber(total);
+        }
+
+        if (activeElement) {
+            activeElement.textContent =
+                formatNumber(active) +
+                " Active";
+        }
+
+        if (inactiveElement) {
+            inactiveElement.textContent =
+                formatNumber(inactive) +
+                " Inactive";
+        }
+
+        if (onTripElement) {
+            onTripElement.textContent =
+                formatNumber(onTrip);
+        }
+
+        if (onTripPercentElement) {
+
+            const percentage =
+                total > 0
+                    ? Math.round(
+                        (onTrip / total) * 100
+                    )
+                    : 0;
+
+            onTripPercentElement.textContent =
+                percentage + "% of fleet";
+        }
+
+        if (maintenanceElement) {
+            maintenanceElement.textContent =
+                maintenance > 0
+                    ? formatNumber(maintenance)
+                    : "—";
+        }
+
+
+        /* TRIP STATUS */
+
+        const donutTotal =
+            document.getElementById(
+                "ektaDonutTotal"
+            );
+
+        const legendOnTrip =
+            document.getElementById(
+                "ektaLegendOnTrip"
+            );
+
+        const legendAvailable =
+            document.getElementById(
+                "ektaLegendAvailable"
+            );
+
+        const legendMaintenance =
+            document.getElementById(
+                "ektaLegendMaintenance"
+            );
+
+        const legendInactive =
+            document.getElementById(
+                "ektaLegendInactive"
+            );
+
+
+        if (donutTotal) {
+            donutTotal.textContent =
+                formatNumber(total);
+        }
+
+        if (legendOnTrip) {
+            legendOnTrip.textContent =
+                formatNumber(onTrip);
+        }
+
+        if (legendAvailable) {
+            legendAvailable.textContent =
+                formatNumber(available);
+        }
+
+        if (legendMaintenance) {
+            legendMaintenance.textContent =
+                formatNumber(maintenance);
+        }
+
+        if (legendInactive) {
+            legendInactive.textContent =
+                formatNumber(inactive);
+        }
+
+
+        updateDonut(
+            total,
+            onTrip,
+            available,
+            maintenance,
+            inactive
+        );
+    }
+
+
+    /* =========================================================
+       DONUT CHART
+       ========================================================= */
+
+    function updateDonut(
+        total,
+        onTrip,
+        available,
+        maintenance,
+        inactive
+    ) {
+
+        const donut =
+            document.getElementById(
+                "ektaTripDonut"
+            );
+
+        if (!donut) {
+            return;
+        }
+
+        if (total <= 0) {
+
+            donut.style.background =
+                "conic-gradient(#dce7ef 0deg 360deg)";
+
+            return;
+        }
+
+        const onTripDeg =
+            (onTrip / total) * 360;
+
+        const availableDeg =
+            (available / total) * 360;
+
+        const maintenanceDeg =
+            (maintenance / total) * 360;
+
+        const firstEnd =
+            onTripDeg;
+
+        const secondEnd =
+            firstEnd + availableDeg;
+
+        const thirdEnd =
+            secondEnd + maintenanceDeg;
+
+        donut.style.background =
+            "conic-gradient(" +
+            "#22b573 0deg " +
+            firstEnd + "deg, " +
+            "#3b83ca " +
+            firstEnd + "deg " +
+            secondEnd + "deg, " +
+            "#f19a1a " +
+            secondEnd + "deg " +
+            thirdEnd + "deg, " +
+            "#8a9bad " +
+            thirdEnd + "deg 360deg)";
+    }
+
+
+    /* =========================================================
+       RECENT TRIPS
+       ========================================================= */
+
+    function renderRecentTrips(trips) {
+
+        const container =
+            document.getElementById(
+                "ektaRecentTripsContainer"
+            );
+
+        if (!container) {
+            return;
+        }
+
+
+        if (!trips.length) {
+
+            container.innerHTML = `
+                <div class="ekta-empty">
+                    <div class="ekta-empty-icon">
+                        <i class="fa-solid fa-road"></i>
+                    </div>
+
+                    <div class="ekta-empty-title">
+                        No trips yet
+                    </div>
+
+                    <div class="ekta-empty-text">
+                        Real trip records will appear here
+                        after LR entries are added.
+                    </div>
+                </div>
+            `;
+
+            return;
+        }
+
+
+        const latestTrips =
+            trips.slice(0, 5);
+
+
+        let rows = "";
+
+
+        latestTrips.forEach(
+            function (trip) {
+
+                const lr =
+                    trip.lr_number ||
+                    "—";
+
+                const truck =
+                    trip.truck_number ||
+                    "—";
+
+                const from =
+                    trip.from_location ||
+                    "—";
+
+                const to =
+                    trip.to_location ||
+                    "—";
+
+                const status =
+                    normalizeStatus(
+                        trip.lr_status
+                    );
+
+                let statusClass =
+                    "ekta-status-gray";
+
+                if (
+                    status.includes("deliver")
+                ) {
+                    statusClass =
+                        "ekta-status-green";
+                }
+
+                else if (
+                    status.includes("transit") ||
+                    status.includes("trip")
+                ) {
+                    statusClass =
+                        "ekta-status-blue";
+                }
+
+                else if (
+                    status.includes("dispatch")
+                ) {
+                    statusClass =
+                        "ekta-status-orange";
+                }
+
+
+                const displayStatus =
+                    trip.lr_status
+                        ? trip.lr_status
+                        : "—";
+
+
+                rows += `
+                    <tr>
+
+                        <td>
+                            ${escapeHtml(lr)}
+                        </td>
+
+                        <td>
+                            <span class="ekta-truck-number">
+                                ${escapeHtml(truck)}
+                            </span>
+                        </td>
+
+                        <td>
+                            ${escapeHtml(from)}
+                            →
+                            ${escapeHtml(to)}
+                        </td>
+
+                        <td>
+                            <span class="ekta-status ${statusClass}">
+                                ${escapeHtml(displayStatus)}
+                            </span>
+                        </td>
+
+                    </tr>
+                `;
+            }
+        );
+
+
+        container.innerHTML = `
+            <table class="ekta-trips-table">
+
+                <thead>
+                    <tr>
+                        <th>LR No.</th>
+                        <th>Truck No.</th>
+                        <th>From → To</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${rows}
+                </tbody>
+
+            </table>
+        `;
+    }
+
+
+    /* =========================================================
+       MONTHLY REVENUE
+       
+       Uses actual Supabase trips freight_amount.
+       No data = no fake chart.
+       ========================================================= */
+
+    function updateMonthlyRevenue(trips) {
+
+        const now =
+            new Date();
+
+        const currentYear =
+            now.getFullYear();
+
+        const currentMonth =
+            now.getMonth();
+
+
+        const currentMonthTrips =
+            trips.filter(
+                function (trip) {
+
+                    if (!trip.created_at) {
+                        return false;
+                    }
+
+                    const date =
+                        new Date(
+                            trip.created_at
+                        );
+
+                    return (
+                        date.getFullYear() ===
+                        currentYear &&
+                        date.getMonth() ===
+                        currentMonth
+                    );
+                }
+            );
+
+
+        let total =
+            0;
+
+
+        currentMonthTrips.forEach(
+            function (trip) {
+
+                const amount =
+                    Number(
+                        trip.freight_amount
+                    );
+
+                if (!Number.isNaN(amount)) {
+                    total += amount;
+                }
+
+            }
+        );
+
+
+        const revenueElement =
+            document.getElementById(
+                "ektaMonthlyRevenue"
+            );
+
+        const monthElement =
+            document.getElementById(
+                "ektaRevenueMonth"
+            );
+
+
+        if (revenueElement) {
+
+            revenueElement.textContent =
+                currentMonthTrips.length > 0
+                    ? formatCurrency(total)
+                    : "—";
+        }
+
+
+        if (monthElement) {
+
+            monthElement.textContent =
+                new Intl.DateTimeFormat(
+                    "en-IN",
+                    {
+                        month: "long",
+                        year: "numeric"
+                    }
+                ).format(now);
+        }
+
+
+        renderRevenueChart(trips);
+    }
+
+
+    /* =========================================================
+       REVENUE CHART
+       ========================================================= */
+
+    function renderRevenueChart(trips) {
+
+        const chart =
+            document.getElementById(
+                "ektaRevenueChart"
+            );
+
+        const labels =
+            document.getElementById(
+                "ektaRevenueLabels"
+            );
+
+        if (!chart || !labels) {
+            return;
+        }
+
+
+        const monthlyTotals =
+            new Array(12).fill(0);
+
+
+        trips.forEach(
+            function (trip) {
+
+                if (!trip.created_at) {
+                    return;
+                }
+
+                const date =
+                    new Date(
+                        trip.created_at
+                    );
+
+                const amount =
+                    Number(
+                        trip.freight_amount
+                    );
+
+                if (
+                    date.getFullYear() ===
+                    new Date().getFullYear() &&
+                    !Number.isNaN(amount)
+                ) {
+
+                    monthlyTotals[
+                        date.getMonth()
+                    ] += amount;
+                }
+
+            }
+        );
+
+
+        const hasRevenue =
+            monthlyTotals.some(
+                value => value > 0
+            );
+
+
+        if (!hasRevenue) {
+
+            chart.innerHTML = `
+                <div class="ekta-chart-empty">
+                    No revenue data available yet.
+                </div>
+            `;
+
+            labels.innerHTML = "";
+
+            return;
+        }
+
+
+        const maxValue =
+            Math.max(...monthlyTotals);
+
+
+        const monthNames = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec"
+        ];
+
+
+        chart.innerHTML = "";
+
+        labels.innerHTML = "";
+
+
+        monthlyTotals.forEach(
+            function (value, index) {
+
+                const bar =
+                    document.createElement("div");
+
+                bar.className =
+                    "ekta-bar" +
+                    (
+                        index ===
+                        new Date().getMonth()
+                            ? " current"
+                            : ""
+                    );
+
+
+                const height =
+                    maxValue > 0
+                        ? Math.max(
+                            4,
+                            (value / maxValue) * 100
+                        )
+                        : 0;
+
+
+                bar.style.height =
+                    height + "%";
+
+
+                bar.title =
+                    monthNames[index] +
+                    ": " +
+                    formatCurrency(value);
+
+
+                chart.appendChild(bar);
+
+
+                const label =
+                    document.createElement("div");
+
+                label.className =
+                    "ekta-month-label";
+
+                label.textContent =
+                    monthNames[index];
+
+                labels.appendChild(label);
+            }
+        );
+    }
+
+
+    /* =========================================================
+       ESCAPE HTML
+       ========================================================= */
+
+    function escapeHtml(value) {
+
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+
+
+    /* =========================================================
+       DRIVER APP PENDING REQUESTS — DASHBOARD HOME
+       ---------------------------------------------------------
+       Reads public.driver_status_requests.
+       One-click Approve calls public.approve_driver_status_request.
+       Official trips.tracking_status is changed only by that RPC.
+       ========================================================= */
+
+    async function loadDriverPendingRequests() {
+
+        const supabaseClient = window.supabaseClient;
+
+        if (!supabaseClient || typeof supabaseClient.from !== "function") {
+            throw new Error("Supabase client unavailable — cannot verify driver requests.");
+        }
+
+        const [requestResult, truckResult] = await Promise.all([
+            supabaseClient
+                .from("driver_status_requests")
+                .select("*")
+                .eq("request_status", "PENDING")
+                .order("requested_at", { ascending: false }),
+
+            supabaseClient
+                .from("trucks")
+                .select("id,truck_number")
+        ]);
+
+        if (requestResult.error) throw requestResult.error;
+        if (truckResult.error) throw truckResult.error;
+
+        const truckMap = new Map(
+            (truckResult.data || []).map(
+                truck => [String(truck.id), truck.truck_number]
+            )
+        );
+
+        // Driver-app trip status approvals only; never mix with program,
+        // diesel, maintenance, or other notifications.
+        const allowedStatuses = new Set(["LOADING", "RUNNING", "REPORTING", "EMPTY"]);
+        return (requestResult.data || [])
+          .filter(request => allowedStatuses.has(String(request.requested_status || "").trim().toUpperCase()))
+          .map(request => ({
+            ...request,
+            truck_number:
+                truckMap.get(String(request.truck_id)) ||
+                "Truck"
+        }));
+    }
+
+
+    function formatDriverRequestTime(value) {
+
+        if (!value) return "";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return "";
+        }
+
+        return date.toLocaleString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+    }
+
+
+    function renderDriverPendingRequests(requests) {
+
+        const container =
+            document.getElementById("ektaPendingActions");
+
+        if (!container) return;
+
+        if (!Array.isArray(requests) || requests.length === 0) {
+
+            container.innerHTML = `
+                <div class="ekta-empty" style="min-height:210px;">
+                    <div class="ekta-empty-icon">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div class="ekta-empty-title">
+                        No pending approvals
+                    </div>
+                    <div class="ekta-empty-text">
+                        Driver App requests will appear here automatically.
+                    </div>
+                </div>
+            `;
+
+            return;
+        }
+
+        container.innerHTML = requests.map(
+            function (request) {
+
+                const status =
+                    String(request.requested_status || "")
+                        .trim()
+                        .toUpperCase();
+
+                const truck =
+                    escapeHtml(request.truck_number || "Truck");
+
+                const time =
+                    escapeHtml(
+                        formatDriverRequestTime(
+                            request.requested_at ||
+                            request.created_at
+                        )
+                    );
+
+                const message =
+                    escapeHtml(request.driver_message || "");
+
+                return `
+                    <div class="ekta-driver-request"
+                         data-request-id="${escapeHtml(request.id)}">
+
+                        <div class="ekta-driver-request-icon">
+                            <i class="fa-solid fa-truck"></i>
+                        </div>
+
+                        <div class="ekta-driver-request-main">
+                            <div class="ekta-driver-request-title">
+                                ${truck}
+                                <span class="ekta-driver-status">
+                                    ${escapeHtml(status)}
+                                </span>
+                            </div>
+
+                            <div class="ekta-driver-request-meta">
+                                ${message || "Driver status update"}
+                                ${time ? " • " + time : ""}
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="ekta-approve-btn"
+                            onclick="window.ektaApproveDriverRequest('${escapeHtml(request.id)}', this)"
+                        >
+                            Approve
+                        </button>
+
+                    </div>
+                `;
+            }
+        ).join("");
+    }
+
+
+    // New Program requests use a separate table from trip-status requests.
+    // Tracking treats both PENDING and OPENED as actionable.
+    async function loadDashboardProgramRequests() {
+        const db = window.supabaseClient;
+        if (!db || typeof db.from !== "function") throw new Error("Supabase client unavailable.");
+        const [requests, trucks, drivers] = await Promise.all([
+            db.from("driver_program_requests").select("*")
+                .in("request_status", ["PENDING", "OPENED"])
+                .order("requested_at", {ascending:false}),
+            db.from("trucks").select("id,truck_number"),
+            db.from("drivers").select("id,name,driver_code")
+        ]);
+        for (const r of [requests,trucks,drivers]) if(r.error) throw r.error;
+        const truckMap = new Map((trucks.data||[]).map(x=>[String(x.id),x.truck_number]));
+        const driverMap = new Map((drivers.data||[]).map(x=>[String(x.id),x.name||x.driver_code]));
+        return (requests.data||[]).map(x=>({
+            ...x,
+            truck_number:truckMap.get(String(x.truck_id))||"Truck",
+            driver_name:driverMap.get(String(x.driver_id))||"Driver"
+        }));
+    }
+
+    function renderDashboardProgramRequests(programs) {
+        return programs.map(req => {
+            const state=String(req.request_status||"PENDING").toUpperCase();
+            const time=escapeHtml(formatDriverRequestTime(req.requested_at||req.created_at));
+            const label=state==="OPENED"?"Set Program":"Approve";
+            return `<div class="ekta-driver-request ekta-compact-request" data-program-request-id="${escapeHtml(req.id)}">
+                <div class="ekta-driver-request-main">
+                    <div class="ekta-driver-request-title">${escapeHtml(req.truck_number||"Truck")}</div>
+                    <div class="ekta-request-type">New Program · ${escapeHtml(state)}</div>
+                    <div class="ekta-driver-request-meta">${escapeHtml(req.driver_name||"Driver")}${time?' · '+time:''}</div>
+                </div>
+                <div class="ekta-request-buttons">
+                    <button type="button" class="ekta-approve-btn" onclick="window.ektaHandleProgramRequest('${escapeHtml(req.id)}', '${state}', this)">${label}</button>
+                    <button type="button" class="ekta-reject-btn" onclick="window.ektaRejectProgramRequest('${escapeHtml(req.id)}', this)">Reject</button>
+                </div>
+            </div>`;
+        }).join("");
+    }
+
+    // Tracking's program workflow is different from trip-status approval.
+    // Opening a request does NOT create a trip or set RUNNING.
+    window.ektaHandleProgramRequest=async function(id,state,button){
+        const db=window.supabaseClient;
+        if(!db||typeof db.rpc!=="function"){alert("Supabase connection unavailable.");return;}
+        if(state==="OPENED"){
+            if(typeof window.loadModule==="function")window.loadModule("tracking.html");
+            else alert("Open Tracking to set the program details.");
+            return;
+        }
+        if(!window.confirm("Approve this New Program request? You will still need to set the program in Tracking before the truck can run."))return;
+        const old=button?.textContent||"Approve";
+        if(button){button.disabled=true;button.textContent="Working...";}
+        try{
+            const r=await db.rpc("open_driver_program_request",{p_request_id:id});
+            if(r.error)throw r.error;
+            if(r.data?.success===false)throw new Error(r.data.message||"Request could not be opened.");
+            await refreshDriverPendingRequests();
+        }catch(e){
+            console.error("[DASHBOARD HOME] Program approval failed:",e);
+            alert("Program approval failed: "+(e.message||"Database error"));
+            if(button){button.disabled=false;button.textContent=old;}
+        }
+    };
+
+    // Use exactly the same rejection RPC as Tracking notifications.
+    window.ektaRejectProgramRequest=async function(id,button){
+        const db=window.supabaseClient;
+        if(!db||typeof db.rpc!=="function"){alert("Supabase connection unavailable.");return;}
+        if(!window.confirm("Reject this New Program request?"))return;
+        const old=button?.textContent||"Reject";
+        const row=button?.closest(".ekta-driver-request");
+        const buttons=row?.querySelectorAll("button")||[];
+        buttons.forEach(b=>b.disabled=true);
+        if(button)button.textContent="Rejecting...";
+        try{
+            const r=await db.rpc("reject_driver_program_request",{p_request_id:id});
+            if(r.error)throw r.error;
+            if(r.data?.success===false)throw new Error(r.data.message||"Program request could not be rejected.");
+            await refreshDriverPendingRequests();
+        }catch(e){
+            console.error("[DASHBOARD HOME] Program rejection failed:",e);
+            alert("Program rejection failed: "+(e.message||"Database error"));
+            buttons.forEach(b=>b.disabled=false);
+            if(button)button.textContent=old;
+        }
+    };
+
+    async function refreshDriverPendingRequests() {
+        const container=document.getElementById("ektaPendingActions");
+        if(!container)return;
+        const [statusResult,programResult]=await Promise.allSettled([
+            loadDriverPendingRequests(),loadDashboardProgramRequests()
+        ]);
+        const statusOk=statusResult.status==="fulfilled";
+        const programOk=programResult.status==="fulfilled";
+        if(!statusOk)console.error("[DASHBOARD HOME] Status requests failed:",statusResult.reason);
+        if(!programOk)console.error("[DASHBOARD HOME] Program requests failed:",programResult.reason);
+        if(!statusOk&&!programOk){
+            container.innerHTML='<div class="ekta-pending-error">Pending requests could not be loaded. Check Supabase permissions.</div>';
+            return;
+        }
+        const status=statusOk?statusResult.value:[];
+        const programs=programOk?programResult.value:[];
+        // Preserve existing status-request card and Approve RPC behavior.
+        renderDriverPendingRequests(status);
+        const statusHtml=status.length?container.innerHTML:"";
+        const programHtml=renderDashboardProgramRequests(programs);
+        const warning=(!statusOk||!programOk)?'<div class="ekta-pending-error">Some request types could not be loaded. Check Supabase permissions.</div>':"";
+        if(statusHtml||programHtml){container.innerHTML=programHtml+statusHtml+warning;}
+        else if(warning){container.innerHTML=warning;}
+    }
+
+    window.ektaApproveDriverRequest =
+        async function (requestId, button) {
+
+            const supabaseClient =
+                window.supabaseClient;
+
+            if (
+                !supabaseClient ||
+                typeof supabaseClient.rpc !== "function"
+            ) {
+                alert("Database connection is not available.");
+                return;
+            }
+
+            if (button) {
+                button.disabled = true;
+                button.textContent = "APPROVING...";
+            }
+
+            try {
+
+                const { data, error } =
+                    await supabaseClient.rpc(
+                        "approve_driver_status_request",
+                        {
+                            p_request_id: requestId
+                        }
+                    );
+
+                if (error) throw error;
+                if (data && typeof data === "object" && data.success === false) {
+                    throw new Error(data.message || data.error || "Approval was not completed.");
+                }
+
+                await refreshDriverPendingRequests();
+
+            } catch (error) {
+
+                console.error(
+                    "[DASHBOARD HOME] Driver request approval failed:",
+                    error
+                );
+
+                alert(
+                    error && error.message
+                        ? error.message
+                        : "Approval failed."
+                );
+
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = "Approve";
+                }
+            }
+        };
+
+
+
+    /* =========================================================
+       DASHBOARD LIVE MAP — SAME GPS TABLE AS LIVE TRACKING
+       ========================================================= */
+    const DASHBOARD_TRACKING_MAPS_KEY = 'AIzaSyD915ecFgXCIhUHV0G8F_NJ__fQqHYG9WI';
+
+    // Dashboard Home reads the same GPS source as Live Tracking:
+    // gps_locations.vehicle_number -> trucks.truck_number.
+    // truck_locations is a fallback for trucks without a GPS provider row.
+    async function loadDashboardLocations() {
+        const client = window.supabaseClient;
+        if (!client || typeof client.from !== "function") throw new Error("Supabase connection unavailable.");
+        const truckResult = await client.from("trucks").select("id,truck_number");
+        if (truckResult.error) throw truckResult.error;
+        const fleet = truckResult.data || [];
+        const valid = x => {
+            const lat=Number(x.latitude), lng=Number(x.longitude);
+            return Number.isFinite(lat)&&Number.isFinite(lng)&&lat!==0&&lng!==0
+                && Math.abs(lat)<=90&&Math.abs(lng)<=180;
+        };
+        const byVehicle = new Map();
+        // Match Live Tracking: query latest GPS row for each fleet vehicle,
+        // not the first 500 historical rows across all vehicles.
+        const jobs = fleet.filter(t=>t.truck_number).map(async t => {
+            const r = await client.from("gps_locations")
+                .select("vehicle_number,latitude,longitude,recorded_at")
+                .eq("vehicle_number",String(t.truck_number).trim().toUpperCase())
+                .order("recorded_at",{ascending:false}).limit(1);
+            if (r.error) return {error:r.error,truck:t};
+            return {truck:t,row:r.data?.[0]};
+        });
+        const results = await Promise.all(jobs);
+        let gpsFailure = null;
+        for(const item of results){
+            if(item.error){gpsFailure=item.error;continue;}
+            if(item.row && valid(item.row)){
+                const vehicle=String(item.truck.truck_number).trim().toUpperCase();
+                byVehicle.set(vehicle,{...item.row,truck_number:item.truck.truck_number,
+                    latitude:Number(item.row.latitude),longitude:Number(item.row.longitude)});
+            }
+        }
+        if(gpsFailure) console.warn("[DASHBOARD HOME] GPS read warning:",gpsFailure.message);
+        // Fallback to legacy location rows only for trucks with no usable GPS.
+        const missing=fleet.filter(t=>!byVehicle.has(String(t.truck_number||"").trim().toUpperCase()));
+        if(missing.length){
+            const r=await client.from("truck_locations").select("*")
+                .order("recorded_at",{ascending:false}).limit(1000);
+            if(r.error) console.warn("[DASHBOARD HOME] Legacy locations unavailable:",r.error.message);
+            else {
+                const truckById=new Map(fleet.map(t=>[String(t.id),t]));
+                for(const row of r.data||[]){
+                    const truck=truckById.get(String(row.truck_id));
+                    if(!truck||!valid(row))continue;
+                    const vehicle=String(truck.truck_number||"").trim().toUpperCase();
+                    if(!byVehicle.has(vehicle))byVehicle.set(vehicle,{
+                        ...row,truck_number:truck.truck_number,
+                        latitude:Number(row.latitude),longitude:Number(row.longitude)
+                    });
+                }
+            }
+        }
+        // Active truck-driver assignment (read only). Never guess driver names.
+        try {
+            const assignments=await client.from("truck_driver_assignments")
+                .select("truck_id,driver_id,status,created_at").eq("status","Active")
+                .order("created_at",{ascending:false});
+            if(assignments.error) throw assignments.error;
+            const chosen=new Map();
+            for(const a of assignments.data||[]) if(!chosen.has(String(a.truck_id))) chosen.set(String(a.truck_id),a.driver_id);
+            const ids=[...new Set([...chosen.values()].filter(Boolean))];
+            if(ids.length){
+                const drivers=await client.from("drivers").select("id,name").in("id",ids);
+                if(drivers.error) throw drivers.error;
+                const names=new Map((drivers.data||[]).map(d=>[String(d.id),String(d.name||"").trim()]));
+                for(const t of fleet){
+                    const v=String(t.truck_number||"").trim().toUpperCase();
+                    const point=byVehicle.get(v);
+                    if(point) point.driver_name=names.get(String(chosen.get(String(t.id))))||"";
+                }
+            }
+        }catch(e){console.warn("[DASHBOARD HOME] Driver names unavailable:",e.message);}
+        if(gpsFailure && !byVehicle.size) throw new Error("Live GPS could not be read: "+gpsFailure.message);
+        return [...byVehicle.values()];
+    }
+
+    function dashboardGoogleMapsKey() {
+        return String(window.EKTA_GOOGLE_MAPS_API_KEY || DASHBOARD_TRACKING_MAPS_KEY).trim();
+    }
+
+    function loadDashboardGoogleMaps() {
+        if(window.google?.maps?.Map) return Promise.resolve(window.google.maps);
+        if(window.__ektaDashboardMapsPromise) return window.__ektaDashboardMapsPromise;
+        const key=dashboardGoogleMapsKey();
+        if(!key) return Promise.reject(new Error("Google Maps API key unavailable."));
+        window.__ektaDashboardMapsPromise=new Promise((resolve,reject)=>{
+            const existing=document.getElementById("ektaGoogleMapsSharedApi");
+            if(existing){
+                if(window.google?.maps?.Map){resolve(window.google.maps);return;}
+                existing.addEventListener("load",()=>resolve(window.google.maps),{once:true});
+                existing.addEventListener("error",()=>reject(new Error("Google Maps could not load.")),{once:true});
+                return;
+            }
+            const script=document.createElement("script");
+            script.id="ektaGoogleMapsSharedApi";
+            script.async=true;
+            script.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(key)+"&v=weekly";
+            script.onload=()=>window.google?.maps?.Map?resolve(window.google.maps):reject(new Error("Google Maps API unavailable."));
+            script.onerror=()=>reject(new Error("Google Maps failed to load."));
+            document.head.appendChild(script);
+        }).catch(err=>{window.__ektaDashboardMapsPromise=null;throw err;});
+        return window.__ektaDashboardMapsPromise;
+    }
+
+    async function renderDashboardLiveMap() {
+        const canvas=document.getElementById("ektaDashboardLiveMap");
+        const state=document.getElementById("ektaDashboardMapState");
+        if(!canvas)return;
+        const showState=(title,description)=>{
+            if(!state)return;
+            state.style.display="flex";
+            const heading=state.querySelector("strong"),detail=state.querySelector("span");
+            if(heading)heading.textContent=title;
+            if(detail)detail.textContent=description;
+        };
+        try{
+            const [maps,rows]=await Promise.all([loadDashboardGoogleMaps(),loadDashboardLocations()]);
+            if(!canvas.isConnected)return;
+            const india={lat:22.75,lng:79.1};
+            const map=new maps.Map(canvas,{center:india,zoom:5,mapTypeControl:false,
+                streetViewControl:false,fullscreenControl:true,gestureHandling:"cooperative"});
+            if(!rows.length){showState("No GPS locations available","Truck positions will appear when GPS data is received.");return;}
+            if(state)state.style.display="none";
+            const bounds=new maps.LatLngBounds();
+            const escapeXml=value=>String(value||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]));
+            const markers=[];
+            function markerIcon(row,expanded){
+                const number=escapeXml(row.truck_number||row.vehicle_number||"Truck").slice(0,24);
+                const driver=escapeXml(row.driver_name||"Driver not assigned").slice(0,28);
+                const width=expanded?180:116, height=expanded?54:34;
+                // Construct SVG without literal markup in the HTML script source.
+                // This prevents accidental HTML parsing of generated marker markup.
+                const lt=String.fromCharCode(60), gt=String.fromCharCode(62);
+                const parts=[
+                    'svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'"',
+                    'rect x="1" y="1" width="'+(width-2)+'" height="'+(height-9)+'" rx="8" fill="white" stroke="#2574ad" stroke-width="1.5"/',
+                    'rect x="1" y="1" width="5" height="'+(height-9)+'" rx="2" fill="#159a67"/',
+                    'text x="'+(width/2)+'" y="'+(expanded?19:18)+'" font-family="Arial" font-size="12" font-weight="bold" text-anchor="middle" fill="#193550"'+gt+number+lt+'/text',
+                ];
+                if(expanded)parts.push('text x="'+(width/2)+'" y="35" font-family="Arial" font-size="11" text-anchor="middle" fill="#516780"'+gt+driver+lt+'/text');
+                parts.push('path d="M '+(width/2-6)+' '+(height-9)+' L '+(width/2)+' '+(height-1)+' L '+(width/2+6)+' '+(height-9)+'" fill="white" stroke="#2574ad"/');
+                const svg=lt+parts[0]+gt+parts.slice(1).map(part=>lt+part+gt).join('')+lt+'/svg'+gt;
+                return {url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
+                    size:new maps.Size(width,height),anchor:new maps.Point(width/2,height-1)};
+            }
+            rows.forEach(row=>{
+                const position={lat:row.latitude,lng:row.longitude};
+                bounds.extend(position);
+                const title=[row.truck_number||row.vehicle_number,row.driver_name||"Driver not assigned"].filter(Boolean).join(" — ");
+                markers.push({row,marker:new maps.Marker({position,map,title,icon:markerIcon(row,false)})});
+            });
+            map.addListener("zoom_changed",()=>{
+                const expanded=map.getZoom()>=7;
+                for(const item of markers)item.marker.setIcon(markerIcon(item.row,expanded));
+            });
+            if(rows.length===1){map.setCenter(bounds.getCenter());map.setZoom(10);}
+            else map.fitBounds(bounds,32);
+        }catch(error){
+            console.warn("[DASHBOARD HOME] Live map unavailable:",error);
+            showState("Live map unavailable",error?.message||"Please verify GPS and Maps access.");
+        }
+    }
+
+    function enableDashboardKeyboardScroll(){
+        const host=document.getElementById("mainContentArea");
+        if(!host || host.dataset.ektaKeyboardScroll==="1") return;
+        host.dataset.ektaKeyboardScroll="1";
+        host.setAttribute("tabindex","0");
+        host.addEventListener("keydown",function(event){
+            const tag=(event.target?.tagName||"").toLowerCase();
+            if(event.target!==host) return;
+            if(event.key==="ArrowDown"||event.key==="ArrowUp"||event.key==="PageDown"||event.key==="PageUp"||event.key==="Home"||event.key==="End"){
+                event.preventDefault();
+                let top=host.scrollTop;
+                if(event.key==="ArrowDown") top+=72;if(event.key==="ArrowUp") top-=72;
+                if(event.key==="PageDown") top+=Math.max(300,host.clientHeight*.78);if(event.key==="PageUp") top-=Math.max(300,host.clientHeight*.78);
+                if(event.key==="Home") top=0;if(event.key==="End") top=host.scrollHeight;
+                host.scrollTo({top,behavior:"smooth"});
+            }
+        });
+        host.addEventListener("pointerdown",e=>{if(!e.target.closest("input,textarea,select,button,a")) host.focus({preventScroll:true});});
+    }
+
+    function enableDashboardSearch(){
+        const input=document.getElementById("ektaDashboardSearch");if(!input)return;
+        input.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const q=input.value.trim().toLowerCase();if(!q)return;const cards=[...document.querySelectorAll(".ekta-card,.ekta-summary-card")];const hit=cards.find(c=>c.textContent.toLowerCase().includes(q));if(hit){hit.scrollIntoView({behavior:"smooth",block:"center"});hit.setAttribute("tabindex","-1");hit.focus({preventScroll:true});}});
+    }
+
+    /* =========================================================
+       START DASHBOARD
+       ========================================================= */
+
+    async function startDashboardHome() {
+
+        updateEktaDateTime();
+
+        setInterval(
+            updateEktaDateTime,
+            1000
+        );
+
+        loadOwnerName();
+        enableDashboardKeyboardScroll();
+        enableDashboardSearch();
+
+
+        try {
+
+            /*
+             * Load Supabase JS first.
+             */
+
+            await loadExternalScript(
+                "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+            );
+
+
+            /*
+             * Load our existing central DB connector.
+             */
+
+            await loadExternalScript(
+                "db.js"
+            );
+
+
+            /*
+             * Give browser one small tick
+             * for connector initialization.
+             */
+
+            await new Promise(
+                resolve =>
+                    setTimeout(resolve, 50)
+            );
+
+
+            const [
+                fleet,
+                trips
+            ] =
+                await Promise.all([
+                    loadFleetData(),
+                    loadTripData()
+                ]);
+
+            /*
+             * DRIVER APP PENDING APPROVALS
+             */
+
+            await refreshDriverPendingRequests();
+            if (!window.__ektaHomeDriverApprovalRefreshTimer) {
+                window.__ektaHomeDriverApprovalRefreshTimer = window.setInterval(() => {
+                    if (!document.hidden && document.getElementById("ektaPendingActions")) {
+                        refreshDriverPendingRequests();
+                    }
+                }, 30000);
+            }
+
+
+            /*
+             * REAL FLEET DATA
+             */
+
+            updateFleetSummary(
+                fleet
+            );
+
+
+            /*
+             * REAL TRIP DATA
+             */
+
+            renderRecentTrips(
+                trips
+            );
+
+            updateDashboardPODPending(trips);
+
+
+            /*
+             * REAL MONTHLY FREIGHT / REVENUE
+             */
+
+            updateMonthlyRevenue(
+                trips
+            );
+
+            await renderDashboardLiveMap();
+
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Dashboard Home error:",
+                error
+            );
+            const podCount = document.getElementById("ektaPodPending");
+            if (podCount) podCount.textContent = "—";
+
+
+            const tripsContainer =
+                document.getElementById(
+                    "ektaRecentTripsContainer"
+                );
+
+
+            if (tripsContainer) {
+
+                tripsContainer.innerHTML = `
+                    <div class="ekta-empty">
+
+                        <div class="ekta-empty-icon">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+
+                        <div class="ekta-empty-title">
+                            Database connection unavailable
+                        </div>
+
+                        <div class="ekta-empty-text">
+                            Dashboard is ready, but the database
+                            could not be read right now.
+                        </div>
+
+                    </div>
+                `;
+            }
+
+        }
+
+    }
+
+
+    /*
+     * Make function available if needed.
+     */
+
+    window.ektaDashboardHome =
+        {
+            refresh: startDashboardHome,
+            refreshDriverRequests: refreshDriverPendingRequests
+        };
+
+
+    /*
+     * Start.
+     */
+
+    startDashboardHome();
+
+})();
+
+</script>

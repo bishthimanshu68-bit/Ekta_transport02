@@ -1,0 +1,477 @@
+<!-- EKTA TRANSPORT - PARTIES MODULE v2 -->
+<section id="partiesModule" class="bg-slate-50 min-h-full p-4">
+    <div class="max-w-7xl mx-auto space-y-4">
+
+        <!-- Compact action row: dashboard owns the main page heading. -->
+        <div class="flex justify-end">
+            <button type="button" onclick="window.EktaParties.openForm()"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm">
+                <i class="fa-solid fa-plus mr-1"></i>Add New Party
+            </button>
+        </div>
+
+        <!-- Slim navigation cards: styling only; original click handlers and count IDs retained. -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 ekta-party-nav">
+            <button type="button" onclick="window.EktaParties.showPartySection('Billing Client')" class="ekta-nav-card" aria-label="Open Billing Parties">
+                <span class="ekta-nav-icon"><i class="fa-solid fa-building" aria-hidden="true"></i></span>
+                <span class="ekta-nav-content"><span class="ekta-nav-title">Billing Parties</span><span class="ekta-nav-subtitle">Billing locations & GST records</span></span>
+                <span id="billingPartyCardCount" class="ekta-nav-count">0</span>
+            </button>
+            <button type="button" onclick="window.EktaParties.showPartySection('Transporter')" class="ekta-nav-card" aria-label="Open Transporters">
+                <span class="ekta-nav-icon"><i class="fa-solid fa-truck" aria-hidden="true"></i></span>
+                <span class="ekta-nav-content"><span class="ekta-nav-title">Transporters</span><span class="ekta-nav-subtitle">Transporter master records</span></span>
+                <span id="transporterCardCount" class="ekta-nav-count">0</span>
+            </button>
+            <button type="button" onclick="window.EktaParties.openBillingWorkspace('rates')" class="ekta-nav-card" aria-label="Open Rate List">
+                <span class="ekta-nav-icon"><i class="fa-solid fa-indian-rupee-sign" aria-hidden="true"></i></span>
+                <span class="ekta-nav-content"><span class="ekta-nav-title">Rate List</span><span class="ekta-nav-subtitle">32 FT & 34 FT freight rates</span></span>
+                <span id="billingRateSummary" class="ekta-nav-count">0</span>
+            </button>
+            <button type="button" onclick="window.EktaPartyLedger.open()" class="ekta-nav-card" aria-label="Open Party Ledger">
+                <span class="ekta-nav-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span>
+                <span class="ekta-nav-content"><span class="ekta-nav-title">Party Ledger</span><span class="ekta-nav-subtitle">Billing & party accounts</span></span>
+                <i class="fa-solid fa-chevron-right ekta-nav-chevron" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <!-- AI PARTY MASTER IMPORT: visible only after Billing Parties / Transporters is selected -->
+        <div id="partyAiImportPanel" class="hidden bg-white border border-violet-200 rounded-xl p-4 shadow-sm">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                    <div class="text-[10px] font-bold text-violet-600 uppercase">AI Party Master Import</div>
+                    <div class="text-sm font-black text-slate-800 mt-1">
+                        <i class="fa-solid fa-wand-magic-sparkles text-violet-600 mr-2"></i>
+                        <span id="partyAiImportTitle">Select Billing Parties or Transporters first</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1">
+                        Upload a party-list photo or PDF. AI only prepares a preview. Nothing is saved until you confirm.
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <input id="partyAiFile" type="file" accept="image/*,application/pdf" class="hidden"
+                        onchange="window.EktaParties.analyzePartyMasterFile(this.files?.[0])">
+                    <button type="button" onclick="document.getElementById('partyAiFile').click()"
+                        class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold">
+                        <i class="fa-solid fa-upload mr-1"></i>AI Import Photo / PDF
+                    </button>
+                </div>
+            </div>
+            <div id="partyAiStatus" class="hidden mt-3 text-xs rounded-lg px-3 py-2"></div>
+            <div id="partyAiPreview" class="hidden mt-3">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="text-xs font-black text-slate-700">AI Import Preview — review codes, names and duplicates before saving</div>
+                    <button type="button" onclick="window.EktaParties.confirmAiParties()"
+                        class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">
+                        <i class="fa-solid fa-check mr-1"></i>Confirm Selected Parties
+                    </button>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+                    <table class="w-full text-xs min-w-[720px] ekta-ai-table">
+                        <thead class="bg-slate-50 text-slate-600"><tr>
+                            <th class="p-3 text-center">Select</th><th class="p-3 text-left">Party Code</th>
+                            <th class="p-3 text-left">Party Name</th><th class="p-3 text-left">Location</th>
+                            <th class="p-3 text-left">Review / Details</th>
+                        </tr></thead>
+                        <tbody id="partyAiPreviewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rate List workspace only; company grouping remains backend-managed -->
+        <div id="billingWorkspace" class="hidden bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div class="px-4 py-3 bg-slate-900 text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                    <div class="text-sm font-black"><i class="fa-solid fa-indian-rupee-sign mr-2 text-emerald-300"></i>Party Rate List</div>
+                    <div class="text-[10px] text-slate-300 mt-1">Select Billing Party / location and maintain approved freight rates.</div>
+                </div>
+                <button type="button" onclick="window.EktaParties.closeBillingWorkspace()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold"><i class="fa-solid fa-xmark mr-1"></i>Close</button>
+            </div>
+            <div id="billingUnitsPanel" class="hidden"></div>
+            <div id="billingRatesPanel" class="p-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+                    <div class="md:col-span-2 relative">
+                        <input id="ratePartySearch" type="text" autocomplete="off" placeholder="Search Billing Party / Location..."
+                            onfocus="window.EktaParties.renderRatePartyDropdown(this.value, true)"
+                            oninput="window.EktaParties.handleRatePartySearch(this.value)"
+                            onkeydown="window.EktaParties.ratePartyKeydown(event)"
+                            class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-emerald-500">
+                        <div id="ratePartyDropdown" class="hidden absolute z-50 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl"></div>
+                        <select id="ratePartySelect" class="hidden" aria-hidden="true" tabindex="-1"></select>
+                    </div>
+                    <select id="rateTypeSelect" onchange="window.EktaParties.changeRateType()" class="hidden px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white">
+                        <option value="HAIER_TO_HAIER">Haier to Haier</option>
+                        <option value="HAIER_TO_OTHER">Haier to Other</option>
+                    </select>
+                    <input id="rateFromLocation" class="px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50" placeholder="Loading Point / From" readonly>
+                    <input id="rateEffectiveFrom" type="date" class="px-3 py-2 border border-slate-200 rounded-lg text-xs">
+                </div>
+                <div id="rateTypeHint" class="hidden text-[10px] text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2"></div>
+
+                <div class="border border-slate-200 bg-slate-50/70 rounded-xl p-3">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div>
+                            <div class="text-xs font-black text-slate-800"><i class="fa-solid fa-wand-magic-sparkles text-violet-600 mr-2"></i>AI Import Full Rate List</div>
+                            <div class="text-[10px] text-slate-500 mt-1">Upload a complete rate sheet, review extracted destinations and freight, then confirm. Existing saved rates are unchanged until confirmation.</div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <input id="rateAiFile" type="file" accept="image/*,application/pdf" class="hidden" onchange="window.EktaParties.analyzeRateFile(this.files?.[0])">
+                            <button type="button" onclick="document.getElementById('rateAiFile').click()" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-upload mr-1"></i>AI Import Photo / PDF</button>
+                            <button type="button" onclick="window.EktaParties.cancelAiRateImport()" class="px-3 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-xmark mr-1"></i>Cancel Import / Clear Preview</button>
+                        </div>
+                    </div>
+                    <div id="rateAiStatus" class="hidden mt-3 text-xs rounded-lg px-3 py-2"></div>
+                    <div id="rateAiPreview" class="hidden mt-3">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="text-xs font-black text-slate-700">Rate Preview — Manual + AI (verify/edit before confirming)</div>
+                            <button type="button" onclick="window.EktaParties.confirmAiRates()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-check mr-1"></i>Confirm Rate List</button>
+                        </div>
+                        <div class="overflow-x-auto border border-violet-200 rounded-lg bg-white">
+                            <table class="w-full text-xs min-w-[760px]">
+                                <thead id="rateAiPreviewHead" class="bg-violet-50 text-slate-600"></thead>
+                                <tbody id="rateAiPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-xs min-w-[760px]">
+                        <thead id="rateListHead" class="bg-slate-50 text-slate-600"></thead>
+                        <tbody id="rateListBody"></tbody>
+                    </table>
+                    <div class="px-3 py-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                        <div id="rateListFooter" class="text-[10px] text-slate-500"></div>
+                        <div class="text-[10px] text-slate-400">Manual/AI → Preview/Edit/Delete → Confirm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="partyMasterListArea" class="hidden space-y-4">
+<div class="bg-white border border-slate-200 rounded-xl p-3">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <input id="partySearch" type="text"
+                    placeholder="Search name, code, contact, city..."
+                    oninput="window.EktaParties.renderTable()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:ring-1 focus:ring-blue-500">
+
+                <select id="partyTypeFilter" onchange="window.EktaParties.renderTable()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-md text-xs bg-white">
+                    <option value="">All Types</option>
+                    <option value="Billing Client">Billing Client</option>
+                    <option value="Transporter">Transporter</option>
+                </select>
+
+                <select id="partyZoneFilter" onchange="window.EktaParties.renderTable()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-md text-xs bg-white">
+                    <option value="">All Zones</option>
+                    <option value="North">North</option>
+                    <option value="South">South</option>
+                    <option value="East">East</option>
+                    <option value="West">West</option>
+                </select>
+
+                <select id="partyStatusFilter" onchange="window.EktaParties.renderTable()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-md text-xs bg-white">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100" aria-live="polite">
+                <span class="text-[11px] font-medium text-slate-500">Matching party records</span>
+                <span id="partyFilteredCount" class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700">0 parties</span>
+            </div>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead class="bg-slate-100 text-slate-600">
+                        <tr>
+                            <th class="text-left py-2.5 px-3">S.No</th>
+                            <th class="text-left py-2.5 px-3">Party Code</th>
+                            <th class="text-left py-2.5 px-3">Party Name</th>
+                            <th class="text-left py-2.5 px-3">Type</th>
+                            <th class="text-left py-2.5 px-3">City</th>
+                            <th class="text-left py-2.5 px-3">Zone</th>
+                            <th class="text-left py-2.5 px-3">State</th>
+                            <th class="text-left py-2.5 px-3">Contact</th>
+                            <th class="text-left py-2.5 px-3">Mobile</th>
+                            <th class="text-left py-2.5 px-3">Status</th>
+                            <th class="text-left py-2.5 px-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="partyTableBody"></tbody>
+                </table>
+            </div>
+            <div id="partyTableFooter" class="px-3 py-2 text-[10px] text-slate-500 border-t border-slate-100"></div>
+        </div>
+        </div>
+    </div>
+
+    <div id="partyFormModal" class="hidden fixed inset-0 z-[200] bg-slate-900/50 items-center justify-center p-3">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+                <div>
+                    <h2 id="partyFormTitle" class="font-black text-slate-800">Add New Party</h2>
+                    <p class="text-[10px] text-slate-500">Save directly to Supabase</p>
+                </div>
+                <button type="button" onclick="window.EktaParties.closeForm()"
+                    class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="partyForm" onsubmit="return window.EktaParties.saveParty(event)" class="p-4 space-y-4">
+                <input id="partyId" type="hidden">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   <div>
+    <label class="party-label">Party Code *</label>
+    <input
+        id="partyCode"
+        type="text"
+        required
+        autocomplete="off"
+        placeholder="Enter or correct Party Code"
+        class="party-field font-mono uppercase bg-slate-50 text-slate-500"
+    >
+    <div class="text-[9px] text-slate-400 mt-1">Editable on existing parties. Duplicate codes are blocked; linked data keeps the same Party ID.</div>
+</div>
+
+                    <div>
+                        <label class="party-label">Party Name *</label>
+                        <input id="partyName" required placeholder="Enter party name" class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Party Type *</label>
+                        <select id="partyType" required class="party-field bg-white">
+                            <option value="Billing Client">Billing Client</option>
+                            <option value="Transporter">Transporter</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="party-label">Contact Person</label>
+                        <input id="partyContactPerson" placeholder="Enter contact person" class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Mobile</label>
+                        <input id="partyMobile" inputmode="numeric" placeholder="10 digit mobile" class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Email</label>
+                        <input id="partyEmail" type="email" placeholder="Email address" class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">GST Number</label>
+                        <input id="partyGst" placeholder="GSTIN" class="party-field uppercase">
+                    </div>
+
+                    <div>
+                        <label class="party-label">PAN Number</label>
+                        <input id="partyPan" placeholder="PAN" class="party-field uppercase">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Location / City *</label>
+                        <input id="partyCity" required placeholder="e.g. Delhi, Noida, Mumbai"
+                            oninput="window.EktaParties.autoDetectZone()" class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Zone *</label>
+                        <select id="partyZone" required class="party-field bg-white">
+                            <option value="North">North</option>
+                            <option value="South">South</option>
+                            <option value="East">East</option>
+                            <option value="West">West</option>
+                        </select>
+                        <div id="partyZoneHint" class="text-[9px] text-slate-400 mt-1">
+                            Zone can be auto-detected from city.
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="party-label">State</label>
+                        <input id="partyState" placeholder="State" class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Credit Days</label>
+                        <input id="partyCreditDays" type="number" min="0" step="1" value="0"
+                            class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Credit Limit (₹)</label>
+                        <input id="partyCreditLimit" type="number" min="0" step="0.01" value="0"
+                            class="party-field">
+                    </div>
+
+                    <div>
+                        <label class="party-label">Payment Terms</label>
+                        <select id="partyPaymentTerms" class="party-field bg-white">
+                            <option value="">Not Set</option>
+                            <option value="Immediate">Immediate</option>
+                            <option value="7 Days">7 Days</option>
+                            <option value="15 Days">15 Days</option>
+                            <option value="30 Days">30 Days</option>
+                            <option value="45 Days">45 Days</option>
+                            <option value="60 Days">60 Days</option>
+                            <option value="Custom">Custom</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="party-label">Status</label>
+                        <select id="partyStatus" class="party-field bg-white">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="party-label">Address</label>
+                        <textarea id="partyAddress" rows="2" placeholder="Full address"
+                            class="party-field"></textarea>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="party-label">Notes</label>
+                        <textarea id="partyNotes" rows="2" placeholder="Optional notes"
+                            class="party-field"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="window.EktaParties.closeForm()"
+                        class="px-4 py-2 border border-slate-200 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-50">
+                        Cancel
+                    </button>
+                    <button id="partySaveButton" type="submit"
+                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i>Save Party
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="partyViewModal" class="hidden fixed inset-0 z-[190] bg-slate-900/40 items-center justify-end">
+        <div class="bg-white h-full w-full max-w-lg shadow-2xl overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+                <div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase">Party Details</div>
+                    <h2 id="partyViewName" class="text-lg font-black text-slate-800">-</h2>
+                </div>
+                <button type="button" onclick="window.EktaParties.closeView()"
+                    class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="partyViewContent" class="p-4"></div>
+        </div>
+    </div>
+
+    <style>
+        /* Modern Parties workspace: visual-only changes, existing handlers preserved */
+        #partiesModule {background:linear-gradient(160deg,#f3f6fc 0%,#f8fafc 70%);color:#14253f;}
+        #partiesModule > div {max-width:1536px;}
+        #partiesModule .shadow-sm {box-shadow:0 5px 20px rgba(22,40,73,.045);}
+        #partiesModule .rounded-xl {border-radius:16px;}
+        #partiesModule button {transition:box-shadow .18s ease,transform .18s ease,border-color .18s ease;}
+        #partiesModule button:hover {box-shadow:0 8px 22px rgba(20,40,70,.10);}
+        #partiesModule > div > .grid.grid-cols-2 > div {min-height:104px;border-color:#e4eaf3;box-shadow:0 4px 16px rgba(22,40,73,.035);}
+        /* Compact, restrained navigation; does not affect tables, filters or scrolling. */
+        #partiesModule .ekta-party-nav .ekta-nav-card {display:flex;align-items:center;gap:12px;min-height:88px;padding:16px;text-align:left;background:#fff;border:1px solid #dfe5ed;border-radius:12px;box-shadow:0 1px 3px rgba(15,23,42,.035);width:100%;}
+        #partiesModule .ekta-party-nav .ekta-nav-card:hover {border-color:#a6b5c8;background:#fbfcfe;box-shadow:0 3px 10px rgba(15,23,42,.055);transform:none;}
+        #partiesModule .ekta-party-nav .ekta-nav-card:focus-visible {outline:2px solid #2563eb;outline-offset:2px;}
+        #partiesModule .ekta-party-nav .ekta-nav-icon {display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:9px;background:#f1f5f9;color:#475569;font-size:15px;}
+        #partiesModule .ekta-party-nav .ekta-nav-content {display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
+        #partiesModule .ekta-party-nav .ekta-nav-title {font-size:14px;font-weight:750;line-height:1.25;color:#1e293b;}
+        #partiesModule .ekta-party-nav .ekta-nav-subtitle {font-size:11px;font-weight:400;line-height:1.4;color:#64748b;}
+        #partiesModule .ekta-party-nav .ekta-nav-count {flex:none;font-size:15px;font-weight:750;color:#334155;font-variant-numeric:tabular-nums;}
+        #partiesModule .ekta-party-nav .ekta-nav-chevron {font-size:12px;color:#94a3b8;margin-left:auto;}
+        #partyAiImportPanel {border-color:#dfe6f2;background:linear-gradient(135deg,#fff 0%,#fafaff 100%);box-shadow:0 10px 30px rgba(35,48,95,.06);}
+        #partyAiPreview .ekta-ai-table th {font-size:11px;font-weight:800;letter-spacing:.03em;padding:13px 12px;}
+        #partyAiPreview .ekta-ai-table td {padding:11px 12px;vertical-align:middle;}
+        #partyAiPreview .ekta-ai-table tbody tr:hover {background:#f8faff;}
+        #partyAiPreview .ekta-ai-table input:not([type=checkbox]) {width:100%;min-width:90px;padding:9px 10px;border:1px solid #e2e8f0;border-radius:9px;background:white;font-size:12px;}
+        #partyAiPreview .ekta-ai-table input:focus {outline:2px solid #bfdbfe;outline-offset:1px;}
+        #partyAiPreview .ekta-ai-table details {margin-top:7px;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;background:#fff;}
+        #partyAiPreview .ekta-ai-table summary {cursor:pointer;font-weight:700;color:#4f46e5;white-space:nowrap;}
+        #partyAiPreview .ekta-ai-table .ai-extra-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;min-width:250px;}
+        #partyAiPreview .ekta-ai-table .ai-extra-grid label {font-size:10px;color:#64748b;display:block;}
+        #partyMasterListArea > div {border-radius:16px;border-color:#e4eaf3;box-shadow:0 4px 18px rgba(22,40,73,.04);}
+        #partyMasterListArea table thead {background:#f1f5fb;}
+        #partyMasterListArea table tbody tr:hover {background:#f5f8ff;}
+
+        #partiesModule .party-label {
+            display:block;
+            font-size:10px;
+            font-weight:700;
+            color:#475569;
+            margin-bottom:4px;
+        }
+        #partiesModule .party-field {
+            width:100%;
+            padding:8px 12px;
+            border:1px solid #e2e8f0;
+            border-radius:6px;
+            font-size:12px;
+            outline:none;
+        }
+        #partiesModule .party-field:focus {
+            box-shadow:0 0 0 1px #3b82f6;
+        }
+    </style>
+</section>
+<script src="parties.js?v=24_editable_party_code"></script>
+
+<!-- Isolated ledger workspace: existing parties sections remain untouched -->
+<section id="ektaLedgerPage" class="hidden fixed inset-0 bg-slate-50 overflow-auto" style="z-index:100600;font-family:Inter,Segoe UI,Arial,sans-serif">
+  <div class="max-w-[1900px] mx-auto p-4 space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-xl font-black text-slate-800">EKTA TRANSPORT — PARTY LEDGER</h2><p class="text-xs text-slate-500">Trip-wise freight register · Manual billing rates · Invoice draft preview</p></div><div class="flex gap-2"><button onclick="window.EktaPartyLedger.refresh()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">↻ Refresh</button><button onclick="window.EktaPartyLedger.close()" class="px-4 py-2 bg-white border rounded-lg text-xs font-bold">← Parties</button></div></div>
+    <div class="bg-white border rounded-xl p-3 space-y-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="ledgerBillingTab" onclick="window.EktaPartyLedger.setType('Billing Client')" class="px-4 py-2 rounded-lg text-xs font-bold">Billing Parties</button>
+        <button id="ledgerTransporterTab" onclick="window.EktaPartyLedger.setType('Transporter')" class="px-4 py-2 rounded-lg text-xs font-bold">Transporters</button>
+        <div class="relative flex-1 min-w-[240px]" id="ledgerSearchWrap">
+          <input id="ledgerSearch" autocomplete="off" onfocus="window.EktaPartyLedger.searchInput(true)" oninput="window.EktaPartyLedger.searchInput(true)" onkeydown="window.EktaPartyLedger.searchKey(event)" placeholder="Search party code, name, unit, city, truck or LR..." class="w-full border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200">
+          <div id="ledgerDropdown" class="hidden absolute z-50 left-0 right-0 top-full mt-1 max-h-64 overflow-auto rounded-lg border bg-white shadow-xl"></div>
+        </div>
+      </div>
+      <div id="ledgerMessage" class="text-xs text-slate-500"></div>
+      <div id="ledgerBillingCards" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button onclick="window.EktaPartyLedger.filter('all')" data-ledger-filter="all" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-blue-700">All</span><b id="ledgerAllCount" class="text-2xl">0</b></button>
+        <button onclick="window.EktaPartyLedger.filter('ready')" data-ledger-filter="ready" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-emerald-700">Ready for Billing</span><b id="ledgerReadyCount" class="text-2xl">0</b></button>
+        <button onclick="window.EktaPartyLedger.filter('pending')" data-ledger-filter="pending" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-amber-700">Pending for Billing</span><b id="ledgerPendingCount" class="text-2xl">0</b></button>
+        <button onclick="window.EktaPartyLedger.filter('billed')" data-ledger-filter="billed" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-violet-700">Billed</span><b id="ledgerBilledCount" class="text-2xl">0</b></button>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div id="ledgerPartyHeading" class="font-bold text-sm">Select a party from search</div>
+        <div class="flex items-center gap-2"><span id="ledgerSelection" class="text-xs text-slate-500">0 selected</span><button onclick="window.EktaPartyLedger.preview()" class="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-bold">Create / Preview Invoice</button><button onclick="window.EktaInvoice.openHistory()" class="px-3 py-2 bg-indigo-700 text-white rounded-lg text-xs font-bold">Invoice History</button></div>
+      </div>
+      <div id="ledgerBillingStatementHint" class="hidden text-[11px] text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-2">Plant Name = selected billing unit; Party Name = verified POD consignee. Unverified fields are left blank.</div>
+      <div id="ledgerStatementSearchWrap" class="flex flex-wrap items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+        <div class="flex-1 min-w-[240px]"><input id="ledgerStatementSearch" type="search" autocomplete="off" placeholder="Search vehicle no., LR no., date, destination, consignee..." oninput="window.EktaPartyLedger.setStatementSearch(this.value)" class="w-full border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200"></div>
+        <span id="ledgerStatementCount" class="text-xs text-slate-500">0 trips</span>
+      </div>
+      <div class="overflow-auto border rounded-lg"><table class="w-full text-xs whitespace-nowrap"><thead id="ledgerTripHead" class="bg-slate-100"></thead><tbody id="ledgerTripRows"></tbody></table></div>
+      <p class="text-[11px] text-slate-500">Billing freight overrides do not modify Tracking. POD View/OCR uses the existing POD module when loaded.</p>
+    </div>
+  </div>
+</section>
+<section id="ektaInvoiceWorkspace" class="hidden fixed inset-0 overflow-auto bg-slate-100" style="z-index:100700;font-family:Inter,Segoe UI,Arial,sans-serif"><div class="max-w-[1800px] mx-auto p-4 space-y-4"><div class="bg-white rounded-xl border p-4 flex flex-wrap justify-between gap-3"><div><h2 class="font-black text-xl">ETC — Freight Invoice</h2><p id="invoiceHeading" class="text-xs text-slate-500">New Draft Invoice</p></div><div class="flex flex-wrap gap-2"><button onclick="EktaInvoice.historyLoad()" class="border rounded-lg px-3 py-2 text-xs">Refresh History</button><button onclick="EktaInvoice.close()" class="border rounded-lg px-3 py-2 text-xs">← Ledger</button></div></div><div class="bg-white rounded-xl border p-4"><div class="flex flex-wrap gap-2 mb-4"><button id="invoiceSave" onclick="EktaInvoice.save()" class="bg-blue-600 text-white rounded-lg px-4 py-2 text-xs font-bold">Save / Edit Draft</button><button id="invoiceIssue" onclick="EktaInvoice.issue()" class="bg-green-700 text-white rounded-lg px-4 py-2 text-xs font-bold">Issue Invoice</button><button onclick="EktaInvoice.printInvoice()" class="bg-slate-800 text-white rounded-lg px-4 py-2 text-xs font-bold">Preview / Print / Save PDF</button></div><div id="ektaInvoiceEditor"></div><div id="invoiceTotals" class="text-right mt-4 p-3 bg-blue-50 rounded-lg text-xs"></div><p class="text-xs text-amber-700 mt-3">Verify GST applicability, invoice data and party GSTIN before issue. Issued invoices are locked; statutory corrections require appropriate credit/debit note workflow.</p></div><div class="bg-white border rounded-xl p-4"><h3 class="font-bold text-sm mb-2">Invoice History (latest 200)</h3><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-100"><th class="p-2 text-left">Invoice</th><th class="p-2 text-left">Party</th><th class="p-2 text-left">Date</th><th class="p-2 text-left">Total / Status</th><th class="p-2">Action</th></tr></thead><tbody id="invoiceHistoryRows"></tbody></table></div></div></div></section>
+
+<!-- Transporter Working Sheet opens in its own browser tab. -->
+<script src="transporter-working-sheet.js"></script>
+<script src="party-ledger.js?v=20261014-billing-new-tab-1"></script>
+<script src="invoice.js"></script>

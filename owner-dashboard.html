@@ -1,585 +1,3603 @@
 <!DOCTYPE html>
 <html lang="en" id="htmlRoot">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Owner Dashboard - Ekta Transport Company</title>
-    <!-- Tailwind CSS CDN -->
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- FontAwesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    >
+
     <style>
+
+        /* =========================================================
+           GLOBAL
+           ========================================================= */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background: #f4f7fb;
+            color: #1e293b;
+        }
+
+
+        /* =========================================================
+           CONTENT TRANSITION
+           ========================================================= */
+
         .content-transition {
-            animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: dashboardFade 0.20s ease-out;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        @keyframes dashboardFade {
+
+            from {
+                opacity: 0;
+                transform: translateY(3px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
         }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Dynamic Theme Classes */
-        body.theme-dark { background-color: #020617; color: #f8fafc; }
-        body.theme-dark .bg-white { background-color: #0f172a !important; color: #f8fafc !important; border-color: #1e293b !important; }
-        body.theme-dark .text-slate-800 { color: #f8fafc !important; }
-        body.theme-dark .text-slate-600, body.theme-dark .text-slate-500 { color: #94a3b8 !important; }
-        body.theme-dark header { background-color: #0f172a !important; border-color: #1e293b !important; }
-        body.theme-dark input { background-color: #1e293b !important; color: white !important; border-color: #334155 !important; }
 
-        /* Dynamic Font Size Classes */
-        html.font-small { font-size: 13px; }
-        html.font-normal { font-size: 15px; }
-        html.font-large { font-size: 17px; }
+        /* =========================================================
+           SCROLLBAR
+           ========================================================= */
 
-        /* Right Drawer Slide Transition */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #edf2f7;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #b8c5d6;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9eafc4;
+        }
+
+
+        /* =========================================================
+           SIDEBAR SCROLLBAR
+           ========================================================= */
+
+        #sidebarNav::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #sidebarNav::-webkit-scrollbar-track {
+            background: #142b48;
+        }
+
+        #sidebarNav::-webkit-scrollbar-thumb {
+            background: #47688e;
+            border-radius: 5px;
+        }
+
+
+        /* =========================================================
+           SOFT DARK BLUE SIDEBAR
+           ========================================================= */
+
+        .owner-sidebar {
+            background:
+                linear-gradient(
+                    180deg,
+                    #172f4d 0%,
+                    #132943 55%,
+                    #10243b 100%
+                );
+
+            color: #dbe8f6;
+
+            border-right: 1px solid
+                rgba(255,255,255,0.06);
+
+            box-shadow:
+                4px 0 16px
+                rgba(20, 40, 65, 0.08);
+        }
+
+
+        /* =========================================================
+           SIDEBAR BRAND
+           ========================================================= */
+
+        .sidebar-brand {
+            height: 68px;
+
+            display: flex;
+            align-items: center;
+
+            padding: 0 22px;
+
+            background:
+                rgba(255,255,255,0.025);
+
+            border-bottom:
+                1px solid
+                rgba(255,255,255,0.07);
+        }
+
+        .sidebar-brand-icon {
+            color: #dcecff;
+
+            font-size: 22px;
+
+            margin-right: 12px;
+        }
+
+        .sidebar-brand-text {
+            color: #ffffff;
+
+            font-size: 16px;
+
+            font-weight: 700;
+
+            letter-spacing: 0.2px;
+        }
+
+
+        /* =========================================================
+           SIDEBAR NAVIGATION
+           ========================================================= */
+
+        .nav-link {
+
+            position: relative;
+
+            display: flex;
+
+            align-items: center;
+
+            width: 100%;
+
+            min-height: 45px;
+
+            padding:
+                10px
+                14px;
+
+            border-radius: 9px;
+
+            color: #b9cbe0;
+
+            font-size: 14px;
+
+            font-weight: 600;
+
+            text-decoration: none;
+
+            transition:
+                background 0.18s ease,
+                color 0.18s ease,
+                transform 0.18s ease;
+        }
+
+
+        .nav-link i {
+
+            width: 25px;
+
+            margin-right: 10px;
+
+            color: #b7cbe1;
+
+            font-size: 15px;
+
+            transition:
+                color 0.18s ease;
+        }
+
+
+        .nav-link:hover {
+
+            background:
+                rgba(255,255,255,0.055);
+
+            color: #ffffff;
+        }
+
+
+        .nav-link:hover i {
+
+            color: #e7f2ff;
+        }
+
+
+        /* =========================================================
+           ACTIVE SIDEBAR ITEM
+           ========================================================= */
+
+        .nav-link.active {
+
+            background:
+                linear-gradient(
+                    90deg,
+                    #3c78b9 0%,
+                    #326ba8 100%
+                );
+
+            color: #ffffff;
+
+            box-shadow:
+                0 4px 12px
+                rgba(35, 91, 145, 0.16);
+        }
+
+
+        .nav-link.active::before {
+
+            content: "";
+
+            position: absolute;
+
+            left: 0;
+
+            top: 9px;
+
+            bottom: 9px;
+
+            width: 3px;
+
+            border-radius: 0 3px 3px 0;
+
+            background: #ffffff;
+        }
+
+
+        .nav-link.active i {
+
+            color: #ffffff;
+        }
+
+
+        /* =========================================================
+           SIDEBAR FOCUS
+           ========================================================= */
+
+        .nav-link:focus-visible {
+
+            outline: none;
+
+            box-shadow:
+                0 0 0 2px
+                rgba(156, 202, 244, 0.75);
+        }
+
+
+        /* =========================================================
+           LOGOUT
+           ========================================================= */
+
+        .logout-button {
+
+            width: 100%;
+
+            min-height: 43px;
+
+            border-radius: 9px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #dce7f3;
+
+            background:
+                rgba(255,255,255,0.055);
+
+            border:
+                1px solid
+                rgba(255,255,255,0.06);
+
+            font-size: 14px;
+
+            font-weight: 600;
+
+            transition:
+                background 0.18s ease,
+                color 0.18s ease;
+        }
+
+
+        .logout-button:hover {
+
+            background:
+                rgba(220, 70, 70, 0.13);
+
+            color: #ffd5d5;
+        }
+
+
+        /* =========================================================
+           MAIN AREA
+           ========================================================= */
+
+        .main-shell {
+
+            background:
+                #f4f7fb;
+        }
+
+
+        /* =========================================================
+           HEADER
+           ========================================================= */
+
+        .owner-header {
+
+            height: 68px;
+
+            background: #ffffff;
+
+            border-bottom:
+                1px solid #e5eaf0;
+
+            box-shadow:
+                0 1px 5px
+                rgba(30, 50, 75, 0.025);
+        }
+
+
+        .panel-title {
+
+            color: #58708c;
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            letter-spacing: 0.8px;
+
+            text-transform: uppercase;
+        }
+
+
+
+       /* =========================================================
+                   HEADER SETTINGS BUTTON
+            ========================================================= */
+
+.settings-button {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #f7f9fc;
+    border: 1px solid #e2e8f0;
+
+    color: #53677e;
+
+    cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease;
+}
+
+.settings-button:hover {
+    background: #eef4fa;
+    border-color: #cfdbe8;
+    color: #3677b6;
+}
+
+.settings-button.active {
+    background: #eef5fc;
+    border-color: #c8dced;
+    color: #3677b6;
+}
+
+
+/* =========================================================
+   SETTINGS DROPDOWN
+   ========================================================= */
+
+.settings-panel {
+    position: absolute;
+
+    top: 58px;
+    right: 0;
+
+    width: 330px;
+
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+
+    border-radius: 14px;
+
+    box-shadow:
+        0 12px 35px rgba(30, 55, 80, 0.12);
+
+    padding: 16px;
+
+    z-index: 1000;
+
+    opacity: 0;
+    visibility: hidden;
+
+    transform:
+        translateY(-6px);
+
+    transition:
+        opacity 0.18s ease,
+        transform 0.18s ease,
+        visibility 0.18s ease;
+}
+
+.settings-panel.open {
+    opacity: 1;
+    visibility: visible;
+
+    transform:
+        translateY(0);
+}
+
+
+/* =========================================================
+   SETTINGS HEADER
+   ========================================================= */
+
+.settings-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding-bottom: 13px;
+
+    border-bottom:
+        1px solid #edf1f5;
+
+    margin-bottom: 8px;
+}
+
+.settings-panel-title {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    color: #26364a;
+}
+
+.settings-panel-title i {
+    color: #3677b6;
+}
+
+
+/* =========================================================
+   SETTINGS ROW
+   ========================================================= */
+
+.settings-row {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    padding: 13px 4px;
+
+    border-bottom:
+        1px solid #f0f3f6;
+}
+
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+.settings-row-info {
+    min-width: 0;
+}
+
+.settings-row-title {
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #334155;
+}
+
+.settings-row-description {
+    margin-top: 3px;
+
+    font-size: 11px;
+
+    color: #8a99aa;
+
+    line-height: 1.4;
+}
+
+
+/* =========================================================
+   SETTINGS OPTIONS
+   ========================================================= */
+
+.settings-options {
+    display: flex;
+
+    align-items: center;
+
+    gap: 4px;
+
+    flex-shrink: 0;
+}
+
+.settings-option {
+    min-width: 38px;
+
+    padding: 6px 8px;
+
+    border-radius: 7px;
+
+    border: 1px solid #e2e8f0;
+
+    background: #f8fafc;
+
+    color: #64748b;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.settings-option:hover {
+    background: #f1f6fb;
+
+    border-color: #cfdeeb;
+
+    color: #3677b6;
+}
+
+.settings-option.selected {
+    background: #edf5fc;
+
+    border-color: #bcd5e9;
+
+    color: #3677b6;
+}
+
+
+/* =========================================================
+   SETTINGS TOGGLE
+   ========================================================= */
+
+.settings-toggle {
+    position: relative;
+
+    width: 40px;
+    height: 22px;
+
+    border-radius: 20px;
+
+    background: #dce4ec;
+
+    border: none;
+
+    cursor: pointer;
+
+    transition:
+        background 0.18s ease;
+}
+
+.settings-toggle::after {
+    content: "";
+
+    position: absolute;
+
+    width: 16px;
+    height: 16px;
+
+    top: 3px;
+    left: 3px;
+
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 1px 3px rgba(0,0,0,0.15);
+
+    transition:
+        transform 0.18s ease;
+}
+
+.settings-toggle.active {
+    background: #3677b6;
+}
+
+.settings-toggle.active::after {
+    transform:
+        translateX(18px);
+}
+
+
+/* =========================================================
+   SETTINGS PANEL POSITION FIX
+   ========================================================= */
+
+.settings-wrapper {
+    position: relative;
+}
+
+
+        /* =========================================================
+           OWNER PROFILE HEADER
+           ========================================================= */
+
+        .owner-profile-button {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding:
+                5px 9px;
+
+            border-left:
+                1px solid #e4e9ef;
+
+            cursor: pointer;
+
+            border-radius: 9px;
+
+            transition:
+                background 0.18s ease;
+        }
+
+
+        .owner-profile-button:hover {
+
+            background: #f7f9fc;
+        }
+
+
+        .owner-avatar {
+
+            width: 38px;
+
+            height: 38px;
+
+            border-radius: 50%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            background:
+                #2f76bd;
+
+            color: #ffffff;
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            overflow: hidden;
+        }
+
+
+        .owner-role {
+
+            color: #15936b;
+
+            font-size: 10px;
+
+            font-weight: 700;
+
+            letter-spacing: 0.3px;
+        }
+
+
+        /* =========================================================
+           RIGHT DRAWER
+           ========================================================= */
+
         #ownerDrawer {
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+            transform:
+                translateX(100%);
+
+            transition:
+                transform 0.28s ease;
         }
+
+
         #ownerDrawer.open {
-            transform: translateX(0);
+
+            transform:
+                translateX(0);
         }
+
+
+        /* =========================================================
+           DRAWER HEADER
+           ========================================================= */
+
+        .drawer-header {
+
+            background:
+                #173653;
+
+            border-bottom:
+                1px solid #244866;
+        }
+
+
+        .drawer-accent {
+
+            color: #a9d2f5;
+        }
+
+
+        /* =========================================================
+           DRAWER BUTTONS
+           ========================================================= */
+
+        .drawer-primary-button {
+
+            background:
+                #3677b6;
+
+            color: #ffffff;
+
+            transition:
+                background 0.18s ease;
+        }
+
+
+        .drawer-primary-button:hover {
+
+            background:
+                #2f6ba6;
+        }
+
+
+        .drawer-secondary-button {
+
+            background:
+                #f4f8fc;
+
+            color: #31455b;
+
+            border:
+                1px solid #dce5ee;
+        }
+
+
+        /* =========================================================
+           DRAWER FOCUS
+           ========================================================= */
+
+        .drawer-focusable:focus-visible {
+
+            outline: none;
+
+            box-shadow:
+                0 0 0 2px
+                rgba(63, 126, 185, 0.25);
+        }
+
+
+        /* =========================================================
+           MOBILE SIDEBAR
+           ========================================================= */
+
+        @media (max-width: 768px) {
+
+            #sidebar {
+
+                position: fixed;
+
+                left: 0;
+
+                top: 0;
+
+                bottom: 0;
+
+                z-index: 60;
+
+                width: 280px;
+
+                transform:
+                    translateX(0);
+            }
+
+            #sidebar.mobile-hidden {
+
+                transform:
+                    translateX(-100%);
+            }
+
+        }
+        /* =========================================================
+   SETTINGS BEHAVIOUR
+   ========================================================= */
+
+.density-compact .settings-row {
+    padding-top: 9px;
+    padding-bottom: 9px;
+}
+
+.density-comfortable .settings-row {
+    padding-top: 13px;
+    padding-bottom: 13px;
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+/* =========================================================
+   DASHBOARD FONT SIZE
+   ========================================================= */
+
+html.font-small {
+    font-size: 14px;
+}
+
+html.font-normal {
+    font-size: 16px;
+}
+
+html.font-large {
+    font-size: 18px;
+}
+/* =========================================================
+   DARK THEME
+   ========================================================= */
+
+body.theme-dark {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+body.theme-dark .main-shell {
+    background: #0f172a;
+}
+
+body.theme-dark .owner-header {
+    background: #111827;
+    border-bottom-color: #263244;
+    color: #e2e8f0;
+}
+
+/* Main content */
+body.theme-dark #mainContentArea {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+/* White cards */
+body.theme-dark .bg-white {
+    background: #111827 !important;
+}
+
+/* Borders */
+body.theme-dark .border-slate-200,
+body.theme-dark .border-slate-100 {
+    border-color: #263244 !important;
+}
+
+/* Text */
+body.theme-dark .text-slate-800 {
+    color: #f1f5f9 !important;
+}
+
+body.theme-dark .text-slate-700 {
+    color: #e2e8f0 !important;
+}
+
+body.theme-dark .text-slate-500 {
+    color: #94a3b8 !important;
+}
+
+body.theme-dark .text-slate-400 {
+    color: #64748b !important;
+}
+
+/* Settings buttons / option areas */
+body.theme-dark .bg-slate-100 {
+    background: #1e293b !important;
+}
+
+body.theme-dark .bg-slate-100.text-slate-700 {
+    color: #cbd5e1 !important;
+}
+
+/* Inputs */
+body.theme-dark input,
+body.theme-dark textarea,
+body.theme-dark select {
+    background: #1e293b;
+    color: #f1f5f9;
+    border-color: #334155;
+}
+
+body.theme-dark input::placeholder,
+body.theme-dark textarea::placeholder {
+    color: #64748b;
+}
+
+/* Settings button */
+body.theme-dark .settings-button {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+body.theme-dark .settings-button:hover {
+    background: #263449;
+    border-color: #475569;
+}
+
+/* Profile button */
+body.theme-dark .owner-profile-button {
+    border-left-color: #334155;
+}
+
+body.theme-dark .owner-profile-button:hover {
+    background: #1e293b;
+}
+
+/* Scrollbar */
+body.theme-dark ::-webkit-scrollbar-track {
+    background: #111827;
+} 
+
+body.theme-dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+/* =========================================================
+   END DARK THEME
+   ========================================================= */
+/* =========================================================
+   OWNER DRAWER - DARK THEME FIX
+   ========================================================= */
+
+body.theme-dark #ownerDrawer {
+    background: #111827 !important;
+    color: #e2e8f0;
+}
+
+body.theme-dark #ownerDrawer .bg-slate-50 {
+    background: #1e293b !important;
+}
+
+body.theme-dark #ownerDrawer .bg-white {
+    background: #111827 !important;
+}
+
+body.theme-dark #ownerDrawer .text-slate-700 {
+    color: #e2e8f0 !important;
+}
+
+body.theme-dark #ownerDrawer .text-slate-800 {
+    color: #f1f5f9 !important;
+}
+
+body.theme-dark #ownerDrawer .text-slate-500 {
+    color: #94a3b8 !important;
+}
+
+body.theme-dark #ownerDrawer .border-slate-200,
+body.theme-dark #ownerDrawer .border-slate-100 {
+    border-color: #334155 !important;
+}
+
+body.theme-dark #ownerDrawer input,
+body.theme-dark #ownerDrawer textarea,
+body.theme-dark #ownerDrawer select {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+body.theme-dark #ownerDrawer input::placeholder {
+    color: #94a3b8 !important;
+}
+
+        /* Final sidebar polish: preserve the approved navy palette */
+        #sidebarNav { scroll-behavior: smooth; }
+        #sidebarNav .nav-link { border: 1px solid transparent; letter-spacing: .08px; }
+        #sidebarNav .nav-link:hover { border-color: rgba(255,255,255,.09); }
+        #sidebarNav .nav-link.active { border-color: rgba(255,255,255,.14); }
+        #sidebarNav .nav-link:focus-visible {
+            outline: 2px solid rgba(178,215,251,.82);
+            outline-offset: -2px;
+        }
+
     </style>
+
 </head>
-<body class="bg-slate-100 font-sans antialiased text-slate-800">
+
+
+<body class="font-sans antialiased">
+
+
+    <!-- =========================================================
+         MAIN APP
+         ========================================================= -->
 
     <div class="flex h-screen overflow-hidden">
-        
-        <!-- SIDEBAR -->
-        <aside id="sidebar" class="w-72 bg-slate-950 text-slate-300 flex flex-col transition-all duration-300 z-30 border-r border-slate-800/80 shadow-xl">
-            <!-- Brand Logo Area -->
-            <div class="h-16 flex items-center px-6 bg-slate-900 border-b border-slate-800">
-                <i class="fa-solid fa-truck-fast text-amber-500 text-xl mr-3"></i>
-                <span class="font-bold text-base text-white tracking-wide">Ekta Transport Co.</span>
+
+
+        <!-- =====================================================
+             SIDEBAR
+             ===================================================== -->
+
+        <aside
+            id="sidebar"
+            class="owner-sidebar w-72 flex flex-col transition-all duration-300 z-30"
+        >
+
+
+            <!-- BRAND -->
+
+            <div class="sidebar-brand">
+
+                <i
+                    class="fa-solid fa-truck-fast sidebar-brand-icon"
+                ></i>
+
+                <span class="sidebar-brand-text">
+                    Ekta Transport Co.
+                </span>
+
             </div>
 
-            <!-- Navigation Links -->
-            <nav id="sidebarNav" class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto text-sm font-medium focus:outline-none focus:ring-1 focus:ring-amber-500/50 rounded-lg" tabindex="0">
-                <a href="#" onclick="loadDefaultDashboardHome(); updateActiveNav(this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg bg-amber-600 text-white transition shadow-sm focus:outline-none focus:ring-2 focus:ring-white">
-                    <i class="fa-solid fa-chart-pie w-6 text-base"></i> Dashboard
+
+            <!-- NAVIGATION -->
+
+            <nav
+                id="sidebarNav"
+                class="flex-1 px-3 py-4 space-y-1 overflow-y-auto"
+                tabindex="0"
+            >
+
+
+                <!-- DASHBOARD -->
+
+                <a
+                    href="#"
+                    class="nav-link active"
+                    data-url="dashboard-home.html"
+                    onclick="loadDefaultDashboardHome(this); return false;"
+                >
+
+                    <i class="fa-solid fa-chart-pie"></i>
+
+                    <span>Dashboard</span>
+
                 </a>
-                <a href="#" onclick="loadModule('employees.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="employees.html">
-                    <i class="fa-solid fa-users w-6 text-base"></i> Employees Management
+
+
+                <!-- EMPLOYEES -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="employees.html"
+                    onclick="loadModule('employees.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-users"></i>
+
+                    <span>Employees Management</span>
+
                 </a>
-                <a href="#" onclick="loadModule('fleet.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="fleet.html">
-                    <i class="fa-solid fa-truck w-6 text-base"></i> Fleet Management
+
+
+                <!-- FLEET -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="fleet.html"
+                    onclick="loadModule('fleet.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-truck"></i>
+
+                    <span>Fleet Management</span>
+
                 </a>
-                <a href="#" onclick="loadModule('drivers.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="drivers.html">
-                    <i class="fa-solid fa-id-card w-6 text-base"></i> Drivers Management
+
+
+                <!-- DRIVERS -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="drivers.html"
+                    onclick="loadModule('drivers.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-id-card"></i>
+
+                    <span>Drivers Management</span>
+
                 </a>
-                <a href="#" onclick="loadModule('tracking.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="tracking.html">
-                    <i class="fa-solid fa-satellite-dish w-6 text-base"></i> Live Tracking
+
+
+                <!-- LIVE TRACKING -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="tracking.html"
+                    onclick="loadModule('tracking.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-satellite-dish"></i>
+
+                    <span>Live Tracking</span>
+
                 </a>
-                <a href="#" onclick="loadModule('pod.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="pod.html">
-                    <i class="fa-solid fa-file-invoice w-6 text-base"></i> POD (Proof of Delivery)
+
+
+                <!-- FASTAG MANAGEMENT -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="fastag.html"
+                    onclick="loadModule('fastag.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-road"></i>
+
+                    <span>FASTag Management</span>
+
                 </a>
-                <a href="#" onclick="loadModule('fuel.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="fuel.html">
-                    <i class="fa-solid fa-gas-pump w-6 text-base"></i> Fuel Management
+
+
+                <!-- DRIVER APP REQUESTS -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="driver-app-requests.html"
+                    onclick="loadModule('driver-app-requests.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-inbox"></i>
+
+                    <span>Driver App Requests</span>
+
                 </a>
-                <a href="#" onclick="loadModule('maintenance.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="maintenance.html">
-                    <i class="fa-solid fa-screwdriver-wrench w-6 text-base"></i> Truck Maintenance
+
+
+                <!-- POD -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="pod.html"
+                    onclick="loadModule('pod.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-file-invoice"></i>
+
+                    <span>POD (Proof of Delivery)</span>
+
                 </a>
-                <a href="#" onclick="loadModule('parties.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="parties.html">
-                    <i class="fa-solid fa-handshake w-6 text-base"></i> Parties & Clients
+
+
+                <!-- FUEL -->
+
+                <a
+                    href="fuel-fullscreen.html"
+                    target="_blank"
+                    rel="noopener"
+                    class="nav-link"
+                    data-url="fuel-fullscreen.html"
+                    onclick="window.open('fuel-fullscreen.html', '_blank', 'noopener'); return false;"
+                >
+
+                    <i class="fa-solid fa-gas-pump"></i>
+
+                    <span>Fuel Management</span>
+
                 </a>
-                <a href="#" onclick="loadModule('accounts.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="accounts.html">
-                    <i class="fa-solid fa-wallet w-6 text-base"></i> Accounts & Finance
+
+
+                <!-- MAINTENANCE -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="maintenance.html"
+                    onclick="loadModule('maintenance.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+
+                    <span>Truck Maintenance</span>
+
                 </a>
-                <a href="#" onclick="loadModule('cms.html', this); return false;" class="nav-link flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-900 hover:text-slate-100 transition text-slate-400 focus:outline-none focus:ring-2 focus:ring-white" data-url="cms.html">
-                    <i class="fa-solid fa-globe w-6 text-base"></i> Website CMS Control
+
+
+                <!-- PARTIES -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="parties.html"
+                    onclick="loadModule('parties.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-handshake"></i>
+
+                    <span>Parties & Clients</span>
+
                 </a>
+
+
+                <!-- ACCOUNTS -->
+
+                <a
+                    href="accounts.html"
+                    target="_blank"
+                    rel="noopener"
+                    class="nav-link"
+                    data-url="accounts.html"
+                    onclick="window.open('accounts.html', '_blank', 'noopener'); return false;"
+                >
+
+                    <i class="fa-solid fa-wallet"></i>
+
+                    <span>Accounts & Finance</span>
+
+                </a>
+
+
+                <!-- TRIP ACCOUNTS -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="trip-accounts.html"
+                    onclick="loadModule('trip-accounts.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+
+                    <span>Trip Accounts</span>
+
+                </a>
+
+
+                <!-- DRIVER KHATA (separate full-page module; existing Trip Accounts untouched) -->
+
+                <a
+                    href="driver-khata.html"
+                    class="nav-link"
+                    data-url="driver-khata.html"
+                    onclick="window.location.href='driver-khata.html'; return false;"
+                >
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>Driver Khata</span>
+                </a>
+
+
+                <!-- CMS -->
+
+                <a
+                    href="#"
+                    class="nav-link"
+                    data-url="cms.html"
+                    onclick="loadModule('cms.html', this); return false;"
+                >
+
+                    <i class="fa-solid fa-globe"></i>
+
+                    <span>Website CMS Control</span>
+
+                </a>
+
+
             </nav>
 
-            <!-- Sidebar Footer / Logout -->
-            <div class="p-3 border-t border-slate-800 bg-slate-900">
-                <button onclick="handleLogout()" class="w-full flex items-center justify-center px-4 py-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition font-medium text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                    <i class="fa-solid fa-right-from-bracket mr-2"></i> Logout
+
+            <!-- LOGOUT -->
+
+            <div
+                class="p-3 border-t border-white/10"
+            >
+
+                <button
+                    onclick="handleLogout()"
+                    class="logout-button"
+                >
+
+                    <i
+                        class="fa-solid fa-right-from-bracket mr-2"
+                    ></i>
+
+                    Logout
+
                 </button>
+
             </div>
+
+
         </aside>
 
-        <!-- MAIN WRAPPER -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100">
-            
-            <!-- TOP HEADER (Cleaned up, AI floating widget will handle AI chat) -->
-            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-xs">
-                <div class="flex items-center space-x-4">
-                    <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-700 md:hidden focus:outline-none">
-                        <i class="fa-solid fa-bars text-lg"></i>
+
+
+        <!-- =====================================================
+             MAIN SHELL
+             ===================================================== -->
+
+        <div
+            class="main-shell flex-1 flex flex-col min-w-0 overflow-hidden"
+        >
+
+
+            <!-- =================================================
+                 HEADER
+                 ================================================= -->
+
+            <header
+                class="owner-header flex items-center justify-between px-6 z-20"
+            >
+
+
+                <!-- LEFT -->
+
+                <div
+                    class="flex items-center space-x-4"
+                >
+
+                    <button
+                        onclick="toggleSidebar()"
+                        class="md:hidden text-slate-500 hover:text-slate-700 focus:outline-none"
+                        title="Open Menu"
+                    >
+
+                        <i
+                            class="fa-solid fa-bars text-lg"
+                        ></i>
+
                     </button>
-                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ekta Transport Management Panel</span>
+
+
+                    <span class="panel-title" id="ownerModuleTitle">
+
+                        Ekta Transport Management Panel
+
+                    </span>
+
                 </div>
 
-                <!-- Right Controls -->
-                <div class="flex items-center space-x-3">
-                    <!-- WORKING SETTINGS BUTTON -->
-                    <button onclick="loadSettingsModule()" title="System Settings" class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center transition focus:outline-none focus:ring-2 focus:ring-amber-500">
-                        <i class="fa-solid fa-gear text-sm"></i>
-                    </button>
 
-                    <!-- OWNER PROFILE BUTTON (Opens Right Slide Drawer) -->
-                    <div onclick="toggleOwnerDrawer(event)" class="flex items-center space-x-3 border-l pl-3 border-slate-200 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition">
-                        <div id="ownerAvatarBox" class="w-8 h-8 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
-                            <span id="ownerInitial">A</span>
+
+                <!-- RIGHT -->
+
+                <div
+                    class="flex items-center space-x-3"
+                >
+
+
+                    <!-- SETTINGS -->
+
+                  <div class="settings-wrapper">
+
+    <button
+        onclick="toggleSettingsPanel(event)"
+        title="System Settings"
+        class="settings-button"
+        id="settingsButton"
+    >
+        <i class="fa-solid fa-gear text-sm"></i>
+    </button>
+
+
+    <!-- SETTINGS DROPDOWN -->
+
+    <div
+        id="settingsPanel"
+        class="settings-panel"
+    >
+
+        <div class="settings-panel-header">
+
+            <div class="settings-panel-title">
+                <i class="fa-solid fa-sliders"></i>
+
+                <span>Settings</span>
+            </div>
+
+            <i
+                class="fa-solid fa-gear"
+                style="font-size:12px;color:#9aa8b7;"
+            ></i>
+
+        </div>
+
+
+        <!-- THEME -->
+
+        <div class="settings-row">
+
+            <div class="settings-row-info">
+
+                <div class="settings-row-title">
+                    Theme
+                </div>
+
+                <div class="settings-row-description">
+                    Choose interface appearance
+                </div>
+
+            </div>
+
+
+            <div class="settings-options">
+
+                <button
+                    class="settings-option"
+                    id="themeLightOption"
+                    onclick="changeDashboardTheme('light')"
+                >
+                    Light
+                </button>
+
+                <button
+                    class="settings-option"
+                    id="themeDarkOption"
+                    onclick="changeDashboardTheme('dark')"
+                >
+                    Dark
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- FONT SIZE -->
+
+        <div class="settings-row">
+
+            <div class="settings-row-info">
+
+                <div class="settings-row-title">
+                    Font Size
+                </div>
+
+                <div class="settings-row-description">
+                    Adjust dashboard text size
+                </div>
+
+            </div>
+
+
+            <div class="settings-options">
+
+                <button
+                    class="settings-option"
+                    id="fontSmallOption"
+                    onclick="changeDashboardFont('small')"
+                >
+                    S
+                </button>
+
+                <button
+                    class="settings-option"
+                    id="fontNormalOption"
+                    onclick="changeDashboardFont('normal')"
+                >
+                    M
+                </button>
+
+                <button
+                    class="settings-option"
+                    id="fontLargeOption"
+                    onclick="changeDashboardFont('large')"
+                >
+                    L
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- DENSITY -->
+
+        <div class="settings-row">
+
+            <div class="settings-row-info">
+
+                <div class="settings-row-title">
+                    Interface Density
+                </div>
+
+                <div class="settings-row-description">
+                    Control spacing between elements
+                </div>
+
+            </div>
+
+
+            <div class="settings-options">
+
+                <button
+                    class="settings-option"
+                    id="densityComfortableOption"
+                    onclick="changeDashboardDensity('comfortable')"
+                >
+                    Comfy
+                </button>
+
+                <button
+                    class="settings-option"
+                    id="densityCompactOption"
+                    onclick="changeDashboardDensity('compact')"
+                >
+                    Compact
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- REDUCED MOTION -->
+
+        <div class="settings-row">
+
+            <div class="settings-row-info">
+
+                <div class="settings-row-title">
+                    Reduced Motion
+                </div>
+
+                <div class="settings-row-description">
+                    Reduce interface animations
+                </div>
+
+            </div>
+
+
+            <button
+                id="motionToggle"
+                class="settings-toggle"
+                onclick="toggleReducedMotion()"
+                aria-label="Toggle reduced motion"
+            ></button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+                    <!-- OWNER PROFILE -->
+
+                    <div
+                        onclick="toggleOwnerDrawer(event)"
+                        class="owner-profile-button"
+                        title="Owner Profile"
+                    >
+
+
+                        <div
+                            id="ownerAvatarBox"
+                            class="owner-avatar"
+                        >
+
+                            <span id="ownerInitial">
+                                O
+                            </span>
+
                         </div>
-                        <div class="hidden md:block text-left leading-tight">
-                            <h4 id="ownerNameDisplay" class="text-xs font-bold text-slate-800">Ashok Sharma</h4>
-                            <span class="text-[10px] text-emerald-600 font-semibold tracking-wide">Transport Owner</span>
+
+
+                        <div
+                            class="hidden md:block text-left leading-tight"
+                        >
+
+                            <h4
+                                id="ownerNameDisplay"
+                                class="text-xs font-bold text-slate-800"
+                            >
+                                Owner
+                            </h4>
+
+                            <span
+                                class="owner-role"
+                            >
+                                Transport Owner
+                            </span>
+
                         </div>
+
+
                     </div>
+
+
                 </div>
+
+
             </header>
 
-            <!-- MAIN CONTENT AREA -->
-            <main id="mainContentArea" class="flex-1 overflow-y-auto p-6 content-transition">
-                <!-- Dynamically injected by loadDefaultDashboardHome() on startup -->
+
+
+            <!-- =================================================
+                 MAIN WORKING AREA
+                 ================================================= -->
+
+            <main
+                id="mainContentArea"
+                class="flex-1 overflow-y-auto p-5 md:p-6 content-transition"
+            >
+
+                <!-- Dashboard Home loads here -->
+
             </main>
+
+
         </div>
+
+
     </div>
 
-    <!-- RIGHT SLIDE-IN DRAWER (Owner Profile & Security Panel) -->
-    <div id="drawerOverlay" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-2xs transition-opacity"></div>
-    <div id="ownerDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200">
-        <!-- Drawer Header -->
-        <div class="h-16 bg-slate-900 text-white px-6 flex items-center justify-between border-b border-slate-800">
-            <h3 class="font-bold text-sm flex items-center"><i class="fa-solid fa-user-gear text-amber-500 mr-2"></i> Owner Profile & Security</h3>
-            <button onclick="closeOwnerDrawer()" class="text-slate-400 hover:text-white p-2 focus:outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+
+
+    <!-- =========================================================
+         DRAWER OVERLAY
+         ========================================================= -->
+
+    <div
+        id="drawerOverlay"
+        class="hidden fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-[1px]"
+    ></div>
+
+
+
+    <!-- =========================================================
+         OWNER DRAWER
+         ========================================================= -->
+
+    <div
+        id="ownerDrawer"
+        class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200"
+    >
+
+
+        <!-- DRAWER HEADER -->
+
+        <div
+            class="drawer-header h-16 text-white px-6 flex items-center justify-between"
+        >
+
+            <h3
+                class="font-bold text-sm flex items-center"
+            >
+
+                <i
+                    class="fa-solid fa-user-gear drawer-accent mr-2"
+                ></i>
+
+                Owner Profile & Security
+
+            </h3>
+
+
+            <button
+                onclick="closeOwnerDrawer()"
+                class="text-slate-300 hover:text-white p-2 focus:outline-none"
+                title="Close"
+            >
+
+                <i
+                    class="fa-solid fa-xmark text-lg"
+                ></i>
+
+            </button>
+
         </div>
 
-        <!-- Drawer Content Body -->
-        <div id="drawerBodyContent" class="flex-1 overflow-y-auto p-6 space-y-6 text-xs" tabindex="0">
-            
-            <!-- Photo & Name Card -->
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center space-x-4">
-                <div id="drawerAvatarPreview" class="w-16 h-16 rounded-full bg-amber-600 text-white flex items-center justify-center text-xl font-bold overflow-hidden shadow-xs shrink-0">
-                    A
+
+
+        <!-- DRAWER BODY -->
+
+        <div
+            id="drawerBodyContent"
+            class="flex-1 overflow-y-auto p-6 space-y-6 text-xs"
+            tabindex="0"
+        >
+
+
+            <!-- PROFILE -->
+
+            <div
+                class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center space-x-4"
+            >
+
+
+                <div
+                    id="drawerAvatarPreview"
+                    class="w-16 h-16 rounded-full bg-[#3677b6] text-white flex items-center justify-center text-xl font-bold overflow-hidden shadow-sm shrink-0"
+                >
+
+                    O
+
                 </div>
+
+
                 <div class="flex-1">
-                    <label class="block font-bold text-slate-700 mb-1">Owner Name</label>
-                    <input type="text" id="profileOwnerName" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg bg-white font-medium focus:ring-1 focus:ring-amber-500 outline-none" value="Ashok Sharma" onchange="updateOwnerName(this.value)">
+
+                    <label
+                        class="block font-bold text-slate-700 mb-1"
+                    >
+                        Owner Name
+                    </label>
+
+
+                    <input
+                        type="text"
+                        id="profileOwnerName"
+                        autocomplete="off"
+                        class="drawer-focusable w-full px-3 py-2 border border-slate-200 rounded-lg bg-white font-medium focus:border-blue-300 outline-none"
+                        placeholder="Enter owner name"
+                        onchange="updateOwnerName(this.value)"
+                    >
+
                 </div>
+
+
             </div>
+
+
+
+            <!-- PHOTO -->
 
             <div>
-                <label class="block font-bold text-slate-700 mb-1">Upload Profile Photo</label>
-                <input type="file" id="ownerPhotoInput" accept="image/*" onchange="uploadOwnerPhoto(event)" class="drawer-focusable w-full text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-slate-200 rounded-lg p-1 bg-slate-50">
+
+                <label
+                    class="block font-bold text-slate-700 mb-1"
+                >
+                    Upload Profile Photo
+                </label>
+
+
+                <input
+                    type="file"
+                    id="ownerPhotoInput"
+                    accept="image/*"
+                    onchange="uploadOwnerPhoto(event)"
+                    class="drawer-focusable w-full text-slate-500 border border-slate-200 rounded-lg p-1 bg-slate-50"
+                >
+
             </div>
 
-            <!-- Accordion 1: Mobile Number -->
-            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                <button onclick="toggleAccordion('phoneAccordion')" class="drawer-focusable w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-bold text-slate-800 transition focus:outline-none focus:ring-1 focus:ring-amber-500">
-                    <span class="flex items-center"><i class="fa-solid fa-mobile-screen-button text-amber-600 mr-2"></i> Change Registered Mobile Number</span>
-                    <i id="phoneAccordionIcon" class="fa-solid fa-chevron-down text-slate-400"></i>
-                </button>
-                <div id="phoneAccordion" class="hidden p-4 space-y-3 border-t border-slate-100 bg-white">
-                    <p class="text-slate-500">Current Phone: <span id="currentPhoneDisplay" class="font-mono font-bold text-slate-800">+91 9876543210</span></p>
-                    <input type="text" id="newPhoneInput" placeholder="Enter new 10-digit mobile number" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
-                    
-                    <button id="sendOtpButton" onclick="sendPhoneOtp()" class="drawer-focusable w-full bg-amber-600 text-white py-2 rounded-lg font-bold hover:bg-amber-700 transition focus:outline-none focus:ring-2 focus:ring-amber-500">Send OTP to New Number</button>
 
-                    <!-- OTP Small Input Boxes Section -->
-                    <div id="otpBoxSection" class="hidden space-y-3 pt-2">
-                        <label class="block font-semibold text-slate-700">Enter 4-Digit OTP (Demo: 1234)</label>
-                        <div class="flex justify-center space-x-3">
-                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 0)">
-                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 1)">
-                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 2)">
-                            <input type="text" maxlength="1" autocomplete="off" class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50" oninput="moveToNext(this, 3)">
+
+            <!-- PHONE ACCORDION -->
+
+            <div
+                class="border border-slate-200 rounded-xl overflow-hidden bg-white"
+            >
+
+
+                <button
+                    onclick="toggleAccordion('phoneAccordion')"
+                    class="drawer-focusable w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-bold text-slate-800 transition focus:outline-none"
+                >
+
+                    <span class="flex items-center">
+
+                        <i
+                            class="fa-solid fa-mobile-screen-button text-[#3677b6] mr-2"
+                        ></i>
+
+                        Change Registered Mobile Number
+
+                    </span>
+
+
+                    <i
+                        id="phoneAccordionIcon"
+                        class="fa-solid fa-chevron-down text-slate-400"
+                    ></i>
+
+                </button>
+
+
+                <div
+                    id="phoneAccordion"
+                    class="hidden p-4 space-y-3 border-t border-slate-100 bg-white"
+                >
+
+
+                    <p class="text-slate-500">
+
+                        Current Phone:
+
+                        <span
+                            id="currentPhoneDisplay"
+                            class="font-mono font-bold text-slate-800"
+                        >
+                            Not set yet
+                        </span>
+
+                    </p>
+
+
+                    <input
+                        type="text"
+                        id="newPhoneInput"
+                        placeholder="Enter new 10-digit mobile number"
+                        autocomplete="off"
+                        class="drawer-focusable w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-300 outline-none"
+                    >
+
+
+                    <button
+                        id="sendOtpButton"
+                        onclick="sendPhoneOtp()"
+                        class="drawer-focusable drawer-primary-button w-full py-2 rounded-lg font-bold focus:outline-none"
+                    >
+
+                        Send OTP to New Number
+
+                    </button>
+
+
+                    <!-- OTP -->
+
+                    <div
+                        id="otpBoxSection"
+                        class="hidden space-y-3 pt-2"
+                    >
+
+                        <label
+                            class="block font-semibold text-slate-700"
+                        >
+
+                            Enter 4-Digit OTP
+
+                        </label>
+
+
+                        <div
+                            class="flex justify-center space-x-3"
+                        >
+
+                            <input
+                                type="text"
+                                maxlength="1"
+                                autocomplete="off"
+                                class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border border-slate-200 rounded-lg outline-none bg-slate-50"
+                                oninput="moveToNext(this, 0)"
+                            >
+
+                            <input
+                                type="text"
+                                maxlength="1"
+                                autocomplete="off"
+                                class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border border-slate-200 rounded-lg outline-none bg-slate-50"
+                                oninput="moveToNext(this, 1)"
+                            >
+
+                            <input
+                                type="text"
+                                maxlength="1"
+                                autocomplete="off"
+                                class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border border-slate-200 rounded-lg outline-none bg-slate-50"
+                                oninput="moveToNext(this, 2)"
+                            >
+
+                            <input
+                                type="text"
+                                maxlength="1"
+                                autocomplete="off"
+                                class="drawer-focusable otp-box w-12 h-12 text-center text-lg font-bold border border-slate-200 rounded-lg outline-none bg-slate-50"
+                                oninput="moveToNext(this, 3)"
+                            >
+
                         </div>
-                        <button onclick="verifyAndSaveNewPhone()" class="drawer-focusable w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500">Verify & Save Number</button>
+
+
+                        <button
+                            onclick="verifyAndSaveNewPhone()"
+                            class="drawer-focusable w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition focus:outline-none"
+                        >
+
+                            Verify & Save Number
+
+                        </button>
+
                     </div>
+
+
                 </div>
+
+
             </div>
 
-            <!-- Accordion 2: Password -->
-            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                <button onclick="toggleAccordion('passwordAccordion')" class="drawer-focusable w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-bold text-slate-800 transition focus:outline-none focus:ring-1 focus:ring-amber-500">
-                    <span class="flex items-center"><i class="fa-solid fa-lock text-amber-600 mr-2"></i> Change Password</span>
-                    <i id="passwordAccordionIcon" class="fa-solid fa-chevron-down text-slate-400"></i>
+
+
+            <!-- PASSWORD ACCORDION -->
+
+            <div
+                class="border border-slate-200 rounded-xl overflow-hidden bg-white"
+            >
+
+
+                <button
+                    onclick="toggleAccordion('passwordAccordion')"
+                    class="drawer-focusable w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-bold text-slate-800 transition focus:outline-none"
+                >
+
+                    <span class="flex items-center">
+
+                        <i
+                            class="fa-solid fa-lock text-[#3677b6] mr-2"
+                        ></i>
+
+                        Change Password
+
+                    </span>
+
+
+                    <i
+                        id="passwordAccordionIcon"
+                        class="fa-solid fa-chevron-down text-slate-400"
+                    ></i>
+
                 </button>
-                <div id="passwordAccordion" class="hidden p-4 space-y-3 border-t border-slate-100 bg-white">
-                    <input type="password" id="oldPasswordInput" placeholder="Current Password" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
-                    <input type="password" id="newPasswordInput" placeholder="New Password" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
-                    <input type="password" id="confirmPasswordInput" placeholder="Confirm New Password" autocomplete="off" class="drawer-focusable w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none">
-                    <button onclick="saveNewPassword()" class="drawer-focusable w-full bg-slate-900 text-white py-2 rounded-lg font-bold hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-slate-700">Update Password Securely</button>
+
+
+                <div
+                    id="passwordAccordion"
+                    class="hidden p-4 space-y-3 border-t border-slate-100 bg-white"
+                >
+
+
+                    <input
+                        type="password"
+                        id="oldPasswordInput"
+                        placeholder="Current Password"
+                        autocomplete="off"
+                        class="drawer-focusable w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-300 outline-none"
+                    >
+
+
+                    <input
+                        type="password"
+                        id="newPasswordInput"
+                        placeholder="New Password"
+                        autocomplete="off"
+                        class="drawer-focusable w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-300 outline-none"
+                    >
+
+
+                    <input
+                        type="password"
+                        id="confirmPasswordInput"
+                        placeholder="Confirm New Password"
+                        autocomplete="off"
+                        class="drawer-focusable w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-300 outline-none"
+                    >
+
+
+                    <button
+                        onclick="saveNewPassword()"
+                        class="drawer-focusable w-full bg-[#173653] text-white py-2 rounded-lg font-bold hover:bg-[#204564] transition focus:outline-none"
+                    >
+
+                        Update Password Securely
+
+                    </button>
+
+
                 </div>
+
+
             </div>
+
 
         </div>
+
+
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
+
+
+    <!-- =========================================================
+         JAVASCRIPT
+         ========================================================= -->
+
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            loadSavedOwnerPreferences();
-            loadDefaultDashboardHome(); 
-            setupKeyboardNav();
 
-            document.addEventListener("click", (event) => {
-                const drawer = document.getElementById("ownerDrawer");
-                const overlay = document.getElementById("drawerOverlay");
 
-                if (!drawer.contains(event.target) && !event.target.closest('[onclick="toggleOwnerDrawer(event)"]') && drawer.classList.contains("open")) {
-                    closeOwnerDrawer();
-                }
-            });
-        });
+        /* =========================================================
+           STARTUP
+           ========================================================= */
+
+      document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        loadSavedOwnerPreferences();
+
+
+        /* =====================================================
+           RESTORE LAST OPENED MODULE AFTER REFRESH
+        ====================================================== */
+
+        const savedLastModule =
+            localStorage.getItem(
+                "ekta_last_opened_module"
+            ) || "dashboard-home.html";
+
+        // Accounts now opens in a separate tab; never embed it on refresh.
+        const lastModule = savedLastModule === "accounts.html"
+            ? "dashboard-home.html"
+            : savedLastModule;
+
+
+        const lastNavElement =
+            document.querySelector(
+                `.nav-link[data-url="${lastModule}"]`
+            );
+
+
+        if (
+            lastModule ===
+            "dashboard-home.html"
+        ) {
+
+            loadDefaultDashboardHome(
+                lastNavElement
+            );
+
+        } else if (
+            lastNavElement
+        ) {
+
+            loadModule(
+                lastModule,
+                lastNavElement
+            );
+
+        } else {
+
+            loadDefaultDashboardHome(
+                document.querySelector(
+                    '.nav-link[data-url="dashboard-home.html"]'
+                )
+            );
+
+        }
+
+
+        setupKeyboardNav();
+
+
+                document.addEventListener(
+                    "click",
+                    (event) => {
+
+                        const drawer =
+                            document.getElementById(
+                                "ownerDrawer"
+                            );
+
+                        const overlay =
+                            document.getElementById(
+                                "drawerOverlay"
+                            );
+
+
+                        if (
+                            drawer &&
+                            !drawer.contains(event.target) &&
+                            !event.target.closest(
+                                '.owner-profile-button'
+                            ) &&
+                            drawer.classList.contains("open")
+                        ) {
+
+                            closeOwnerDrawer();
+
+                        }
+
+                    }
+                );
+
+            }
+        );
+
+
+
+        /* =========================================================
+           OWNER DATA
+           ========================================================= */
 
         function loadSavedOwnerPreferences() {
-            const savedName = localStorage.getItem("ownerName") || "Ashok Sharma";
-            document.getElementById("ownerNameDisplay").innerText = savedName;
-            if(document.getElementById("welcomeGreeting")) {
-                document.getElementById("welcomeGreeting").innerText = `Welcome back, ${savedName}!`;
-            }
-            if(document.getElementById("profileOwnerName")) {
-                document.getElementById("profileOwnerName").value = savedName;
-            }
-            document.getElementById("ownerInitial").innerText = savedName.charAt(0).toUpperCase();
 
-            const savedPhone = localStorage.getItem("ownerPhone") || "+91 9876543210";
-            if(document.getElementById("currentPhoneDisplay")) {
-                document.getElementById("currentPhoneDisplay").innerText = savedPhone;
-            }
+            const savedName =
+                localStorage.getItem("ownerName") || "";
 
-            const savedPhoto = localStorage.getItem("ownerPhoto");
-            if (savedPhoto) {
-                document.getElementById("ownerAvatarBox").innerHTML = `<img src="${savedPhoto}" class="w-full h-full object-cover">`;
-                if(document.getElementById("drawerAvatarPreview")) {
-                    document.getElementById("drawerAvatarPreview").innerHTML = `<img src="${savedPhoto}" class="w-full h-full object-cover">`;
-                }
+            const ownerDisplay =
+                document.getElementById(
+                    "ownerNameDisplay"
+                );
+
+
+            const profileName =
+                document.getElementById(
+                    "profileOwnerName"
+                );
+
+
+            const ownerInitial =
+                document.getElementById(
+                    "ownerInitial"
+                );
+
+
+            if (savedName.trim()) {
+
+                ownerDisplay.innerText =
+                    savedName;
+
+                profileName.value =
+                    savedName;
+
+                ownerInitial.innerText =
+                    savedName
+                        .charAt(0)
+                        .toUpperCase();
+
             } else {
-                const init = savedName.charAt(0).toUpperCase();
-                document.getElementById("ownerAvatarBox").innerHTML = `<span>${init}</span>`;
-                if(document.getElementById("drawerAvatarPreview")) {
-                    document.getElementById("drawerAvatarPreview").innerHTML = `<span>${init}</span>`;
-                }
+
+                ownerDisplay.innerText =
+                    "Owner";
+
+                profileName.value =
+                    "";
+
+                ownerInitial.innerText =
+                    "O";
+
             }
 
-            const currentTheme = localStorage.getItem("ownerTheme") || "light";
-            if (currentTheme === "dark") document.body.classList.add("theme-dark");
 
-            const currentFont = localStorage.getItem("ownerFont") || "normal";
-            document.getElementById("htmlRoot").className = `font-${currentFont}`;
+            /* PHONE */
+
+            const savedPhone =
+                localStorage.getItem(
+                    "ownerPhone"
+                );
+
+
+            const phoneDisplay =
+                document.getElementById(
+                    "currentPhoneDisplay"
+                );
+
+
+            if (savedPhone) {
+
+                phoneDisplay.innerText =
+                    savedPhone;
+
+            } else {
+
+                phoneDisplay.innerText =
+                    "Not set yet";
+
+            }
+
+
+            /* PHOTO */
+
+            const savedPhoto =
+                localStorage.getItem(
+                    "ownerPhoto"
+                );
+
+
+            const avatar =
+                document.getElementById(
+                    "ownerAvatarBox"
+                );
+
+
+            const drawerAvatar =
+                document.getElementById(
+                    "drawerAvatarPreview"
+                );
+
+
+            if (savedPhoto) {
+
+                avatar.innerHTML =
+                    `<img
+                        src="${savedPhoto}"
+                        class="w-full h-full object-cover"
+                    >`;
+
+
+                drawerAvatar.innerHTML =
+                    `<img
+                        src="${savedPhoto}"
+                        class="w-full h-full object-cover"
+                    >`;
+
+            } else {
+
+                const initial =
+                    savedName
+                        ? savedName
+                            .charAt(0)
+                            .toUpperCase()
+                        : "O";
+
+
+                avatar.innerHTML =
+                    `<span>${initial}</span>`;
+
+
+                drawerAvatar.innerHTML =
+                    `<span>${initial}</span>`;
+
+            }
+
+
+            /* THEME */
+
+            const currentTheme =
+                localStorage.getItem(
+                    "ownerTheme"
+                ) || "light";
+
+
+            if (
+                currentTheme === "dark"
+            ) {
+
+                document.body.classList.add(
+                    "theme-dark"
+                );
+
+            }
+
+
+            /* FONT */
+
+            const currentFont =
+                localStorage.getItem(
+                    "ownerFont"
+                ) || "normal";
+
+
+            document.getElementById(
+                "htmlRoot"
+            ).className =
+                `font-${currentFont}`;
+
         }
 
-        function loadDefaultDashboardHome() {
-            const contentArea = document.getElementById('mainContentArea');
-            contentArea.innerHTML = `
-                <div class="space-y-6 max-w-7xl mx-auto">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-md flex items-center justify-between border-l-4 border-amber-500">
-                        <div>
-                            <h1 id="welcomeGreeting" class="text-xl font-bold tracking-tight">Welcome back, ${localStorage.getItem("ownerName") || "Ashok Sharma"}!</h1>
-                            <p class="text-slate-400 text-xs mt-1">Ekta Transport Company operations dashboard is running live and synced.</p>
-                        </div>
-                        <div class="hidden sm:block text-right">
-                            <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-md font-mono">System Status: Active</span>
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">Active Fleet</p>
-                                <i class="fa-solid fa-truck text-amber-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">168 Units</h3>
-                            <span class="text-[10px] text-emerald-600 font-semibold mt-1 inline-block">Connected & Synced</span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">On-Duty Drivers</p>
-                                <i class="fa-solid fa-id-card text-blue-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">Active</h3>
-                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Drivers Portal Ready</span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">Pending PODs</p>
-                                <i class="fa-solid fa-file-invoice text-indigo-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">Managed</h3>
-                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">AI Document Reader Ready</span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs text-slate-500 font-medium">Monthly Ledger</p>
-                                <i class="fa-solid fa-wallet text-emerald-600 text-sm"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mt-2">Synced</h3>
-                            <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Accounts Linked</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            const dashboardNavLink = document.querySelector('nav a');
-            if(dashboardNavLink) updateActiveNav(dashboardNavLink);
+
+        /* =========================================================
+           DASHBOARD HOME
+           ========================================================= */
+
+        async function loadDefaultDashboardHome(
+            element = null
+        ) {
+
+            await loadModule(
+                "dashboard-home.html",
+                element
+            );
+
         }
 
-        function loadSettingsModule() {
-            const contentArea = document.getElementById('mainContentArea');
-            const currentTheme = localStorage.getItem("ownerTheme") || "light";
-            const currentFont = localStorage.getItem("ownerFont") || "normal";
 
-            contentArea.innerHTML = `
-                <div class="max-w-3xl mx-auto space-y-6" id="settingsContainer">
-                    <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-xs">
-                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4">
-                            <i class="fa-solid fa-gear text-amber-600 mr-2"></i> System & Dashboard Settings
-                        </h2>
-                        
-                        <div class="mb-6 pb-6 border-b border-slate-100 flex items-center justify-between">
-                            <div>
-                                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Dashboard Theme Mode</h3>
-                                <p class="text-xs text-slate-500">Switch instantly between Light Mode and Dark Mode.</p>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button onclick="setTheme('light')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentTheme === 'light' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">
-                                    <i class="fa-solid fa-sun mr-1"></i> Light
-                                </button>
-                                <button onclick="setTheme('dark')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentTheme === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">
-                                    <i class="fa-solid fa-moon mr-1"></i> Dark
-                                </button>
-                            </div>
-                        </div>
 
-                        <div>
-                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Interface Font Size</h3>
-                            <p class="text-xs text-slate-500 mb-3">Adjust the text size across the entire system.</p>
-                            <div class="flex space-x-3">
-                                <button onclick="setFontSize('small')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'small' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Small</button>
-                                <button onclick="setFontSize('normal')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'normal' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Normal (Default)</button>
-                                <button onclick="setFontSize('large')" class="px-4 py-2 rounded-lg text-xs font-semibold ${currentFont === 'large' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition">Large</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            updateActiveNav(null);
+        /* =========================================================
+           SETTINGS
+           ========================================================= */
+
+/* =========================================================
+   SETTINGS PANEL
+   ========================================================= */
+
+function toggleSettingsPanel(event) {
+
+    if (event) {
+        event.stopPropagation();
+    }
+
+    const panel =
+        document.getElementById("settingsPanel");
+
+    const button =
+        document.getElementById("settingsButton");
+
+    if (!panel || !button) {
+        return;
+    }
+
+    const isOpen =
+        panel.classList.toggle("open");
+
+    button.classList.toggle(
+        "active",
+        isOpen
+    );
+}
+
+
+/* =========================================================
+   CLOSE SETTINGS WHEN CLICKING OUTSIDE
+   ========================================================= */
+
+document.addEventListener(
+    "click",
+    function (event) {
+
+        const panel =
+            document.getElementById(
+                "settingsPanel"
+            );
+
+        const button =
+            document.getElementById(
+                "settingsButton"
+            );
+
+        if (!panel || !button) {
+            return;
         }
+
+        if (
+            !panel.contains(event.target) &&
+            !button.contains(event.target)
+        ) {
+
+            panel.classList.remove(
+                "open"
+            );
+
+            button.classList.remove(
+                "active"
+            );
+        }
+
+    }
+);
+
+
+/* =========================================================
+   THEME
+   ========================================================= */
+
+function changeDashboardTheme(mode) {
+
+    localStorage.setItem(
+        "ownerTheme",
+        mode
+    );
+
+    if (mode === "dark") {
+
+        document.body.classList.add(
+            "theme-dark"
+        );
+
+    } else {
+
+        document.body.classList.remove(
+            "theme-dark"
+        );
+    }
+
+    updateSettingsUI();
+}
+
+
+/* =========================================================
+   FONT SIZE
+   ========================================================= */
+
+function changeDashboardFont(size) {
+
+    localStorage.setItem(
+        "ownerFont",
+        size
+    );
+
+    const htmlRoot =
+        document.getElementById(
+            "htmlRoot"
+        );
+
+    if (htmlRoot) {
+
+        htmlRoot.className =
+            `font-${size}`;
+    }
+
+    updateSettingsUI();
+}
+
+
+/* =========================================================
+   INTERFACE DENSITY
+   ========================================================= */
+
+function changeDashboardDensity(
+    density
+) {
+
+    localStorage.setItem(
+        "ownerDensity",
+        density
+    );
+
+    document.body.classList.remove(
+        "density-comfortable",
+        "density-compact"
+    );
+
+    document.body.classList.add(
+        `density-${density}`
+    );
+
+    updateSettingsUI();
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+function toggleReducedMotion() {
+
+    const current =
+        localStorage.getItem(
+            "ownerReducedMotion"
+        ) === "true";
+
+    const newValue =
+        !current;
+
+    localStorage.setItem(
+        "ownerReducedMotion",
+        newValue
+    );
+
+    document.body.classList.toggle(
+        "reduced-motion",
+        newValue
+    );
+
+    updateSettingsUI();
+}
+
+
+/* =========================================================
+   SETTINGS UI STATE
+   ========================================================= */
+
+function updateSettingsUI() {
+
+    const theme =
+        localStorage.getItem(
+            "ownerTheme"
+        ) || "light";
+
+    const font =
+        localStorage.getItem(
+            "ownerFont"
+        ) || "normal";
+
+    const density =
+        localStorage.getItem(
+            "ownerDensity"
+        ) || "comfortable";
+
+    const reducedMotion =
+        localStorage.getItem(
+            "ownerReducedMotion"
+        ) === "true";
+
+
+    document
+        .getElementById(
+            "themeLightOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            theme === "light"
+        );
+
+
+    document
+        .getElementById(
+            "themeDarkOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            theme === "dark"
+        );
+
+
+    document
+        .getElementById(
+            "fontSmallOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            font === "small"
+        );
+
+
+    document
+        .getElementById(
+            "fontNormalOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            font === "normal"
+        );
+
+
+    document
+        .getElementById(
+            "fontLargeOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            font === "large"
+        );
+
+
+    document
+        .getElementById(
+            "densityComfortableOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            density === "comfortable"
+        );
+
+
+    document
+        .getElementById(
+            "densityCompactOption"
+        )
+        ?.classList.toggle(
+            "selected",
+            density === "compact"
+        );
+
+
+    document
+        .getElementById(
+            "motionToggle"
+        )
+        ?.classList.toggle(
+            "active",
+            reducedMotion
+        );
+}
+
+
+/* =========================================================
+   APPLY SAVED SETTINGS ON LOAD
+   ========================================================= */
+
+function applySavedDashboardSettings() {
+
+    const theme =
+        localStorage.getItem(
+            "ownerTheme"
+        ) || "light";
+
+    const font =
+        localStorage.getItem(
+            "ownerFont"
+        ) || "normal";
+
+    const density =
+        localStorage.getItem(
+            "ownerDensity"
+        ) || "comfortable";
+
+    const reducedMotion =
+        localStorage.getItem(
+            "ownerReducedMotion"
+        ) === "true";
+
+
+    if (theme === "dark") {
+
+        document.body.classList.add(
+            "theme-dark"
+        );
+
+    } else {
+
+        document.body.classList.remove(
+            "theme-dark"
+        );
+    }
+
+
+    const htmlRoot =
+        document.getElementById(
+            "htmlRoot"
+        );
+
+    if (htmlRoot) {
+
+        htmlRoot.className =
+            `font-${font}`;
+    }
+
+
+    document.body.classList.remove(
+        "density-comfortable",
+        "density-compact"
+    );
+
+    document.body.classList.add(
+        `density-${density}`
+    );
+
+
+    document.body.classList.toggle(
+        "reduced-motion",
+        reducedMotion
+    );
+
+
+    updateSettingsUI();
+}
+
+
+/* =========================================================
+   SETTINGS INITIALIZATION
+   ========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        applySavedDashboardSettings();
+
+    }
+);
+
+
+
+        /* =========================================================
+           THEME
+           ========================================================= */
 
         function setTheme(mode) {
-            localStorage.setItem("ownerTheme", mode);
-            if (mode === "dark") document.body.classList.add("theme-dark");
-            else document.body.classList.remove("theme-dark");
+
+            localStorage.setItem(
+                "ownerTheme",
+                mode
+            );
+
+
+            if (
+                mode === "dark"
+            ) {
+
+                document.body.classList.add(
+                    "theme-dark"
+                );
+
+            } else {
+
+                document.body.classList.remove(
+                    "theme-dark"
+                );
+
+            }
+
+
             loadSettingsModule();
+
         }
+
+
+
+        /* =========================================================
+           FONT
+           ========================================================= */
 
         function setFontSize(size) {
-            localStorage.setItem("ownerFont", size);
-            document.getElementById("htmlRoot").className = `font-${size}`;
+
+            localStorage.setItem(
+                "ownerFont",
+                size
+            );
+
+
+            document.getElementById(
+                "htmlRoot"
+            ).className =
+                `font-${size}`;
+
+
             loadSettingsModule();
+
         }
+
+
+
+        /* =========================================================
+           OWNER DRAWER
+           ========================================================= */
 
         function toggleOwnerDrawer(event) {
-            if(event) event.stopPropagation();
-            const drawer = document.getElementById("ownerDrawer");
-            const overlay = document.getElementById("drawerOverlay");
-            drawer.classList.toggle("open");
-            overlay.classList.toggle("hidden");
 
-            if (drawer.classList.contains("open")) {
-                setTimeout(() => {
-                    document.getElementById("profileOwnerName").focus();
-                }, 100);
+            if (event) {
+
+                event.stopPropagation();
+
             }
+
+
+            const drawer =
+                document.getElementById(
+                    "ownerDrawer"
+                );
+
+
+            const overlay =
+                document.getElementById(
+                    "drawerOverlay"
+                );
+
+
+            drawer.classList.toggle(
+                "open"
+            );
+
+
+            overlay.classList.toggle(
+                "hidden"
+            );
+
+
+            if (
+                drawer.classList.contains(
+                    "open"
+                )
+            ) {
+
+                setTimeout(
+                    () => {
+
+                        const field =
+                            document.getElementById(
+                                "profileOwnerName"
+                            );
+
+                        if (field) {
+
+                            field.focus();
+
+                        }
+
+                    },
+                    150
+                );
+
+            }
+
         }
+
+
 
         function closeOwnerDrawer() {
-            document.getElementById("ownerDrawer").classList.remove("open");
-            document.getElementById("drawerOverlay").classList.add("hidden");
+
+            document.getElementById(
+                "ownerDrawer"
+            ).classList.remove(
+                "open"
+            );
+
+
+            document.getElementById(
+                "drawerOverlay"
+            ).classList.add(
+                "hidden"
+            );
+
         }
 
-        function updateOwnerName(newName) {
-            if(!newName.trim()) return;
-            localStorage.setItem("ownerName", newName);
-            loadSavedOwnerPreferences();
-        }
 
-        function uploadOwnerPhoto(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    localStorage.setItem("ownerPhoto", e.target.result);
-                    loadSavedOwnerPreferences();
-                    alert("Profile photo updated successfully!");
-                }
-                reader.readAsDataURL(file);
+
+        /* =========================================================
+           OWNER NAME
+           ========================================================= */
+
+        function updateOwnerName(
+            newName
+        ) {
+
+            const cleanName =
+                newName.trim();
+
+
+            if (!cleanName) {
+
+                return;
+
             }
+
+
+            localStorage.setItem(
+                "ownerName",
+                cleanName
+            );
+
+
+            loadSavedOwnerPreferences();
+
         }
 
-        function toggleAccordion(id) {
-            const section = document.getElementById(id);
-            section.classList.toggle("hidden");
+
+
+        /* =========================================================
+           OWNER PHOTO
+           ========================================================= */
+
+        function uploadOwnerPhoto(
+            event
+        ) {
+
+            const file =
+                event.target.files[0];
+
+
+            if (!file) {
+
+                return;
+
+            }
+
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function (e) {
+
+                    localStorage.setItem(
+                        "ownerPhoto",
+                        e.target.result
+                    );
+
+
+                    loadSavedOwnerPreferences();
+
+
+                    alert(
+                        "Profile photo updated successfully!"
+                    );
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
         }
+
+
+
+        /* =========================================================
+           ACCORDION
+           ========================================================= */
+
+        function toggleAccordion(
+            id
+        ) {
+
+            const section =
+                document.getElementById(
+                    id
+                );
+
+
+            if (!section) {
+
+                return;
+
+            }
+
+
+            section.classList.toggle(
+                "hidden"
+            );
+
+        }
+
+
+
+        /* =========================================================
+           PHONE OTP
+           ========================================================= */
 
         function sendPhoneOtp() {
-            const newPhone = document.getElementById("newPhoneInput").value;
-            if(newPhone.length < 10) { alert("Please enter a valid 10-digit mobile number."); return; }
-            alert("OTP sent successfully to " + newPhone + " (Demo OTP: 1234)");
-            document.getElementById("otpBoxSection").classList.remove("hidden");
-            document.getElementById("sendOtpButton").classList.add("hidden");
-            document.querySelectorAll('.otp-box')[0].focus();
+
+            const newPhone =
+                document.getElementById(
+                    "newPhoneInput"
+                ).value.trim();
+
+
+            if (
+                !/^\d{10}$/.test(
+                    newPhone
+                )
+            ) {
+
+                alert(
+                    "Please enter a valid 10-digit mobile number."
+                );
+
+                return;
+
+            }
+
+
+            alert(
+                "OTP sent successfully to " +
+                newPhone +
+                " (Demo OTP: 1234)"
+            );
+
+
+            document.getElementById(
+                "otpBoxSection"
+            ).classList.remove(
+                "hidden"
+            );
+
+
+            document.getElementById(
+                "sendOtpButton"
+            ).classList.add(
+                "hidden"
+            );
+
+
+            document.querySelectorAll(
+                ".otp-box"
+            )[0].focus();
+
         }
 
-        function moveToNext(element, index) {
-            const boxes = document.querySelectorAll('.otp-box');
-            if (element.value.length === 1 && index < boxes.length - 1) {
-                boxes[index + 1].focus();
+
+
+        /* =========================================================
+           OTP MOVE
+           ========================================================= */
+
+        function moveToNext(
+            element,
+            index
+        ) {
+
+            const boxes =
+                document.querySelectorAll(
+                    ".otp-box"
+                );
+
+
+            if (
+                element.value.length === 1 &&
+                index < boxes.length - 1
+            ) {
+
+                boxes[
+                    index + 1
+                ].focus();
+
             }
+
         }
+
+
+
+        /* =========================================================
+           VERIFY PHONE
+           ========================================================= */
 
         function verifyAndSaveNewPhone() {
-            const boxes = document.querySelectorAll('.otp-box');
-            let enteredOtp = "";
-            boxes.forEach(box => enteredOtp += box.value);
 
-            const newPhone = document.getElementById("newPhoneInput").value;
-            if(enteredOtp === "1234") {
-                localStorage.setItem("ownerPhone", "+91 " + newPhone);
-                document.getElementById("currentPhoneDisplay").innerText = "+91 " + newPhone;
-                alert("Mobile number updated successfully!");
-                document.getElementById("otpBoxSection").classList.add("hidden");
-                document.getElementById("sendOtpButton").classList.remove("hidden");
-                document.getElementById("newPhoneInput").value = "";
-                boxes.forEach(box => box.value = "");
+            const boxes =
+                document.querySelectorAll(
+                    ".otp-box"
+                );
+
+
+            let enteredOtp = "";
+
+
+            boxes.forEach(
+                box => {
+
+                    enteredOtp +=
+                        box.value;
+
+                }
+            );
+
+
+            const newPhone =
+                document.getElementById(
+                    "newPhoneInput"
+                ).value.trim();
+
+
+            if (
+                enteredOtp === "1234"
+            ) {
+
+                localStorage.setItem(
+                    "ownerPhone",
+                    "+91 " + newPhone
+                );
+
+
+                document.getElementById(
+                    "currentPhoneDisplay"
+                ).innerText =
+                    "+91 " + newPhone;
+
+
+                alert(
+                    "Mobile number updated successfully!"
+                );
+
+
+                document.getElementById(
+                    "otpBoxSection"
+                ).classList.add(
+                    "hidden"
+                );
+
+
+                document.getElementById(
+                    "sendOtpButton"
+                ).classList.remove(
+                    "hidden"
+                );
+
+
+                document.getElementById(
+                    "newPhoneInput"
+                ).value = "";
+
+
+                boxes.forEach(
+                    box => {
+
+                        box.value = "";
+
+                    }
+                );
+
             } else {
-                alert("Invalid OTP! Please enter 1234.");
+
+                alert(
+                    "Invalid OTP! Please enter 1234."
+                );
+
             }
+
         }
+
+
+
+        /* =========================================================
+           PASSWORD
+           ========================================================= */
 
         function saveNewPassword() {
-            const oldPass = document.getElementById("oldPasswordInput").value;
-            const newPass = document.getElementById("newPasswordInput").value;
-            const confPass = document.getElementById("confirmPasswordInput").value;
 
-            if(!oldPass || !newPass || !confPass) { alert("Please fill all password fields."); return; }
-            if(newPass !== confPass) { alert("New passwords do not match."); return; }
-            
-            localStorage.setItem("ownerPassword", newPass);
-            alert("Password updated successfully!");
-            document.getElementById("oldPasswordInput").value = "";
-            document.getElementById("newPasswordInput").value = "";
-            document.getElementById("confirmPasswordInput").value = "";
+            const oldPass =
+                document.getElementById(
+                    "oldPasswordInput"
+                ).value;
+
+
+            const newPass =
+                document.getElementById(
+                    "newPasswordInput"
+                ).value;
+
+
+            const confPass =
+                document.getElementById(
+                    "confirmPasswordInput"
+                ).value;
+
+
+            if (
+                !oldPass ||
+                !newPass ||
+                !confPass
+            ) {
+
+                alert(
+                    "Please fill all password fields."
+                );
+
+                return;
+
+            }
+
+
+            if (
+                newPass !== confPass
+            ) {
+
+                alert(
+                    "New passwords do not match."
+                );
+
+                return;
+
+            }
+
+
+            localStorage.setItem(
+                "ownerPassword",
+                newPass
+            );
+
+
+            alert(
+                "Password updated successfully!"
+            );
+
+
+            document.getElementById(
+                "oldPasswordInput"
+            ).value = "";
+
+
+            document.getElementById(
+                "newPasswordInput"
+            ).value = "";
+
+
+            document.getElementById(
+                "confirmPasswordInput"
+            ).value = "";
+
+
             closeOwnerDrawer();
+
         }
 
-        function setupKeyboardNav() {
-            const navLinks = Array.from(document.querySelectorAll('.nav-link'));
-            let navIndex = 0;
 
-            document.addEventListener('keydown', (e) => {
-                const drawer = document.getElementById("ownerDrawer");
-                const isDrawerOpen = drawer.classList.contains("open");
 
-                if (isDrawerOpen) {
-                    const focusables = Array.from(drawer.querySelectorAll('.drawer-focusable')).filter(el => {
-                        return el.offsetParent !== null;
-                    });
-                    let currentIndex = focusables.indexOf(document.activeElement);
+        /* =========================================================
+           MODULE LOADER
+           ========================================================= */
 
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        if (currentIndex === -1) currentIndex = 0;
-                        else currentIndex = (currentIndex + 1) % focusables.length;
-                        focusables[currentIndex].focus();
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        if (currentIndex === -1) currentIndex = focusables.length - 1;
-                        else currentIndex = (currentIndex - 1 + focusables.length) % focusables.length;
-                        focusables[currentIndex].focus();
-                    }
-                } else {
-                    if (document.activeElement.tagName === 'INPUT') return;
+        async function loadModule(
+            pageUrl,
+            element = null
+        ) {
 
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        navIndex = (navIndex + 1) % navLinks.length;
-                        navLinks[navIndex].focus();
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        navIndex = (navIndex - 1 + navLinks.length) % navLinks.length;
-                        navLinks[navIndex].focus();
-                    } else if (e.key === 'Enter') {
-                        const focusedElement = document.activeElement;
-                        if (navLinks.includes(focusedElement)) {
-                            e.preventDefault();
-                            focusedElement.click();
-                        }
-                    }
-                }
-            });
-        }
+            // Keep Accounts & Finance outside the dashboard shell.
+            if (pageUrl === "accounts.html") {
+                window.open("accounts.html", "_blank", "noopener");
+                return;
+            }
 
-        async function loadModule(pageUrl, element) {
-            const contentArea = document.getElementById('mainContentArea');
+            const contentArea =
+                document.getElementById(
+                    "mainContentArea"
+                );
+
+
             contentArea.innerHTML = `
-                <div class="flex items-center justify-center h-64">
-                    <div class="flex flex-col items-center space-y-2">
-                        <i class="fa-solid fa-circle-notch fa-spin text-amber-600 text-2xl"></i>
-                        <span class="text-xs font-medium text-slate-500">Loading module...</span>
+
+                <div
+                    class="flex items-center justify-center h-64"
+                >
+
+                    <div
+                        class="flex flex-col items-center space-y-3"
+                    >
+
+                        <i
+                            class="fa-solid fa-circle-notch fa-spin text-[#3677b6] text-xl"
+                        ></i>
+
+                        <span
+                            class="text-xs font-medium text-slate-500"
+                        >
+                            Loading module...
+                        </span>
+
                     </div>
+
                 </div>
+
             `;
 
-            try {
-                const response = await fetch(pageUrl);
-                if (!response.ok) throw new Error('Module file not found.');
-                const htmlContent = await response.text();
-                
-                contentArea.innerHTML = htmlContent;
-                contentArea.classList.remove('content-transition');
-                void contentArea.offsetWidth;
-                contentArea.classList.add('content-transition');
 
-                const scripts = contentArea.querySelectorAll('script');
-                scripts.forEach(script => {
-                    const newScript = document.createElement('script');
-                    newScript.text = script.innerText;
-                    document.body.appendChild(newScript);
-                    document.body.removeChild(newScript);
-                });
+            try {
+
+                const response =
+                    await fetch(
+                        pageUrl
+                    );
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    throw new Error(
+                        "Module file not found."
+                    );
+
+                }
+
+
+                const htmlContent =
+                    await response.text();
+
+
+                contentArea.innerHTML =
+                    htmlContent;
+
+                // Only Parties uses a compact header with its action in the top bar.
+                const headerTitle = document.getElementById('ownerModuleTitle');
+                const headerAction = document.getElementById('ownerPartiesHeaderAction');
+                if (headerAction) headerAction.remove();
+                if (headerTitle) headerTitle.textContent =
+                    pageUrl === 'parties.html' ? 'Parties Management' : 'Ekta Transport Management Panel';
+                if (pageUrl === 'parties.html') {
+                    const partyAction = contentArea.querySelector('#partiesModule > div > div.flex.justify-end');
+                    const partyButton = partyAction?.querySelector('button');
+                    const headerRight = document.querySelector('.owner-header > div.flex.items-center.space-x-3');
+                    if (partyButton && headerRight) {
+                        const wrapper = document.createElement('div');
+                        wrapper.id = 'ownerPartiesHeaderAction';
+                        wrapper.appendChild(partyButton);
+                        headerRight.insertBefore(wrapper, headerRight.firstChild);
+                        partyAction.remove();
+                    }
+                }
+
+
+                contentArea.classList.remove(
+                    "content-transition"
+                );
+
+
+                void contentArea.offsetWidth;
+
+
+                contentArea.classList.add(
+                    "content-transition"
+                );
+
+
+                /* EXECUTE SCRIPTS */
+
+                const scripts =
+                    contentArea.querySelectorAll(
+                        "script"
+                    );
+
+
+                scripts.forEach(
+                    script => {
+
+                        const newScript =
+                            document.createElement(
+                                "script"
+                            );
+
+
+                        if (
+                            script.src
+                        ) {
+
+                            newScript.src =
+                                script.src;
+
+                       } else {
+
+    newScript.textContent =
+        script.textContent;
+
+}
+
+
+                        document.body.appendChild(
+                            newScript
+                        );
+
+
+                        document.body.removeChild(
+                            newScript
+                        );
+
+                    }
+                );
+
+            localStorage.setItem(
+    "ekta_last_opened_module",
+    pageUrl
+);
+                if (element) {
+
+                    updateActiveNav(
+                        element
+                    );
+
+                }
 
             } catch (error) {
+
+                console.error(
+                    "Module loading error:",
+                    error
+                );
+
+
                 contentArea.innerHTML = `
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center text-amber-800 max-w-lg mx-auto mt-10">
-                        <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 text-amber-600"></i>
-                        <h3 class="font-bold text-sm">Module View Ready (${pageUrl})</h3>
-                        <p class="text-xs text-slate-600 mt-1">This module file (${pageUrl}) is pending creation. Once created, your data will load directly from the cloud database.</p>
+
+                    <div
+                        class="max-w-xl mx-auto mt-12 bg-white border border-slate-200 rounded-xl p-7 text-center shadow-sm"
+                    >
+
+                        <div
+                            class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-4"
+                        >
+
+                            <i
+                                class="fa-solid fa-triangle-exclamation text-slate-500"
+                            ></i>
+
+                        </div>
+
+
+                        <h3
+                            class="font-bold text-sm text-slate-800"
+                        >
+
+                            Module Not Available
+
+                        </h3>
+
+
+                        <p
+                            class="text-xs text-slate-500 mt-2"
+                        >
+
+                            The module
+                            <strong>${pageUrl}</strong>
+                            could not be loaded.
+
+                        </p>
+
                     </div>
+
                 `;
+
             }
 
-            if (element) updateActiveNav(element);
         }
 
-        function updateActiveNav(element) {
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('bg-amber-600', 'text-white', 'shadow-sm');
-                link.classList.add('text-slate-400', 'hover:bg-slate-900', 'hover:text-slate-100');
-            });
+
+
+        /* =========================================================
+           ACTIVE NAVIGATION
+           ========================================================= */
+
+        function updateActiveNav(
+            element
+        ) {
+
+            document
+                .querySelectorAll(
+                    ".nav-link"
+                )
+                .forEach(
+                    link => {
+
+                        link.classList.remove(
+                            "active"
+                        );
+
+                    }
+                );
+
+
             if (element) {
-                element.classList.remove('text-slate-400', 'hover:bg-slate-900', 'hover:text-slate-100');
-                element.classList.add('bg-amber-600', 'text-white', 'shadow-sm');
+
+                element.classList.add(
+                    "active"
+                );
+
             }
+
         }
+
+
+
+        /* =========================================================
+           KEYBOARD NAVIGATION
+           ========================================================= */
+
+        function setupKeyboardNav() {
+            const sidebarNav = document.getElementById("sidebarNav");
+            if (!sidebarNav) return;
+
+            const navLinks = Array.from(sidebarNav.querySelectorAll(".nav-link"));
+            if (!navLinks.length) return;
+
+            // Arrow navigation belongs exclusively to the focused sidebar.
+            // Never hijack arrow keys from loaded modules, tables, or forms.
+            sidebarNav.addEventListener("keydown", (event) => {
+                if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+                if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+                const focused = document.activeElement;
+                if (focused !== sidebarNav && !navLinks.includes(focused)) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+                const current = navLinks.indexOf(focused);
+                const direction = event.key === "ArrowDown" ? 1 : -1;
+                const next = current < 0
+                    ? (direction > 0 ? 0 : navLinks.length - 1)
+                    : (current + direction + navLinks.length) % navLinks.length;
+                navLinks[next].focus({ preventScroll: true });
+                navLinks[next].scrollIntoView({ block: "nearest", behavior: "smooth" });
+            });
+
+            // Clicking empty sidebar space enables keyboard navigation too.
+            sidebarNav.addEventListener("click", (event) => {
+                if (event.target === sidebarNav) sidebarNav.focus();
+            });
+        }
+
+
+
+        /* =========================================================
+           SIDEBAR TOGGLE
+           ========================================================= */
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-ml-72');
+
+            const sidebar =
+                document.getElementById(
+                    "sidebar"
+                );
+
+
+            sidebar.classList.toggle(
+                "mobile-hidden"
+            );
+
         }
+
+
+
+        /* =========================================================
+           LOGOUT
+           ========================================================= */
 
         function handleLogout() {
-            if(confirm('Are you sure you want to logout from Owner Dashboard?')) {
-                window.location.href = 'index.html';
+
+            if (
+                confirm(
+                    "Are you sure you want to logout from Owner Dashboard?"
+                )
+            ) {
+
+                window.location.href =
+                    "index.html";
+
             }
+
         }
+
     </script>
 
-    <!-- AI ASSISTANT FLOATING WIDGET LINK -->
-    <script src="/ai-widget.js"></script>
+
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Ekta Central Database Connector -->
+<script src="db.js"></script>
+
 </body>
+
 </html>

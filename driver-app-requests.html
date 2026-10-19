@@ -1,0 +1,556 @@
+<!-- =========================================================
+     EKTA TRANSPORT - DRIVER APP REQUESTS
+     New standalone dashboard module
+     ========================================================= -->
+
+<div id="driverAppRequestsModule" class="w-full">
+
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+        <div>
+            <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-inbox text-[#3677b6]"></i>
+                Driver App Requests
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Driver App operational requests and documents
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <input
+                id="darSearch"
+                type="text"
+                placeholder="Search vehicle, driver or request..."
+                class="w-full md:w-72 px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white outline-none focus:border-blue-300"
+                oninput="darApplyFilters()"
+            >
+            <button
+                type="button"
+                onclick="darExportCurrentTable()"
+                class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+            >
+                <i class="fa-solid fa-file-excel mr-1 text-emerald-600"></i>
+                Export Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
+
+        <button onclick="darOpenTab('diesel')" id="darCard-diesel"
+            class="dar-card text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+            <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <i class="fa-solid fa-gas-pump"></i>
+                </div>
+                <span id="darCount-diesel" class="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">0</span>
+            </div>
+            <div class="mt-3 text-sm font-bold text-slate-800">Diesel Requests</div>
+            <div class="text-[11px] text-slate-500 mt-1">Fuel requests from drivers</div>
+        </button>
+
+        <button onclick="darOpenTab('documents')" id="darCard-documents"
+            class="dar-card text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+            <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i class="fa-solid fa-file-circle-check"></i>
+                </div>
+                <span id="darCount-documents" class="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">0</span>
+            </div>
+            <div class="mt-3 text-sm font-bold text-slate-800">Trip Documents</div>
+            <div class="text-[11px] text-slate-500 mt-1">POD and trip documents</div>
+        </button>
+
+        <button onclick="darOpenTab('maintenance')" id="darCard-maintenance"
+            class="dar-card text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+            <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <span id="darCount-maintenance" class="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">0</span>
+            </div>
+            <div class="mt-3 text-sm font-bold text-slate-800">Maintenance</div>
+            <div class="text-[11px] text-slate-500 mt-1">Repair and maintenance requests</div>
+        </button>
+
+
+        <button onclick="darOpenTab('login')" id="darCard-login"
+            class="dar-card text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+            <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <span id="darCount-login" class="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">0</span>
+            </div>
+            <div class="mt-3 text-sm font-bold text-slate-800">Login Requests</div>
+            <div class="text-[11px] text-slate-500 mt-1">New device login approvals</div>
+        </button>
+
+        <button onclick="darOpenTab('other')" id="darCard-other"
+            class="dar-card text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+            <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
+                    <i class="fa-solid fa-ellipsis"></i>
+                </div>
+                <span id="darCount-other" class="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">0</span>
+            </div>
+            <div class="mt-3 text-sm font-bold text-slate-800">Other</div>
+            <div class="text-[11px] text-slate-500 mt-1">Other Driver App requests</div>
+        </button>
+
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+
+        <div class="px-4 py-3 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+                <div id="darTableTitle" class="text-sm font-bold text-slate-800">Diesel Requests</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">One request = one row</div>
+            </div>
+
+            <select id="darStatusFilter" onchange="darApplyFilters()"
+                class="px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white outline-none">
+                <option value="ALL">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="RECEIVED">Received</option>
+                <option value="COMPLETED">Completed</option>
+            </select>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs whitespace-nowrap">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                    <tr>
+                        <th class="text-left px-4 py-3 font-bold">Vehicle No.</th>
+                        <th class="text-left px-4 py-3 font-bold">Driver</th>
+                        <th class="text-left px-4 py-3 font-bold">Phone No.</th>
+                        <th class="text-left px-4 py-3 font-bold">Request / Document</th>
+                        <th class="text-left px-4 py-3 font-bold">Request Date & Time</th>
+                        <th class="text-left px-4 py-3 font-bold">Status</th>
+                        <th class="text-left px-4 py-3 font-bold">Approval / Reject Date & Time</th>
+                        <th class="text-left px-4 py-3 font-bold">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="darTableBody" class="divide-y divide-slate-100">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="darEmpty" class="py-12 text-center">
+            <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                <i class="fa-solid fa-inbox"></i>
+            </div>
+            <div class="mt-3 text-sm font-semibold text-slate-600">No requests yet</div>
+            <div class="mt-1 text-xs text-slate-400">Driver App requests will appear here after database wiring.</div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function () {
+    const titles = {
+        diesel: "Diesel Requests",
+        documents: "Trip Documents",
+        maintenance: "Maintenance Requests",
+        login: "Login Requests",
+        other: "Other Requests"
+    };
+
+    window.darCurrentTab = "diesel";
+    window.darRows = { diesel: [], documents: [], maintenance: [], login: [], other: [] };
+
+    const esc = (value) => String(value ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;").replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    function fmt(value) {
+        if (!value) return "—";
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return "—";
+        return d.toLocaleString("en-IN", {
+            day:"2-digit", month:"2-digit", year:"numeric",
+            hour:"2-digit", minute:"2-digit", hour12:true
+        });
+    }
+
+    function badge(status) {
+        const s = String(status || "PENDING").toUpperCase();
+        const cls = {
+            PENDING:"bg-amber-50 text-amber-700 border-amber-200",
+            APPROVED:"bg-emerald-50 text-emerald-700 border-emerald-200",
+            REJECTED:"bg-rose-50 text-rose-700 border-rose-200",
+            RECEIVED:"bg-blue-50 text-blue-700 border-blue-200",
+            COMPLETED:"bg-slate-100 text-slate-700 border-slate-200"
+        }[s] || "bg-slate-100 text-slate-700 border-slate-200";
+        return `<span class="inline-flex px-2 py-1 rounded-md border text-[10px] font-bold ${cls}">${esc(s)}</span>`;
+    }
+
+    async function getLookupMaps(sb) {
+        const [trucksRes, driversRes] = await Promise.all([
+            sb.from("trucks").select("id,truck_number"),
+            sb.from("drivers").select("id,name,phone")
+        ]);
+        if (trucksRes.error) console.warn("[Driver App Requests] trucks:", trucksRes.error);
+        if (driversRes.error) console.warn("[Driver App Requests] drivers:", driversRes.error);
+        return {
+            trucks: new Map((trucksRes.data || []).map(x => [x.id, x.truck_number || "—"])),
+            drivers: new Map((driversRes.data || []).map(x => [x.id, { name:x.name || "—", phone:x.phone || "—" }]))
+        };
+    }
+
+    async function loadLiveData() {
+        const sb = window.supabaseClient;
+        if (!sb || typeof sb.from !== "function") {
+            throw new Error("Supabase client is not available. Open this module from Owner Dashboard.");
+        }
+
+        const maps = await getLookupMaps(sb);
+
+        // Login Requests: resolve each driver's latest assigned truck from trips.
+        // This lookup is optional so the rest of Driver App Requests keeps working
+        // even if a driver has no trip/vehicle assignment yet.
+        const tripsRes = await sb.from("trips")
+          .select("driver_id,truck_id,created_at")
+          .not("driver_id", "is", null)
+          .not("truck_id", "is", null)
+          .order("created_at", { ascending:false });
+        if (tripsRes.error) console.warn("[Driver App Requests] trips lookup:", tripsRes.error);
+        const latestTruckByDriver = new Map();
+        (tripsRes.data || []).forEach(t => {
+            if (!latestTruckByDriver.has(t.driver_id)) latestTruckByDriver.set(t.driver_id, t.truck_id);
+        });
+
+        const [fuel, docs, maint, login, other] = await Promise.all([
+            sb.from("driver_fuel_requests")
+              .select("*")
+              .order("requested_at", { ascending:false }),
+
+            sb.from("trip_documents")
+              .select("id,trip_id,truck_id,document_type,document_number,document_date,file_url,source,is_official,verified,created_at,updated_at")
+              .order("created_at", { ascending:false }),
+
+            sb.from("driver_maintenance_requests")
+              .select("id,driver_id,truck_id,trip_id,maintenance_type,driver_message,request_status,source,requested_at,reviewed_at,rejection_reason")
+              .order("requested_at", { ascending:false }),
+
+            sb.from("driver_device_requests")
+              .select("*")
+              .order("requested_at", { ascending:false }),
+
+            sb.from("driver_other_requests")
+              .select("id,driver_id,truck_id,trip_id,request_type,driver_message,request_status,source,requested_at,reviewed_at,rejection_reason")
+              .order("requested_at", { ascending:false })
+        ]);
+
+        const errors = [fuel, docs, maint, login, other].map(x => x.error).filter(Boolean);
+        if (errors.length) throw errors[0];
+
+        window.darRows.diesel = (fuel.data || []).map(r => ({
+            id:r.id,
+            vehicle_no:maps.trucks.get(r.truck_id) || "—",
+            driver_name:maps.drivers.get(r.driver_id)?.name || "—",
+            request_text:[
+                r.request_type || "DIESEL",
+                r.requested_litres != null ? `Requested: ${r.requested_litres} L` : "",
+                r.approved_litres != null ? `Approved: ${r.approved_litres} L` : "",
+                r.requested_amount != null ? `Requested Amount: ₹${r.requested_amount}` : "",
+                r.approved_amount != null ? `Approved Amount: ₹${r.approved_amount}` : "",
+                r.driver_message || ""
+            ].filter(Boolean).join(" • "),
+            status:r.request_status || "PENDING",
+            requested_at:r.requested_at,
+            reviewed_at:r.reviewed_at,
+            rejection_reason:r.rejection_reason,
+            requested_litres:r.requested_litres,
+            requested_amount:r.requested_amount,
+            approved_litres:r.approved_litres,
+            approved_amount:r.approved_amount
+        }));
+
+        window.darRows.documents = (docs.data || []).map(r => ({
+            id:r.id,
+            vehicle_no:maps.trucks.get(r.truck_id) || "—",
+            driver_name:"—",
+            request_text:[
+                r.document_type || "DOCUMENT",
+                r.document_number ? `No. ${r.document_number}` : "",
+                r.source ? `Source: ${r.source}` : ""
+            ].filter(Boolean).join(" • "),
+            status:r.verified ? "APPROVED" : "RECEIVED",
+            requested_at:r.created_at,
+            reviewed_at:r.verified ? r.updated_at : null,
+            file_url:r.file_url
+        }));
+
+        window.darRows.maintenance = (maint.data || []).map(r => ({
+            id:r.id,
+            vehicle_no:maps.trucks.get(r.truck_id) || "—",
+            driver_name:maps.drivers.get(r.driver_id)?.name || "—",
+            request_text:[r.maintenance_type, r.driver_message].filter(Boolean).join(" • "),
+            status:r.request_status || "PENDING",
+            requested_at:r.requested_at,
+            reviewed_at:r.reviewed_at,
+            rejection_reason:r.rejection_reason
+        }));
+
+        window.darRows.login = (login.data || []).map(r => ({
+            id:r.id,
+            vehicle_no:maps.trucks.get(latestTruckByDriver.get(r.driver_id)) || "—",
+            driver_name:maps.drivers.get(r.driver_id)?.name || "—",
+            phone:maps.drivers.get(r.driver_id)?.phone || "—",
+            request_text:[
+                "NEW DEVICE LOGIN",
+                r.device_id ? `Device: ${r.device_id}` : ""
+            ].filter(Boolean).join(" • "),
+            status:r.status || "PENDING",
+            requested_at:r.requested_at,
+            reviewed_at:r.reviewed_at || r.approved_at || r.rejected_at || null,
+            device_id:r.device_id
+        }));
+
+        window.darRows.other = (other.data || []).map(r => ({
+            id:r.id,
+            vehicle_no:maps.trucks.get(r.truck_id) || "—",
+            driver_name:maps.drivers.get(r.driver_id)?.name || "—",
+            request_text:[r.request_type, r.driver_message].filter(Boolean).join(" • "),
+            status:r.request_status || "PENDING",
+            requested_at:r.requested_at,
+            reviewed_at:r.reviewed_at,
+            rejection_reason:r.rejection_reason
+        }));
+
+        darRefreshCounts();
+        darApplyFilters();
+    }
+
+    window.darOpenTab = function(tab) {
+        if (!titles[tab]) return;
+        window.darCurrentTab = tab;
+        document.querySelectorAll(".dar-card").forEach(el =>
+            el.classList.remove("ring-2","ring-blue-200","border-blue-400"));
+        document.getElementById(`darCard-${tab}`)?.classList.add("ring-2","ring-blue-200","border-blue-400");
+        const t = document.getElementById("darTableTitle");
+        if (t) t.textContent = titles[tab];
+        darApplyFilters();
+    };
+
+    window.darRefreshCounts = function() {
+        Object.keys(titles).forEach(tab => {
+            const el = document.getElementById(`darCount-${tab}`);
+            if (el) el.textContent = String(window.darRows[tab]?.length || 0);
+        });
+    };
+
+    window.darApplyFilters = function() {
+        const rows = window.darRows[window.darCurrentTab] || [];
+        const q = (document.getElementById("darSearch")?.value || "").trim().toLowerCase();
+        const status = document.getElementById("darStatusFilter")?.value || "ALL";
+        const filtered = rows.filter(row => {
+            const hay = [row.vehicle_no,row.driver_name,row.phone,row.request_text,row.status].join(" ").toLowerCase();
+            return (!q || hay.includes(q)) &&
+                   (status === "ALL" || String(row.status || "").toUpperCase() === status);
+        });
+        darRenderRows(filtered);
+    };
+
+    function tripStoragePathFromUrl(fileUrl) {
+        if (!fileUrl) return "";
+
+        // IMPORTANT:
+        // Keep the object key exactly as it is stored in trip_documents.file_url.
+        // Do not URL-decode/rebuild it, because Supabase Storage object names
+        // must match the saved key byte-for-byte.
+        const value = String(fileUrl).trim();
+        const marker = "/storage/v1/object/public/trips/";
+        const i = value.indexOf(marker);
+
+        if (i < 0) return "";
+
+        return value
+            .slice(i + marker.length)
+            .split("?")[0]
+            .split("#")[0];
+    }
+
+    window.darViewTripDocument = async function(fileUrl) {
+        try {
+            const sb = window.supabaseClient;
+            if (!sb || !sb.storage) throw new Error("Supabase client is not available.");
+
+            const path = tripStoragePathFromUrl(fileUrl);
+            if (!path) throw new Error("Document storage path could not be read.");
+
+            const { data, error } = await sb.storage
+                .from("trips")
+                .createSignedUrl(path, 300);
+
+            if (error) throw error;
+            if (!data?.signedUrl) throw new Error("Signed document URL was not created.");
+
+            window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+        } catch (err) {
+            console.error("[Driver App Requests] document view:", err);
+            alert("Document open nahi ho paya: " + (err?.message || "Unknown error"));
+        }
+    };
+
+    window.darApproveFuel = async function(id, litres, amount, editFirst) {
+        try {
+            let approvedLitres = litres;
+            let approvedAmount = amount;
+
+            if (editFirst) {
+                const l = prompt("Approved litres:", litres ?? "");
+                if (l === null) return;
+                approvedLitres = l === "" ? null : Number(l);
+                if (approvedLitres !== null && (!Number.isFinite(approvedLitres) || approvedLitres < 0)) {
+                    alert("Please enter valid approved litres.");
+                    return;
+                }
+
+                const a = prompt("Approved amount (optional):", amount ?? "");
+                if (a === null) return;
+                approvedAmount = a === "" ? null : Number(a);
+                if (approvedAmount !== null && (!Number.isFinite(approvedAmount) || approvedAmount < 0)) {
+                    alert("Please enter valid approved amount.");
+                    return;
+                }
+            } else {
+                if (!confirm("Approve this diesel request?")) return;
+            }
+
+            const { data, error } = await window.supabaseClient.rpc("review_driver_fuel_request", {
+                p_request_id: id,
+                p_action: "APPROVE",
+                p_approved_litres: approvedLitres,
+                p_approved_amount: approvedAmount,
+                p_rejection_reason: null
+            });
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || "Approval failed");
+
+            await loadLiveData();
+            alert("Diesel request approved.");
+        } catch (err) {
+            console.error("[Driver App Requests] approve fuel:", err);
+            alert("Approve nahi ho paya: " + (err?.message || "Unknown error"));
+        }
+    };
+
+    window.darRejectFuel = async function(id) {
+        try {
+            const reason = prompt("Rejection reason (optional):", "");
+            if (reason === null) return;
+            if (!confirm("Reject this diesel request?")) return;
+
+            const { data, error } = await window.supabaseClient.rpc("review_driver_fuel_request", {
+                p_request_id: id,
+                p_action: "REJECT",
+                p_approved_litres: null,
+                p_approved_amount: null,
+                p_rejection_reason: reason || null
+            });
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || "Rejection failed");
+
+            await loadLiveData();
+            alert("Diesel request rejected.");
+        } catch (err) {
+            console.error("[Driver App Requests] reject fuel:", err);
+            alert("Reject nahi ho paya: " + (err?.message || "Unknown error"));
+        }
+    };
+
+    window.darApproveLogin = async function(id) {
+        try {
+            if (!confirm("Approve this driver device login request?")) return;
+
+            const { data, error } = await window.supabaseClient.rpc(
+                "approve_driver_device_request",
+                { p_request_id: id }
+            );
+            if (error) throw error;
+            if (data && data.success === false) throw new Error(data.message || "Device approval failed");
+
+            await loadLiveData();
+            alert(data?.message || "Driver device approved successfully.");
+        } catch (err) {
+            console.error("[Driver App Requests] approve login:", err);
+            alert("Login approval nahi ho paya: " + (err?.message || "Unknown error"));
+        }
+    };
+
+    window.darRenderRows = function(rows) {
+        const body = document.getElementById("darTableBody");
+        const empty = document.getElementById("darEmpty");
+        if (!body || !empty) return;
+
+        if (!rows.length) {
+            body.innerHTML = "";
+            empty.classList.remove("hidden");
+            return;
+        }
+        empty.classList.add("hidden");
+        body.innerHTML = rows.map(row => `
+          <tr class="hover:bg-slate-50/70">
+            <td class="px-4 py-3 font-bold text-slate-800">${esc(row.vehicle_no)}</td>
+            <td class="px-4 py-3 text-slate-700">${esc(row.driver_name)}</td>
+            <td class="px-4 py-3 text-slate-700">${esc(row.phone || "—")}</td>
+            <td class="px-4 py-3 text-slate-700">${esc(row.request_text || "—")}</td>
+            <td class="px-4 py-3 text-slate-600">${fmt(row.requested_at)}</td>
+            <td class="px-4 py-3">${badge(row.status)}</td>
+            <td class="px-4 py-3 text-slate-600">${fmt(row.reviewed_at)}</td>
+            <td class="px-4 py-3">${
+                window.darCurrentTab === "diesel" && String(row.status || "").toUpperCase() === "PENDING"
+                ? `<div class="flex items-center gap-2">
+                     <button type="button" onclick='darApproveFuel(${JSON.stringify(row.id)}, ${JSON.stringify(row.requested_litres)}, ${JSON.stringify(row.requested_amount)}, false)' class="text-emerald-600 font-semibold hover:underline">Approve</button>
+                     <button type="button" onclick='darApproveFuel(${JSON.stringify(row.id)}, ${JSON.stringify(row.requested_litres)}, ${JSON.stringify(row.requested_amount)}, true)' class="text-blue-600 font-semibold hover:underline">Edit & Approve</button>
+                     <button type="button" onclick='darRejectFuel(${JSON.stringify(row.id)})' class="text-rose-600 font-semibold hover:underline">Reject</button>
+                   </div>`
+                : window.darCurrentTab === "login" && String(row.status || "").toUpperCase() === "PENDING"
+                ? `<div class="flex items-center gap-2">
+                     <button type="button" onclick='darApproveLogin(${JSON.stringify(row.id)})' class="text-emerald-600 font-semibold hover:underline">Approve</button>
+                   </div>`
+                : row.file_url
+                ? `<button type="button" onclick='darViewTripDocument(${JSON.stringify(row.file_url)})' class="text-blue-600 font-semibold hover:underline">View</button>`
+                : `<span class="text-slate-400">—</span>`
+            }</td>
+          </tr>`).join("");
+    };
+
+    window.darExportCurrentTable = function() {
+        const rows = window.darRows[window.darCurrentTab] || [];
+        if (!rows.length) { alert("No data available to export."); return; }
+
+        const csvRows = [
+            ["Vehicle No.","Driver","Phone No.","Request / Document","Request Date & Time","Status","Approval / Reject Date & Time"],
+            ...rows.map(r => [r.vehicle_no,r.driver_name,r.phone || "—",r.request_text,fmt(r.requested_at),r.status,fmt(r.reviewed_at)])
+        ];
+        const csv = csvRows.map(cols => cols.map(v => `"${String(v ?? "").replaceAll('"','""')}"`).join(",")).join("\n");
+        const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8;"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `driver-app-requests-${window.darCurrentTab}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    function showLoadError(err) {
+        console.error("[Driver App Requests]", err);
+        const empty = document.getElementById("darEmpty");
+        if (empty) empty.innerHTML = `
+          <div class="py-2 text-center">
+            <div class="text-sm font-bold text-rose-600">Unable to load requests</div>
+            <div class="mt-1 text-xs text-slate-500">${esc(err?.message || "Supabase error")}</div>
+          </div>`;
+    }
+
+    darOpenTab("diesel");
+    loadLiveData().catch(showLoadError);
+})();
+</script>

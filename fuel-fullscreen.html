@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ekta Transport | Fuel Management</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>body{background:#f1f5f9}#ektaFuelModule{padding:16px 24px 32px}#fuelHpclPanel{min-height:65vh}#hpRows td{vertical-align:middle}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:700px){#ektaFuelModule{padding:12px}}
+/* Compact Fuel source cards — visual only; existing click handlers unchanged */
+#fuelSourceCards{gap:12px}
+#fuelSourceCards .fuel-source{min-height:76px;padding:12px 14px;display:grid;grid-template-columns:38px minmax(0,1fr) auto;grid-template-rows:auto auto;align-content:center;column-gap:11px;row-gap:2px;border-radius:12px}
+#fuelSourceCards .fuel-source>div{display:contents}
+#fuelSourceCards .fuel-source>div>span:first-child{grid-column:1;grid-row:1 / 3;width:38px;height:38px;align-self:center}
+#fuelSourceCards .fuel-source>div>span:last-child{grid-column:3;grid-row:1 / 3;align-self:center;font-size:11px}
+#fuelSourceCards .fuel-source>h3{grid-column:2;grid-row:1;margin:0;font-size:14px;line-height:20px}
+#fuelSourceCards .fuel-source>p{grid-column:2;grid-row:2;margin:0;font-size:11px;line-height:16px}
+@media(max-width:640px){#fuelSourceCards{gap:8px}#fuelSourceCards .fuel-source{min-height:70px;padding:9px;grid-template-columns:32px minmax(0,1fr) auto;column-gap:7px}#fuelSourceCards .fuel-source>div>span:first-child{width:32px;height:32px}#fuelSourceCards .fuel-source>h3{font-size:12px}#fuelSourceCards .fuel-source>p{font-size:10px}}
+
+/* v8 compact upload area and dashboard summaries */
+.fuel-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
+.fuel-import-grid>label,.fuel-import-grid>div{margin:0!important;padding:12px 14px!important;min-width:0;border-radius:12px}
+.fuel-import-grid input[type=file]{margin-top:7px!important;max-width:100%;font-size:12px}
+.fuel-import-grid #hpMatch{font-size:11px;line-height:1.35;margin-top:6px}
+#fuelHpclPanel{min-height:0}
+#fuelHpclPanel>div.grid.grid-cols-2{gap:10px}
+#fuelHpclPanel>div.grid.grid-cols-2>div,#hpReviewCards>button{padding:10px 12px!important;border-radius:10px}
+#hpReviewCards>button b{font-size:18px;line-height:24px}
+#fuelHpclPanel #hpDb,#fuelHpclPanel #hpMsg{margin:0;line-height:1.4}
+@media(max-width:850px){.fuel-import-grid{grid-template-columns:1fr}}
+
+/* v9: slim horizontal import bars; functionality unchanged */
+.fuel-import-grid{gap:10px;align-items:start}
+.fuel-import-grid>label,.fuel-import-grid>div{padding:8px 12px!important;min-height:0!important;line-height:1.25}
+.fuel-import-grid>label{display:flex!important;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.fuel-import-grid>div>label{display:flex!important;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;line-height:1.25}
+.fuel-import-grid input[type=file]{width:205px;max-width:100%;margin:0!important;font-size:11px}
+.fuel-import-grid #hpMatch{margin-top:3px!important;font-size:10px;line-height:1.2}
+@media(max-width:1200px){.fuel-import-grid>label,.fuel-import-grid>div>label{align-items:flex-start;flex-direction:column;gap:4px}}
+
+/* v10: balanced, compact import strips — no JavaScript changes */
+.fuel-import-grid{align-items:stretch!important;gap:10px!important}
+.fuel-import-grid>label,.fuel-import-grid>div{box-sizing:border-box;min-height:70px!important;height:70px!important;padding:9px 12px!important;overflow:hidden}
+.fuel-import-grid>label{display:grid!important;grid-template-columns:minmax(0,1fr) 205px;align-items:center!important;gap:8px!important}
+.fuel-import-grid>div{display:flex!important;flex-direction:column;justify-content:center;gap:4px}
+.fuel-import-grid>div>label{display:grid!important;grid-template-columns:minmax(0,1fr) 205px;align-items:center!important;gap:8px!important;min-width:0}
+.fuel-import-grid>label,.fuel-import-grid>div>label{font-size:13px!important;line-height:1.2!important}
+.fuel-import-grid input[type=file]{width:205px!important;min-width:0;max-width:100%;font-size:11px!important}
+.fuel-import-grid #hpMatch{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin:0!important;font-size:10px!important;line-height:13px!important}
+@media(max-width:1100px){.fuel-import-grid>label,.fuel-import-grid>div>label{grid-template-columns:minmax(0,1fr) 150px}.fuel-import-grid input[type=file]{width:150px!important}}
+@media(max-width:700px){.fuel-import-grid{grid-template-columns:1fr!important}.fuel-import-grid>label,.fuel-import-grid>div{height:auto!important;min-height:68px!important}.fuel-import-grid>label,.fuel-import-grid>div>label{grid-template-columns:minmax(0,1fr) 150px}}
+/* Final responsive width containment: keep table scrolling inside panel */
+html,body{max-width:100%;overflow-x:hidden}#ektaFuelModule,#fuelHpclPanel{min-width:0;max-width:100%;box-sizing:border-box}
+#fuelSourceCards{grid-template-columns:repeat(4,minmax(0,1fr))}#fuelSourceCards .fuel-source{min-width:0}
+.fuel-import-grid{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}
+.fuel-import-grid>label,.fuel-import-grid>div{height:auto!important;min-height:62px!important;overflow:visible!important;min-width:0}
+.fuel-import-grid>label,.fuel-import-grid>div>label{grid-template-columns:minmax(0,1fr) minmax(110px,190px)!important}
+.fuel-import-grid input[type=file]{width:100%!important;min-width:0!important}
+.fuel-import-grid #hpMatch{white-space:normal!important;overflow:visible!important;line-height:1.25!important}
+@media(max-width:1000px){#fuelSourceCards{grid-template-columns:repeat(2,minmax(0,1fr))}.fuel-import-grid{grid-template-columns:1fr!important}}
+@media(max-width:520px){.fuel-import-grid>label,.fuel-import-grid>div>label{grid-template-columns:1fr!important}}
+#hpRows .hp-actual:disabled{cursor:not-allowed;opacity:1}
+#hpRows .hp-choice{display:block;max-width:190px}#hpRows .hp-confirm{display:block;margin-top:4px}
+#hpRows .hp-actual:focus-visible,#hpRows .hp-choice:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+
+/* Pump ledger: slim Excel-like sheet tabs; independent of HPCL */
+#pumpTabs{display:flex;flex-wrap:wrap;gap:4px;align-items:end;border-bottom:2px solid #cbd5e1;padding-top:3px}
+.pump-tab{padding:6px 11px;border:1px solid #cbd5e1;border-bottom:0;border-radius:7px 7px 0 0;font-size:12px;font-weight:650;white-space:nowrap;max-width:100%;transition:filter .15s}
+.pump-tab[aria-selected=true]{outline:2px solid #2563eb;outline-offset:-2px;filter:saturate(1.3)}
+#pumpLedgerPanel input,#pumpLedgerPanel select{min-width:0}#pumpLedgerPanel th{white-space:nowrap}#pumpLedgerPanel td{vertical-align:middle}
+#pumpLedgerPanel .pump-input{width:100%;border:1px solid #cbd5e1;border-radius:5px;padding:7px;font-size:12px}
+
+/* Pump Ledger: internal left navigation only; HPCL and other modules unchanged. */
+#pumpLedgerPanel .pump-workspace{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}
+#pumpLedgerPanel .pump-side-nav{background:#172e4b;border:1px solid #254362;border-radius:12px;padding:12px 8px;position:sticky;top:12px;max-height:calc(100vh - 30px);overflow-y:auto}
+#pumpLedgerPanel .pump-side-heading{font-size:11px;font-weight:800;letter-spacing:.09em;color:#a8c5e9;padding:8px 10px 12px}
+#pumpLedgerPanel #pumpTabs{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:5px;border:0;padding:0}
+#pumpLedgerPanel #pumpTabs .pump-tab{display:block;width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;padding:11px 12px;border:1px solid transparent;border-radius:8px;font-size:12px;line-height:1.3;color:#17243a;font-weight:700;transition:background .15s,box-shadow .15s}
+#pumpLedgerPanel #pumpTabs .pump-tab:hover{filter:brightness(.95)}
+#pumpLedgerPanel #pumpTabs .pump-tab[aria-selected=true]{outline:none;border:2px solid #60a5fa;box-shadow:inset 4px 0 #1d4ed8,0 0 0 1px rgba(147,197,253,.3);padding-left:14px}
+#pumpLedgerPanel .pump-workspace-content{min-width:0;display:flex;flex-direction:column;gap:12px}
+@media(max-width:760px){#pumpLedgerPanel .pump-workspace{grid-template-columns:130px minmax(0,1fr);gap:8px}#pumpLedgerPanel .pump-side-nav{padding:8px 5px}#pumpLedgerPanel #pumpTabs .pump-tab{padding:9px 7px;font-size:10px}#pumpLedgerPanel .pump-workspace-content{min-width:0}}
+
+/* Add Pump is a global Pump Master action, above the pump list. */
+#pumpLedgerPanel .pump-add-sidebar{display:block;width:calc(100% - 12px);margin:0 6px 12px;padding:10px 8px;border-radius:8px;background:#2563eb;color:white;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
+#pumpLedgerPanel .pump-add-sidebar:hover{background:#1d4ed8}
+#pumpLedgerPanel .pump-add-sidebar:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+
+#pumpLedgerPanel .pump-workspace-content > .hidden{display:none!important}
+/* Ekta Pump Master 2026 — visual refinement only; no HPCL processing changes */
+#pumpLedgerPanel{padding:18px!important;border-radius:18px}
+#pumpLedgerPanel .pump-workspace{grid-template-columns:258px minmax(0,1fr);gap:16px}
+#pumpLedgerPanel .pump-side-nav{background:linear-gradient(155deg,#183656 0%,#102740 100%);border:1px solid #27476b;border-radius:16px;padding:15px 12px;box-shadow:0 12px 28px rgba(15,35,58,.13)}
+#pumpLedgerPanel .pump-side-heading{display:flex;align-items:flex-start;gap:10px;color:#f1f7ff;font-size:14px;letter-spacing:.035em;padding:7px 7px 16px}
+#pumpLedgerPanel .pump-side-heading>i{font-size:16px;color:#9fc9ff;margin-top:2px}
+#pumpLedgerPanel .pump-side-heading small{display:block;font-size:11px;color:#afc6e1;letter-spacing:0;font-weight:400;margin-top:5px}
+#pumpLedgerPanel .pump-add-sidebar{width:100%;margin:0 0 15px;padding:13px;border-radius:10px;background:linear-gradient(95deg,#1d4ed8,#2563eb);font-size:13px;box-shadow:0 5px 12px rgba(22,80,200,.22)}
+#pumpLedgerPanel .pump-add-sidebar i{margin-right:6px}
+#pumpLedgerPanel #pumpTabs{gap:8px}
+#pumpLedgerPanel #pumpTabs .pump-tab{display:flex;align-items:center;gap:10px;padding:11px 10px!important;min-height:59px;border:1px solid #cbd5e1!important;border-radius:11px;background:#f8fafc!important;box-shadow:none;line-height:1.3;font-size:12px;transition:background .15s,border-color .15s,transform .15s}
+#pumpLedgerPanel #pumpTabs .pump-tab:hover{background:#eff6ff!important;transform:translateX(2px)}
+#pumpLedgerPanel #pumpTabs .pump-tab[aria-selected=true]{background:#dbeafe!important;border:2px solid #3b82f6!important;box-shadow:inset 4px 0 #2563eb,0 0 0 2px rgba(59,130,246,.12);padding-left:9px!important}
+#pumpLedgerPanel .pump-tab-icon{display:flex;align-items:center;justify-content:center;flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:var(--pump-accent,#dbeafe);color:#174b87;font-size:14px}
+#pumpLedgerPanel .pump-tab-name{display:block;min-width:0;flex:1;overflow-wrap:anywhere;font-weight:750}
+#pumpLedgerPanel .pump-tab-name small{display:block;color:#64748b;font-weight:450;font-size:10px;margin-top:3px}
+#pumpLedgerPanel .pump-chevron{color:#64748b;font-size:10px}
+#pumpLedgerPanel .pump-empty-side{color:#b9d0e9;font-size:12px;line-height:1.6;padding:12px 7px}
+#pumpLedgerPanel .pump-empty-workspace{min-height:370px;border:1px dashed #b9cde8;border-radius:16px;background:linear-gradient(135deg,#f8fbff,#eef6ff);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;color:#475569}
+#pumpLedgerPanel .pump-empty-workspace.hidden{display:none}
+#pumpLedgerPanel .pump-empty-workspace>i{font-size:38px;color:#3b82f6;background:#dbeafe;padding:22px;border-radius:18px}
+#pumpLedgerPanel .pump-empty-workspace h3{font-size:20px;font-weight:750;color:#183656;margin-top:18px}
+#pumpLedgerPanel .pump-empty-workspace p{max-width:460px;font-size:13px;line-height:1.7;margin-top:8px}
+#pumpLedgerPanel .pump-ledger-heading{border:1px solid #e2e8f0;background:#fff;border-radius:12px;padding:12px 15px;min-height:72px}
+#pumpLedgerPanel .pump-ledger-heading #pumpCurrentName{font-size:18px}
+#pumpLedgerPanel .pump-settings-card{border-radius:12px!important;padding:14px!important;gap:12px!important;background:linear-gradient(110deg,#eff6ff,#eaf3ff)!important}
+#pumpLedgerPanel .pump-settings-card>b{font-size:13px;color:#1e3a5f}
+#pumpLedgerPanel .pump-workspace-content>form#pumpEntryForm{border-radius:12px;background:#f4fbf8;border-color:#d1fae5;padding:16px}
+#pumpLedgerPanel .pump-workspace-content .pump-input{border-radius:8px;padding:9px 10px}
+@media(max-width:900px){#pumpLedgerPanel .pump-workspace{grid-template-columns:205px minmax(0,1fr);gap:10px}}
+@media(max-width:600px){#pumpLedgerPanel .pump-workspace{grid-template-columns:145px minmax(0,1fr)}#pumpLedgerPanel .pump-side-nav{padding:10px 7px}#pumpLedgerPanel #pumpTabs .pump-tab{gap:5px;font-size:10px}#pumpLedgerPanel .pump-tab-icon{display:none}#pumpLedgerPanel .pump-side-heading{font-size:11px}}
+/* Refined pump navigation */
+#pumpLedgerPanel .pump-side-nav{background:linear-gradient(170deg,#102c4a,#142f51 72%,#1b3e64);border:1px solid #355779;border-radius:20px;padding:19px 14px;box-shadow:0 14px 32px rgba(16,44,74,.17)}
+#pumpLedgerPanel .pump-side-heading{font-size:15px;letter-spacing:.06em;padding:8px 8px 20px;align-items:center}
+#pumpLedgerPanel .pump-side-heading>i{display:grid;place-items:center;background:rgba(147,197,253,.14);border-radius:11px;width:38px;height:38px;font-size:17px}
+#pumpLedgerPanel .pump-add-sidebar{border:1px solid rgba(255,255,255,.17);border-radius:12px;padding:14px 12px;margin-bottom:18px;font-size:14px;background:linear-gradient(115deg,#2863e9,#1e4ed0)}
+#pumpLedgerPanel #pumpTabs .pump-tab{border:1px solid #dbe5f0!important;border-radius:13px;min-height:70px;padding:12px!important;background:#f8fbff!important;gap:12px;box-shadow:0 3px 8px rgba(0,0,0,.06)}
+#pumpLedgerPanel #pumpTabs .pump-tab[aria-selected=true]{background:#e7f1ff!important;border:2px solid #60a5fa!important;box-shadow:0 0 0 3px rgba(96,165,250,.18),inset 3px 0 #2563eb}
+#pumpLedgerPanel .pump-tab-name{font-size:12px;line-height:1.5;letter-spacing:.01em}
+#pumpLedgerPanel .pump-tab-icon{background:#dbeafe;color:#1d4ed8;flex-basis:37px;width:37px;height:37px}
+
+/* Pump ledger readability: presentation only */
+#pumpLedgerPanel .pump-ledger-table{min-width:1580px;border-collapse:separate;border-spacing:0;table-layout:auto}
+#pumpLedgerPanel .pump-ledger-table th{padding:13px 15px!important;text-align:left;vertical-align:middle;background:#e9eff6;border-bottom:2px solid #cbd5e1;font-size:12px;letter-spacing:.01em}
+#pumpLedgerPanel .pump-ledger-table td{padding:14px 15px!important;vertical-align:middle;line-height:1.55;border-bottom:1px solid #dbe3ed;font-size:12px}
+#pumpLedgerPanel .pump-ledger-table tbody tr:nth-child(even){background:#f8fafc}
+#pumpLedgerPanel .pump-ledger-table tbody tr:hover{background:#eff6ff}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(2),#pumpLedgerPanel .pump-ledger-table td:nth-child(2){min-width:235px}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(3),#pumpLedgerPanel .pump-ledger-table td:nth-child(3){min-width:160px}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(10),#pumpLedgerPanel .pump-ledger-table td:nth-child(10){min-width:165px}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(11),#pumpLedgerPanel .pump-ledger-table td:nth-child(11){min-width:265px;max-width:340px;overflow-wrap:anywhere}
+#pumpLedgerPanel .pump-ledger-table td:nth-child(2){font-weight:600;color:#253a54}
+#pumpLedgerPanel .pump-ledger-table td:nth-child(8),#pumpLedgerPanel .pump-ledger-table td:nth-child(9),#pumpLedgerPanel .pump-ledger-table td:nth-child(10){white-space:nowrap;font-variant-numeric:tabular-nums}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(n+5):nth-child(-n+10){text-align:right}
+/* Clean vertical separators, without extra scroll-arrow decorations */
+#pumpLedgerPanel .pump-ledger-table th,#pumpLedgerPanel .pump-ledger-table td{border-right:1px solid #e2e8f0}
+#pumpLedgerPanel .pump-ledger-table th:last-child,#pumpLedgerPanel .pump-ledger-table td:last-child{border-right:0}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(4){min-width:135px}
+#pumpLedgerPanel .pump-ledger-table th:nth-child(12){min-width:150px}
+#pumpLedgerPanel .pump-action{border:1px solid #cbd5e1;border-radius:6px;padding:5px 9px;font-weight:650;margin-right:5px;background:white}
+#pumpLedgerPanel .pump-edit{color:#1d4ed8;border-color:#bfdbfe}
+#pumpLedgerPanel .pump-delete{color:#b91c1c;border-color:#fecaca}
+#pumpLedgerPanel .pump-ledger-table{scrollbar-width:auto}
+
+
+/* Hide visual scrollbar tracks/buttons in working tables; retain wheel/touch/keyboard scrolling. */
+#ektaFuelModule .overflow-auto{scrollbar-width:none;-ms-overflow-style:none}
+#ektaFuelModule .overflow-auto::-webkit-scrollbar{display:none;width:0;height:0}
+#ektaFuelModule .overflow-auto::-webkit-scrollbar-button{display:none}
+/* Keep legacy manual-sync controls in DOM for existing JS; never display them. */
+#pumpLedgerPanel #pumpSyncHpcl, #pumpLedgerPanel #pumpCloudSave, #pumpLedgerPanel #pumpCloudLoad {display:none!important;}
+#pumpLedgerPanel .pump-workspace-content > div:has(> #pumpSyncHpcl) {display:none!important;}
+
+/* Diesel Cash / Statement — compact professional working density (visual only) */
+#dieselCashPanel{padding:16px 18px!important;font-size:12px;line-height:1.4}
+#dieselCashPanel.space-y-4>:not([hidden])~:not([hidden]){margin-top:12px}
+#dieselCashPanel>div:first-child h3{font-size:18px!important;line-height:24px!important;letter-spacing:-.025em}
+#dieselCashPanel>div:first-child p{font-size:11px!important;line-height:16px}
+#dieselCashPanel #dcRefresh{font-size:12px!important;padding:8px 12px!important;border-radius:7px}
+#dieselCashPanel>div.grid.grid-cols-2.md\:grid-cols-3{gap:10px!important;font-size:12px!important}
+#dieselCashPanel>div.grid.grid-cols-2.md\:grid-cols-3>div{padding:10px 12px!important;border-radius:8px}
+#dieselCashPanel #dcLitres,#dieselCashPanel #dcAmount,#dieselCashPanel #dcCount{font-size:19px!important;line-height:25px!important;margin-top:2px}
+#dieselCashPanel #dcForm{padding:12px 14px!important;border-radius:10px}
+#dieselCashPanel #dcForm.space-y-3>:not([hidden])~:not([hidden]){margin-top:9px}
+#dieselCashPanel #dcForm>b{font-size:13px!important;line-height:18px}
+#dieselCashPanel #dcForm>div.grid{gap:9px 12px!important;font-size:11px!important}
+#dieselCashPanel #dcForm label{font-size:11px!important;line-height:16px;color:#334155}
+#dieselCashPanel #dcForm input{height:34px!important;padding:6px 9px!important;margin-top:4px!important;font-size:12px!important;border-radius:6px!important;background:#fff}
+#dieselCashPanel #dcForm button[type=submit]{font-size:12px!important;line-height:18px;padding:8px 12px!important;border-radius:7px}
+#dieselCashPanel #dcFrom,#dieselCashPanel #dcTo,#dieselCashPanel #dcSearch{height:34px!important;padding:6px 9px!important;font-size:12px!important}
+#dieselCashPanel #dcClear,#dieselCashPanel #dcShowHidden{height:34px!important;padding:6px 10px!important;font-size:11px!important}
+#dieselCashPanel table{font-size:11px!important;line-height:1.35}
+#dieselCashPanel table th{padding:9px 10px!important;font-size:11px!important;white-space:nowrap}
+#dieselCashPanel table td{padding:8px 10px!important;font-size:11px!important;vertical-align:middle}
+#dieselCashPanel #dcRows input,#dieselCashPanel #dcRows select{min-height:32px;font-size:12px!important;padding:5px 7px!important}
+#dieselCashPanel #dcRows button{font-size:11px!important}
+@media(max-width:720px){#dieselCashPanel{padding:12px!important}#dieselCashPanel #dcForm>div.grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* HPCL presentation-only state: never alters matching, saving or Supabase calls */
+#fuelHpclPanel:not(.hp-has-upload) [data-hp-work]{display:none!important}
+#fuelHpclPanel:not(.hp-has-upload) #hpSave,#fuelHpclPanel:not(.hp-has-upload) #hpExport{display:none!important}
+#fuelHpclPanel.hp-history-view [data-hp-upload],#fuelHpclPanel.hp-history-view [data-hp-work],#fuelHpclPanel.hp-history-view #hpDb,#fuelHpclPanel.hp-history-view #hpMsg,#fuelHpclPanel.hp-history-view #hpSave,#fuelHpclPanel.hp-history-view #hpExport{display:none!important}
+#fuelHpclPanel.hp-history-view #hpHistory{background:#1e40af}
+#hpHistoryPanel{box-shadow:0 6px 18px rgba(30,64,175,.06)}
+
+/* Pump Master sidebar refinement — CSS presentation only; no event or data changes */
+#pumpLedgerPanel .pump-workspace{grid-template-columns:242px minmax(0,1fr);gap:16px}
+#pumpLedgerPanel .pump-side-nav{background:#f8fbff!important;border:1px solid #d6e2f1!important;border-radius:15px!important;padding:15px 12px!important;box-shadow:0 5px 16px rgba(27,53,83,.06)!important}
+#pumpLedgerPanel .pump-side-heading{display:flex;align-items:center;gap:11px;color:#173656!important;font-size:14px!important;font-weight:800;letter-spacing:.015em!important;padding:5px 4px 15px!important}
+#pumpLedgerPanel .pump-side-heading>i{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#e2edff!important;color:#2563eb!important;font-size:16px!important}
+#pumpLedgerPanel .pump-side-heading small{display:block;color:#64748b!important;font-size:11px!important;font-weight:450;letter-spacing:0;margin-top:3px}
+#pumpLedgerPanel .pump-add-sidebar{width:100%!important;margin:0 0 13px!important;min-height:43px;border:1px solid #bfdbfe!important;border-radius:10px!important;padding:10px 12px!important;background:#2563eb!important;color:#fff!important;font-size:13px!important;font-weight:700!important;box-shadow:0 2px 5px rgba(37,99,235,.12)!important}
+#pumpLedgerPanel .pump-add-sidebar:hover{background:#1d4ed8!important;box-shadow:0 4px 9px rgba(37,99,235,.18)!important}
+#pumpLedgerPanel #pumpTabs{gap:7px!important}
+#pumpLedgerPanel #pumpTabs .pump-tab{min-height:60px!important;gap:9px!important;padding:10px!important;background:#fff!important;border:1px solid #dbe4ef!important;border-radius:10px!important;box-shadow:0 1px 3px rgba(15,23,42,.04)!important;transform:none!important}
+#pumpLedgerPanel #pumpTabs .pump-tab:hover{background:#f1f6ff!important}
+#pumpLedgerPanel #pumpTabs .pump-tab[aria-selected=true]{background:#eaf3ff!important;border:1px solid #60a5fa!important;box-shadow:inset 3px 0 #2563eb,0 0 0 2px rgba(96,165,250,.12)!important;padding-left:10px!important}
+#pumpLedgerPanel .pump-tab-icon{flex:0 0 34px!important;width:34px!important;height:34px!important;border-radius:9px!important;background:#dbeafe!important;color:#2563eb!important;font-size:13px!important}
+#pumpLedgerPanel .pump-tab-name{font-size:12px!important;line-height:1.35!important;font-weight:750!important;color:#1e3551!important;letter-spacing:0!important}
+#pumpLedgerPanel .pump-tab-name small{font-size:10px!important;font-weight:400!important;color:#64748b!important}
+#pumpLedgerPanel .pump-chevron{color:#64748b!important}
+#pumpLedgerPanel .pump-empty-side{color:#64748b!important}
+@media(max-width:900px){#pumpLedgerPanel .pump-workspace{grid-template-columns:205px minmax(0,1fr)}}
+@media(max-width:600px){#pumpLedgerPanel .pump-workspace{grid-template-columns:145px minmax(0,1fr)}#pumpLedgerPanel .pump-side-nav{padding:9px 6px!important}#pumpLedgerPanel .pump-side-heading{font-size:11px!important;gap:6px}#pumpLedgerPanel .pump-side-heading>i{width:28px;height:28px;flex-basis:28px}#pumpLedgerPanel .pump-tab-icon{display:none}}
+
+</style>
+<!-- Uses your existing Supabase client setup when db.js is present alongside this page. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="db.js"></script>
+</head><body>
+<header class="bg-slate-900 text-white px-6 py-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+ <div class="flex items-center gap-3"><span class="rounded-lg bg-blue-600 px-3 py-2 font-bold">ET</span><div><div class="font-bold tracking-wide">EKTA TRANSPORT</div><div class="text-xs text-slate-300">Fuel Management · Full Screen Register</div></div></div>
+ <div class="flex gap-2"><a href="owner-dashboard.html" class="text-sm rounded-lg bg-slate-700 hover:bg-slate-600 px-4 py-2">← Owner Dashboard</a><button type="button" onclick="if(document.fullscreenElement){document.exitFullscreen()}else{document.documentElement.requestFullscreen?.()}" class="text-sm rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2">⛶ Full Screen</button></div>
+</header>
+<!-- Ekta Transport | Fuel Management | HPCL official-only local preview -->
+<section id="ektaFuelModule" class="w-full max-w-none mx-auto space-y-4 pb-8">
+<div class="flex justify-end"><span class="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-100">Supabase · Pending Review</span></div>
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3" id="fuelSourceCards">
+    <button type="button" data-fuel-source="hpcl" class="fuel-source text-left bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"><div class="flex items-center justify-between"><span class="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center"><i class="fa-solid fa-key text-base"></i></span><span class="text-xs font-bold text-blue-600">01</span></div><h3 class="font-bold text-sm mt-2 text-slate-800">HPCL OTP</h3><p class="text-xs text-slate-500 mt-1">HPCL OTP</p></button>
+    <button type="button" data-fuel-source="iocl" class="fuel-source text-left bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"><div class="flex items-center justify-between"><span class="w-9 h-9 rounded-lg bg-orange-50 text-orange-700 flex items-center justify-center"><i class="fa-solid fa-gas-pump text-base"></i></span><span class="text-xs font-bold text-slate-500">02</span></div><h3 class="font-bold text-sm mt-2 text-slate-800">Indian Oil</h3><p class="text-xs text-slate-500 mt-1">Indian Oil</p></button>
+    <button type="button" data-fuel-source="pump" class="fuel-source text-left bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"><div class="flex items-center justify-between"><span class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center"><i class="fa-solid fa-store text-base"></i></span><span class="text-xs font-bold text-slate-500">03</span></div><h3 class="font-bold text-sm mt-2 text-slate-800">Pump</h3><p class="text-xs text-slate-500 mt-1">Pump</p></button>
+    <button type="button" data-fuel-source="cash" class="fuel-source text-left bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"><div class="flex items-center justify-between"><span class="w-9 h-9 rounded-lg bg-violet-50 text-violet-700 flex items-center justify-center"><i class="fa-solid fa-money-bill-wave text-base"></i></span><span class="text-xs font-bold text-slate-500">04</span></div><h3 class="font-bold text-sm mt-2 text-slate-800">Diesel Cash / Statement</h3><p class="text-xs text-slate-500 mt-1">Cash &amp; Accounts Statement</p></button>
+  </div>
+<div id="fuelHpclPanel" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-4">
+<div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold text-lg text-slate-800">HPCL OTP · FULL DETAILS</h3><p class="text-xs text-slate-500">Only upload HPCL CustomerTransactionDetails. Your Daily Excel is NOT required.</p></div><button type="button" id="hpHistory" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm">Saved History</button><button type="button" id="hpSave" class="bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm">Save Fuel Register</button><button type="button" id="hpExport" class="bg-slate-800 text-white rounded-lg px-4 py-2 text-sm">Export Report (CSV)</button></div>
+<div data-hp-work="approval" class="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+<button type="button" id="hpVerifyAll" class="rounded bg-blue-700 text-white px-3 py-2 font-semibold">Verify All Reviewed</button>
+<button type="button" id="hpVerifyFinancial" class="rounded bg-indigo-700 text-white px-3 py-2 font-semibold">Verify Financial Entries</button>
+<button type="button" id="hpApproveAll" class="rounded bg-emerald-700 text-white px-3 py-2 font-semibold">Approve All Verified</button>
+<span id="hpApprovalInfo" class="text-slate-600">0 verified · 0 approved · 0 pending</span>
+</div>
+<div id="hpDevAccess" class="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs space-y-2">
+ <div class="flex flex-wrap items-center justify-between gap-2"><span class="font-semibold text-slate-700">Development Database Access (temporary)</span><span id="hpAuthState" class="text-amber-700">Checking access…</span></div>
+ <div class="flex flex-wrap items-center gap-2"><input id="hpDevEmail" type="email" autocomplete="username" placeholder="Supabase Auth email" class="border rounded p-2 min-w-[210px]"><input id="hpDevPassword" type="password" autocomplete="current-password" placeholder="Password (not stored in file)" class="border rounded p-2 min-w-[180px]"><button id="hpDevSignIn" type="button" class="bg-slate-800 text-white rounded px-3 py-2">Connect</button><button id="hpDevSignOut" type="button" class="border rounded px-3 py-2">Disconnect</button></div>
+ <p class="text-slate-500">Temporary Supabase Auth session for local development. Never put passwords or secret/service-role keys into db.js or HTML. Full staff login comes later.</p>
+</div>
+<div id="hpHistoryPanel" class="hidden rounded-xl border border-blue-200 bg-blue-50 p-3 space-y-2">
+<div class="flex flex-wrap justify-between items-center gap-2"><b class="text-sm text-blue-900">Saved Fuel History (Supabase)</b><div class="flex items-center gap-3"><span id="hpHistoryStatus" class="text-xs text-slate-600">Not loaded</span><button type="button" id="hpHistoryClose" aria-label="Close saved history" class="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-blue-100">✕ Close</button></div></div>
+<div class="flex flex-wrap items-end gap-2"><label class="text-xs">From Date <input id="hpHistoryFrom" type="date" class="block border rounded p-2 mt-1"></label><label class="text-xs">To Date <input id="hpHistoryTo" type="date" class="block border rounded p-2 mt-1"></label><button id="hpHistoryReload" type="button" class="bg-blue-700 text-white rounded px-3 py-2 text-xs">Load / Refresh</button><button id="hpHistoryClear" type="button" class="border rounded px-3 py-2 text-xs">All Dates</button></div>
+<div class="overflow-auto max-h-72 rounded border bg-white"><table class="min-w-[1050px] w-full text-xs"><thead class="bg-slate-100"><tr><th class="p-2 text-left">Txn ID</th><th class="p-2 text-left">HPCL Date</th><th class="p-2 text-left">Pump</th><th class="p-2 text-left">Vehicle Number (Actual)</th><th class="p-2 text-left">Type</th><th class="p-2 text-right">Litres</th><th class="p-2 text-right">Amount</th><th class="p-2 text-left">Status</th></tr></thead><tbody id="hpHistoryRows"><tr><td colspan="8" class="p-4 text-center text-slate-500">Click Load / Refresh to view saved transactions.</td></tr></tbody></table></div></div>
+<div data-hp-upload class="fuel-import-grid">
+<label class="block border border-dashed border-blue-300 bg-blue-50 rounded-xl p-4 text-sm font-semibold">Upload HPCL Official CustomerTransactionDetails.xlsx<input id="hpFile" type="file" accept=".xlsx,.xls" class="block w-full mt-2 text-xs"></label>
+<div class="border border-blue-200 bg-blue-50 rounded-xl p-3 space-y-2"><label class="block text-sm font-semibold text-blue-900">Import WhatsApp Reader CSV / Excel (Actual Vehicle Matching)<input id="hpWhatsFile" type="file" accept=".csv,.xlsx,.xls,text/csv" class="block w-full mt-2 text-xs"></label><p id="hpMatch" class="text-xs text-blue-800">Upload HPCL Excel and WhatsApp Reader CSV in either order. Actual Vehicle starts blank. Yellow = WhatsApp match, green = manual correction; financial ledger entries need no truck.</p></div>
+</div>
+<p id="hpDb" class="text-xs text-blue-700">Checking Fleet Master connection…</p><p id="hpMsg" role="status" class="text-sm text-slate-600">Select the official HPCL Excel to generate your working rows. Excel is processed locally in the browser.</p>
+<div data-hp-work="summary" class="grid grid-cols-2 xl:grid-cols-4 gap-3"><div class="rounded-xl bg-slate-50 p-3"><div class="text-xs text-slate-500">Transactions</div><b id="hpCount">0</b></div><div class="rounded-xl bg-slate-50 p-3"><div class="text-xs text-slate-500">Diesel Litres</div><b id="hpLitres">0</b></div><div class="rounded-xl bg-slate-50 p-3"><div class="text-xs text-slate-500">Diesel Amount</div><b id="hpAmount">₹0</b></div><div class="rounded-xl bg-slate-50 p-3"><div class="text-xs text-slate-500">Vehicle Corrections</div><b id="hpCorrected">0</b></div></div>
+<div class="grid grid-cols-2 xl:grid-cols-4 gap-3" data-hp-work="review" id="hpReviewCards"><button type="button" data-review="auto" class="hp-review-card text-left border rounded-xl p-3 bg-emerald-50 border-emerald-200"><span class="text-xs font-semibold text-emerald-800">Auto Matched</span><b id="hpAutoCount" class="block text-xl">0</b></button><button type="button" data-review="manual" class="hp-review-card text-left border rounded-xl p-3 bg-blue-50 border-blue-200"><span class="text-xs font-semibold text-blue-800">Manually Corrected</span><b id="hpManualCount" class="block text-xl">0</b></button><button type="button" data-review="pending" class="hp-review-card text-left border rounded-xl p-3 bg-amber-50 border-amber-200"><span class="text-xs font-semibold text-amber-800">Review Pending (Unsaved)</span><b id="hpPendingCount" class="block text-xl">0</b></button><button type="button" data-review="all" class="hp-review-card text-left border rounded-xl p-3 bg-slate-50 border-slate-200"><span class="text-xs font-semibold text-slate-700">All Transactions</span><b id="hpAllCount" class="block text-xl">0</b></button></div><p data-hp-work="review-note" class="text-xs text-slate-500">Review filters are local only. Review Pending excludes saved/approved entries; All Transactions includes diesel and financial ledger rows. Saved History is loaded from Supabase.</p>
+<div data-hp-work="filters" class="flex flex-wrap items-end gap-3"><label class="text-xs font-semibold text-slate-600">Transaction Date<input type="date" id="hpDate" class="block border rounded-lg p-2 mt-1"></label><label class="text-xs font-semibold text-slate-600">Search Vehicle / Pump / Txn ID<input id="hpSearch" placeholder="Search" class="block border rounded-lg p-2 mt-1"></label><label class="text-xs font-semibold text-slate-600">Type<select id="hpType" class="block border rounded-lg p-2 mt-1"><option value="">All</option><option value="diesel">Diesel Sale</option><option value="credit">Credits</option><option value="other">Other Debits</option></select></label><button id="hpClear" type="button" class="text-xs border rounded-lg p-2">Clear Filters</button></div>
+<div data-hp-work="table" class="overflow-auto max-h-[570px] rounded-lg border"><table class="w-full min-w-[1650px] text-xs text-left"><thead class="bg-slate-100 sticky top-0"><tr><th class="p-2">#</th><th class="p-2">Txn ID</th><th class="p-2">Txn Date & Time (HPCL)</th><th class="p-2">Retail Outlet Name</th><th class="p-2">Vehicle Number (Actual, edit)</th><th class="p-2">Vehicle Owners</th><th class="p-2">Txn Type</th><th class="p-2">Product</th><th class="p-2">Volume(Ltr.)</th><th class="p-2">Price</th><th class="p-2">Amount</th><th class="p-2">Credit/Debit</th><th class="p-2">Closing Balance</th><th class="p-2">Review / Match</th></tr></thead><tbody id="hpRows"><tr><td colspan="14" class="p-5 text-center text-slate-500">Upload HPCL Excel to begin.</td></tr></tbody></table></div>
+<p data-hp-work="paging" id="hpPaging" class="text-xs text-slate-500">Showing up to 150 rows per page. Use ↑ ↓ to move between vehicle fields; ← → at text edges.</p><div data-hp-work="pager" class="flex gap-2"><button id="hpPrev" type="button" class="border rounded px-3 py-1 text-xs">Previous</button><button id="hpNext" type="button" class="border rounded px-3 py-1 text-xs">Next</button></div>
+<div data-hp-work="ledger" class="border-t pt-3"><h4 class="font-bold text-sm">Official HPCL Credit / Debit Summary</h4><p id="hpLedger" class="text-xs text-slate-600 mt-2">Awaiting official Excel.</p></div>
+<p class="text-xs text-amber-700">Matching update: CSV/Excel WhatsApp import, safe one-to-one matches, review suggestions for ambiguous rows. Save Fuel Register attempts Supabase save; temporary development database policy is required before saving. WhatsApp CSV matching and staff approval run locally; Supabase saving uses temporary development access. Original HPCL vehicle and transaction time are preserved. Reloading the Excel resets unsaved edits.</p>
+</div>
+
+<div id="pumpLedgerPanel" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+ <div class="flex flex-wrap justify-between items-center gap-2"><div><h3 class="font-bold text-lg text-slate-800">Pump · Daily Register & Ledger</h3><p class="text-xs text-slate-500">Pump accounts · Daily transactions · Running balance</p></div><span class="text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-1"><span id="pumpCloudStatus">Connecting to Supabase…</span></span></div>
+ <div class="pump-workspace"><aside class="pump-side-nav" aria-label="Pump ledger navigation"><div class="pump-side-heading"><i class="fa-solid fa-gas-pump"></i><span>PUMP MASTER<small>Manage fuel pumps</small></span></div><button type="button" id="pumpAdd" class="pump-add-sidebar" aria-label="Add new pump"><i class="fa-solid fa-plus"></i> Add Pump</button><div id="pumpTabs" role="tablist" aria-label="Pump names"></div><p id="pumpEmptySide" class="pump-empty-side">No pumps added yet.<br>Use <b>+ Add Pump</b> to create your first pump.</p></aside><div class="pump-workspace-content"> <form id="pumpAddForm" class="hidden rounded-xl border border-blue-200 bg-white p-5 text-sm shadow-sm space-y-4">
+ <div class="flex items-center gap-3 border-b border-slate-100 pb-3"><span class="bg-blue-50 text-blue-700 rounded-lg p-3"><i class="fa-solid fa-gas-pump"></i></span><div><h3 class="font-bold text-lg text-slate-800">Add New Pump</h3><p class="text-xs text-slate-500">Pump details and opening settings</p></div></div>
+ <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+  <label class="font-medium text-slate-700">Pump Name <span class="text-red-600">*</span><input required id="pumpNewName" maxlength="120" class="pump-input mt-1" placeholder="Enter pump name"></label>
+  <label class="font-medium text-slate-700">Pump Location <input id="pumpNewLocation" maxlength="120" class="pump-input mt-1" placeholder="City / Area"></label>
+  <label class="font-medium text-slate-700">Contact Person <input id="pumpNewContact" maxlength="120" class="pump-input mt-1" placeholder="Contact person name"></label>
+  <label class="font-medium text-slate-700">GST Number (GSTIN) <input id="pumpNewGst" maxlength="15" class="pump-input mt-1 uppercase" placeholder="15-character GSTIN (optional)" style="text-transform:uppercase"></label>
+  <label class="font-medium text-slate-700">Phone Number <input id="pumpNewPhone" type="tel" inputmode="tel" maxlength="20" class="pump-input mt-1" placeholder="10-digit mobile number"></label>
+  <label class="font-medium text-slate-700 md:col-span-2">Pump Address <textarea id="pumpNewAddress" maxlength="500" rows="2" class="pump-input mt-1" placeholder="Full pump address"></textarea></label>
+ </div>
+ <div class="border-t border-slate-100 pt-3"><h4 class="font-semibold text-slate-800 mb-3">Opening Settings</h4><div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <label class="font-medium text-slate-700">Fixed Rate ₹/L<input id="pumpNewRate" type="number" min="0" step="0.001" class="pump-input mt-1" value="0"></label>
+  <label class="font-medium text-slate-700">Discount ₹/L<input id="pumpNewDiscount" type="number" min="0" step="0.001" class="pump-input mt-1" value="0"></label>
+  <label class="font-medium text-slate-700">Opening Balance ₹<input id="pumpNewOpening" type="number" step="0.01" class="pump-input mt-1" value="0"></label>
+ </div><p class="text-xs text-slate-500 mt-2">Positive opening = payable to pump; negative = advance with pump.</p></div>
+ <div class="flex flex-wrap gap-2 justify-end"><button type="button" id="pumpCancelAdd" class="border border-slate-300 rounded-lg px-5 py-2">Cancel</button><button type="submit" class="bg-blue-700 text-white font-semibold rounded-lg px-5 py-2"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Pump</button></div>
+</form><div id="pumpEmptyWorkspace" class="pump-empty-workspace hidden"><i class="fa-solid fa-gas-pump"></i><h3>No Pump Added Yet</h3><p>Click <b>+ Add Pump</b> on the left. Enter the pump name, location, fixed rate, discount and opening balance to start the ledger.</p></div>
+
+ <div class="pump-ledger-heading flex flex-wrap items-center justify-between gap-2"><div><b id="pumpCurrentName" class="text-sm text-slate-800"></b><p id="pumpStatus" class="text-xs text-slate-500" role="status">Ready for manual entries.</p></div><div class="flex flex-wrap gap-2"><label class="cursor-pointer rounded bg-slate-100 border text-xs px-3 py-2">Import Excel / CSV <input type="file" id="pumpImport" accept=".xlsx,.xls,.csv" class="hidden"></label><button type="button" id="pumpExport" class="rounded bg-slate-800 text-white text-xs px-3 py-2">Export CSV</button></div></div>
+ <div class="hidden rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs flex flex-wrap items-center gap-3"><button type="button" id="pumpSyncHpcl" class="bg-blue-700 text-white rounded px-4 py-2 font-bold">Load Approved HPCL OTP Payments</button><button type="button" id="pumpCloudSave" class="bg-slate-800 text-white rounded px-4 py-2 font-bold">Save Pump Ledger to Supabase</button><button type="button" id="pumpCloudLoad" class="border border-slate-400 bg-white rounded px-4 py-2 font-bold">Load Pump Ledger from Supabase</button><span id="pumpSyncInfo" class="text-slate-700">HPCL payment uses approved PAID records, matched to this pump name. Confirm before posting.</span></div>
+ <div class="pump-settings-card flex flex-wrap items-end gap-2 bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs"><b class="self-center">Selected Pump Settings</b><label>Fixed Rate ₹/L<input id="pumpFixedRate" type="number" min="0" step="0.001" class="pump-input w-28 mt-1" placeholder="Rate"></label><label>Discount ₹/L<input id="pumpFixedDiscount" type="number" min="0" step="0.001" class="pump-input w-28 mt-1" placeholder="Discount"></label><label>Opening Balance ₹<input id="pumpEditOpening" type="number" step="0.01" class="pump-input w-36 mt-1" placeholder="Opening due"></label><button type="button" id="pumpSaveSettings" class="bg-blue-700 text-white rounded px-3 py-2">Save Pump Settings</button><span class="text-slate-600">Rate changes apply to new entries only · Positive opening = due; negative = advance</span></div>
+ <form id="pumpEntryForm" class="border rounded-lg p-3 bg-slate-50 space-y-2"><div class="text-sm font-semibold">New Manual Entry</div><div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
+ <label class="text-xs">Date<input required id="pumpDate" type="date" class="pump-input mt-1"></label>
+ <label class="text-xs">Entry Type<select id="pumpKind" class="pump-input mt-1"><option value="DIESEL">Diesel</option><option value="PAYMENT">Payment / Advance</option><option value="TDS">Monthly TDS Adjustment</option><option value="ADJUSTMENT">Other Debit Adjustment</option></select></label>
+ <label class="text-xs">Slip / Ref No.<input id="pumpSlip" class="pump-input mt-1" placeholder="Slip no."></label>
+ <label class="text-xs">Truck Number<input id="pumpVehicle" class="pump-input mt-1 uppercase" list="pumpTruckSuggestions" autocomplete="off" placeholder="Last 4 digits / full no."><datalist id="pumpTruckSuggestions"></datalist><span id="pumpTruckInfo" class="text-[10px] text-slate-500"></span></label>
+ <label class="text-xs">Litres<input id="pumpLitresInput" type="number" min="0" step="any" class="pump-input mt-1"></label>
+ <label class="text-xs">Rate ₹/L<input id="pumpRate" type="number" min="0" step="any" class="pump-input mt-1"></label>
+ <label class="text-xs">Discount ₹/L<input id="pumpDiscount" type="number" min="0" step="any" value="0" class="pump-input mt-1"></label>
+ <label class="text-xs">Amount ₹<input required id="pumpAmountInput" type="number" min="0.01" step="0.01" class="pump-input mt-1" placeholder="Auto / manual"></label>
+ </div><div class="flex flex-wrap gap-2 items-end"><label class="text-xs">Payment Source<select id="pumpPaySource" class="pump-input mt-1" disabled><option value="">Select Source</option><option value="HPCL OTP">HPCL OTP</option><option value="Bank">Bank Statement</option><option value="Cash">Cash</option><option value="Other">Other</option></select></label><label class="text-xs flex-1 min-w-[180px]">Remarks<input id="pumpRemarks" class="pump-input mt-1" placeholder="WhatsApp instruction / notes"></label><button type="submit" class="bg-emerald-700 text-white rounded px-4 py-2 text-xs font-bold">Save Entry</button><button type="reset" class="border rounded px-3 py-2 text-xs">Clear</button></div></form>
+ <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-2 text-xs" id="pumpMonthlyTdsBox"><div class="font-bold text-sm text-indigo-900">Month-end TDS — Purchase Based</div><div class="flex flex-wrap gap-3 items-end"><label>Purchase Month<input id="pumpTdsMonth" type="month" class="pump-input mt-1"></label><label>TDS Rate % (accountant-approved)<input id="pumpTdsPercent" type="number" min="0" max="100" step="0.001" value="0" class="pump-input mt-1 w-28"></label><button type="button" id="pumpTdsCalculate" class="bg-indigo-700 text-white rounded px-3 py-2">Calculate Monthly TDS</button><button type="button" id="pumpTdsPost" class="bg-emerald-700 text-white rounded px-3 py-2" disabled>Confirm & Post TDS</button></div><p id="pumpTdsPreview" class="text-indigo-900">Choose month and applicable TDS rate, then Calculate. Only this pump's diesel purchase amount counts; payments and opening balance are excluded.</p><p class="text-amber-800">TDS is posted only after confirmation. Tax applicability, thresholds, base and rate must be checked by your accountant. One monthly TDS posting per pump.</p></div>
+ <div class="text-xs text-slate-600">Opening Balance: <b id="pumpOpeningDisplay">₹0</b> · TDS adjusted: <b id="pumpTdsDisplay">₹0</b> · Positive balance = payable to pump; negative = advance.</div><div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs"><div class="rounded bg-blue-50 p-3">Diesel Litres<br><b id="pumpSumLitres" class="text-base">0</b></div><div class="rounded bg-amber-50 p-3">Diesel Net ₹<br><b id="pumpSumDiesel" class="text-base">₹0</b></div><div class="rounded bg-emerald-50 p-3">Payments ₹<br><b id="pumpSumPayments" class="text-base">₹0</b></div><div class="rounded bg-slate-100 p-3">Total Pump Balance ₹ (all dates)<br><b id="pumpSumDue" class="text-base">₹0</b></div></div>
+ <div class="flex flex-wrap gap-2 items-end"><label class="text-xs">From<input type="date" id="pumpFrom" class="pump-input mt-1"></label><label class="text-xs">To<input type="date" id="pumpTo" class="pump-input mt-1"></label><label class="text-xs">Search Truck / Slip<input id="pumpSearch" class="pump-input mt-1" placeholder="Search"></label><button type="button" id="pumpClearFilters" class="border rounded px-3 py-2 text-xs">Clear Filters</button></div>
+ <div class="overflow-auto max-h-[550px] rounded-lg border"><table class="pump-ledger-table w-full min-w-[1250px] text-xs"><thead class="bg-slate-100 sticky top-0"><tr><th class="p-2 text-left">Date</th><th class="p-2 text-left">Particulars</th><th class="p-2 text-left">Slip / Ref</th><th class="p-2 text-left">Vehicle</th><th class="p-2 text-right">Litres</th><th class="p-2 text-right">Rate</th><th class="p-2 text-right">Discount</th><th class="p-2 text-right">Debit ₹</th><th class="p-2 text-right">Credit ₹</th><th class="p-2 text-right">Running Balance ₹</th><th class="p-2 text-left">Remarks</th><th class="p-2 text-left">Action</th></tr></thead><tbody id="pumpRows"></tbody></table></div>
+ 
+</div></div></div>
+<div id="dieselCashPanel" class="hidden bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+<div class="flex flex-wrap justify-between gap-3"><div><h3 class="text-xl font-bold">Diesel Cash / Statement</h3><p class="text-xs text-slate-500">Confirmed Accounts diesel automatically appears here. Driver names are never displayed.</p></div><button id="dcRefresh" type="button" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm">Refresh Register</button></div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm"><div class="bg-blue-50 p-3 rounded-lg">Total Diesel <b id="dcLitres" class="block text-xl">0 L</b></div><div class="bg-emerald-50 p-3 rounded-lg">Total Amount <b id="dcAmount" class="block text-xl">₹0</b></div><div class="bg-slate-100 p-3 rounded-lg">Entries <b id="dcCount" class="block text-xl">0</b></div></div>
+<form id="dcForm" class="border rounded-xl bg-slate-50 p-4 space-y-3"><b class="text-sm">New Cash Diesel Entry</b><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs"><label>Date<input required name="date" type="date" class="block w-full border rounded p-2 mt-1"></label><label>Time (optional)<input name="time" type="time" class="block w-full border rounded p-2 mt-1"></label><label>Vehicle Number<input required name="vehicle" placeholder="HR38..." class="block w-full border rounded p-2 mt-1"></label><label>Litres<input required name="litres" type="number" min="0.001" step="0.001" class="block w-full border rounded p-2 mt-1"></label><label>Amount ₹<input required name="amount" type="number" min="0.01" step="0.01" class="block w-full border rounded p-2 mt-1"></label><label>Pump / Particulars<input name="pump" class="block w-full border rounded p-2 mt-1"></label><label>Slip / Reference<input name="reference" class="block w-full border rounded p-2 mt-1"></label><label>Remarks<input name="remarks" class="block w-full border rounded p-2 mt-1"></label></div><button type="submit" class="bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm">Save Cash Diesel to Supabase</button><span id="dcMessage" class="text-xs text-slate-600"></span></form>
+<div class="flex flex-wrap gap-2"><input id="dcFrom" type="date" aria-label="From date" class="border rounded p-2 text-xs"><input id="dcTo" type="date" aria-label="To date" class="border rounded p-2 text-xs"><input id="dcSearch" placeholder="Search vehicle / reference / bank" class="border rounded p-2 text-xs flex-1"><button id="dcClear" type="button" class="border rounded px-3 text-xs">Clear Filters</button><button id="dcShowHidden" type="button" class="border rounded px-3 text-xs text-slate-600">Show Hidden (0)</button></div>
+<div class="overflow-auto" style="scrollbar-width:none"><table class="min-w-[1500px] w-full text-xs border-separate border-spacing-0"><thead class="bg-slate-100"><tr><th class="text-left p-3 border-b border-r">Date</th><th class="text-left p-3 border-b border-r">Time</th><th class="text-left p-3 border-b border-r">Vehicle Number</th><th class="text-left p-3 border-b border-r">Litres</th><th class="text-left p-3 border-b border-r">Rate ₹/L</th><th class="text-left p-3 border-b border-r">Amount ₹</th><th class="text-left p-3 border-b border-r">Source</th><th class="text-left p-3 border-b border-r">Bank Name</th><th class="text-left p-3 border-b border-r">Account Name</th><th class="text-left p-3 border-b border-r">Pump / Particulars</th><th class="text-left p-3 border-b border-r">Reference / UTR</th><th class="text-left p-3 border-b border-r">Remarks</th><th class="text-left p-3 border-b border-r">Action</th></tr></thead><tbody id="dcRows"></tbody></table></div></div>
+<div id="fuelOtherPanel" class="hidden bg-white border rounded-xl p-8 text-center"><h3 id="fuelOtherTitle" class="font-bold"></h3><p class="text-sm text-slate-500">Next phase. Existing cards remain unchanged.</p></div>
+</section>
+<script>
+(function(){
+const root=document.getElementById('ektaFuelModule');if(!root||root.dataset.hpReady)return;root.dataset.hpReady='1';
+const el=id=>root.querySelector('#'+id);let rows=[],view=[],page=0,fleet=new Map(),whatsRows=[],reviewFilter='all',matchChoices=new Map();const PAGE=150;const S=window.supabaseClient;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&quot;'}[c]));
+const num=v=>{const n=Number(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:0};
+const norm=v=>String(v??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const dateKey=v=>{const s=String(v??'').trim();let m=s.match(/^(\d{2})-(\d{2})-(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:s.slice(0,10)};
+const ownerOf=v=>norm(v)?(fleet.has(norm(v))?(fleet.get(norm(v))||'Owner not recorded'):'Vehicle Not Found'):'';
+const pumpNorm=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function validLocalDate(y,m,d,h,mi,s){const x=new Date(y,m-1,d,h,mi,s);return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d&&x.getHours()===h&&x.getMinutes()===mi&&x.getSeconds()===s?x.getTime():NaN}
+function parseHPTime(v){const s=String(v||'').trim();let m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(!m)return NaN;return validLocalDate(+m[3],+m[2],+m[1],+m[4],+m[5],+(m[6]||0))}
+// WhatsApp export dates are MM/DD/YYYY, unlike HPCL's DD-MM-YYYY.
+function parseWATime(v){const m=String(v||'').match(/\[(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM),\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\]/i);if(!m)return NaN;let h=(+m[1]%12)+(m[4].toUpperCase()==='PM'?12:0);return validLocalDate(+m[7],+m[5],+m[6],h,+m[2],+(m[3]||0))}
+function parseCSV(txt){txt=txt.replace(/^\uFEFF/,'');const out=[];let r=[],v='',quoted=false;for(let i=0;i<txt.length;i++){const c=txt[i];if(quoted){if(c==='"'&&txt[i+1]==='"'){v+='"';i++}else if(c==='"')quoted=false;else v+=c}else if(c==='"')quoted=true;else if(c===','){r.push(v);v=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&txt[i+1]==='\n')i++;r.push(v);if(r.some(x=>x.trim()))out.push(r);r=[];v=''}else v+=c}r.push(v);if(r.some(x=>x.trim()))out.push(r);return out}
+ function matchWhats(){
+  matchChoices.clear();
+  // Keep staff corrections, verified, approved and saved transactions intact.
+  rows.forEach(r=>{if(r.matchStatus==='Manual'||r.approval==='VERIFIED'||r.approval==='APPROVED'||r.saved)return;r.actual='';r.whatsId=null;r.matchStatus=category(r)==='diesel'?'Review Pending':'Ledger entry';r.matchInfo='';r.owner=ownerOf(r.actual)});
+  if(!rows.length||!whatsRows.length){render();return}
+  // Pump names may contain M/S, punctuation, HPCL prefixes, and business suffixes.
+  // Only normalize generic prefixes/suffixes; do not equate unrelated outlets.
+  const pumpWords=v=>String(v||'').toUpperCase().replace(/&/g,' AND ').replace(/[^A-Z0-9]+/g,' ').trim().split(/\s+/).filter(x=>x&&!['M','S','MS','M S','HPCL','HP','PETROL','PUMP','FILLING','STATION','OUTLET','THE','LTD','PRIVATE','PVT'].includes(x));
+  const pumpCompatible=(a,b)=>{const x=pumpNorm(a),y=pumpNorm(b);if(!x||!y)return false;if(x===y)return true;if(Math.min(x.length,y.length)>=10&&(x.startsWith(y)||y.startsWith(x)))return true;const aw=pumpWords(a),bw=pumpWords(b);const ax=aw.join(''),bx=bw.join('');if(ax&&bx&&ax===bx)return true;const common=aw.filter(t=>t.length>=4&&bw.includes(t));return common.length>=2&&common.length>=Math.min(aw.length,bw.length)-1};
+  const candidates=[],diagnostics=new Map();
+  const explain=(r,reason)=>{if(!diagnostics.has(r))diagnostics.set(r,new Set());diagnostics.get(r).add(reason)};
+  const eligible=rows.filter(r=>category(r)==='diesel'&&r.approval==='PENDING'&&!r.saved&&r.matchStatus!=='Manual');
+  const reserved=new Set(rows.filter(r=>r.whatsId&&(r.saved||r.approval!=='PENDING'||r.matchStatus==='Manual')).map(r=>String(r.whatsId)));
+  const validWA=whatsRows.map(w=>({...w,time:parseWATime(w.pre)})).filter(w=>Number.isFinite(w.time)&&norm(w.vehicle)&&!reserved.has(String(w.id)));
+  for(const r of eligible){
+   const rt=parseHPTime(r.date);if(!Number.isFinite(rt)){explain(r,'Invalid HPCL date/time');continue}
+   const sameDay=validWA.filter(w=>new Date(w.time).toDateString()===new Date(rt).toDateString());
+   const sameAmount=sameDay.filter(w=>Math.abs(r.amount-w.amount)<=0.02);
+   const samePump=sameAmount.filter(w=>pumpCompatible(r.pump,w.pump));
+   const sameLitres=samePump.filter(w=>Math.abs(r.litres-w.litres)<=Math.max(0.75,r.litres*0.007));
+   const close=sameLitres.filter(w=>Math.abs(rt-w.time)<=30*60000);
+   if(!sameDay.length)explain(r,'No WhatsApp entries for HPCL date');
+   else if(!sameAmount.length)explain(r,'Amount differs / no same-day amount');
+   else if(!samePump.length)explain(r,'Pump name differs (check outlet spelling)');
+   else if(!sameLitres.length){
+    // Staff-only suggestions for mismatched litres. Never auto-match these.
+    // Require matching date, amount, pump and a time within 30 minutes.
+    const litreReview=samePump.filter(w=>Math.abs(rt-w.time)<=30*60000)
+      .sort((a,b)=>Math.abs(rt-a.time)-Math.abs(rt-b.time))
+      .slice(0,12)
+      .map(w=>({r,w,mins:Math.abs(rt-w.time)/60000,litreDiff:Math.abs(r.litres-w.litres),litresMismatch:true}));
+    if(litreReview.length){
+     matchChoices.set(r.key,litreReview);
+     const near=litreReview[0];
+     explain(r,`Litres differ: HPCL ${r.litres} L, WhatsApp ${near.w.litres} L (${norm(near.w.vehicle)}); confirm vehicle only after checking OTP`);
+    }else explain(r,'Litres differ; no same-amount/pump WhatsApp entry within 30 min');
+   }
+   else if(!close.length)explain(r,'Time differs by more than 30 minutes');
+   for(const w of close)candidates.push({r,w,mins:Math.abs(rt-w.time)/60000,litreDiff:Math.abs(r.litres-w.litres)});
+  }
+  // Auto-match only if both directions have a unique eligible counterpart, close in time.
+  // No greedy assignment of ambiguous duplicate transactions to the wrong truck.
+  const byR=new Map(),byW=new Map();
+  for(const c of candidates){if(!byR.has(c.r))byR.set(c.r,[]);byR.get(c.r).push(c);if(!byW.has(c.w.id))byW.set(c.w.id,[]);byW.get(c.w.id).push(c)}
+  let matched=0,reviewCandidates=0;
+  for(const r of eligible){const choices=(byR.get(r)||[]).sort((a,b)=>a.mins-b.mins);
+   if(!choices.length)continue;
+   const best=choices[0],other=choices[1];
+   const unique=(byW.get(best.w.id)||[]).length===1&&(!other||other.mins-best.mins>2);
+   // Amount and pump already validated; a wider time window is suggestion-only.
+   if(best.mins<=5&&unique&&best.litreDiff<=0.75){r.whatsId=best.w.id;r.actual=norm(best.w.vehicle);r.owner=ownerOf(r.actual);r.matchStatus='WhatsApp Matched';r.matchInfo=`WhatsApp ${best.w.pre} | ${best.mins.toFixed(1)} min | litres diff ${best.litreDiff.toFixed(3)}`;matched++}
+   else{matchChoices.set(r.key,choices.filter(c=>!reserved.has(String(c.w.id))).slice(0,12));reviewCandidates++;explain(r,(!unique?'Ambiguous: multiple possible matches':best.mins>5?'Possible match outside 5 min':'Litres need review')+` | Suggested ${norm(best.w.vehicle)} (${best.mins.toFixed(1)} min)`)}
+  }
+  for(const r of eligible)if(r.matchStatus==='Review Pending')r.matchInfo=diagnostics.has(r)?'Check: '+[...diagnostics.get(r)].join('; '):'No eligible unique WhatsApp match';
+  const pending=eligible.filter(r=>r.matchStatus==='Review Pending').length;
+  el('hpMatch').textContent=`WhatsApp: ${whatsRows.length} | Auto-matched: ${matched} | Suggested for review: ${reviewCandidates} | Diesel pending: ${pending}. Date + amount + pump + litres + time checked. Ambiguous matches are never assigned automatically.`;
+  render();
+ }
+
+async function loadFleet(){if(!S||typeof S.from!=='function'){el('hpDb').textContent='Supabase client not available: ensure db.js is loaded in the dashboard.';return;}try{const map=new Map();for(let off=0;off<10000;off+=1000){const {data,error}=await S.from('trucks').select('truck_number,owner_name').range(off,off+999);if(error)throw error;(data||[]).forEach(t=>{if(t.truck_number)map.set(norm(t.truck_number),t.owner_name||'')});if(!data||data.length<1000)break;}fleet=map;rows.forEach(r=>r.owner=ownerOf(r.actual));el('hpDb').textContent=`Fleet Master connected: ${fleet.size} vehicles loaded.`;render()}catch(e){el('hpDb').textContent='Fleet lookup failed: '+e.message}}
+const money=v=>'₹'+num(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const category=r=>r.direction.toLowerCase()==='credit'?'credit':r.product.toUpperCase()==='DIESEL'&&r.type.toUpperCase().includes('SALE')?'diesel':'other';
+const message=t=>el('hpMsg').textContent=t;
+const safeErr=e=>[e?.message,e?.details,e?.hint,e?.code].filter(Boolean).join(' | ')||String(e);
+function lib(){return new Promise((resolve,reject)=>{if(window.XLSX)return resolve();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=resolve;s.onerror=()=>reject(Error('Excel reader library could not load. Internet required.'));document.head.appendChild(s)})}
+const cell=(r,h,k)=>{const i=h.findIndex(x=>String(x??'').trim().toLowerCase()===k.toLowerCase());return i<0?'':r[i]};
+function render(){const dieselAll=rows.filter(r=>category(r)==='diesel');el('hpAutoCount').textContent=dieselAll.filter(r=>r.matchStatus==='WhatsApp Matched').length;el('hpManualCount').textContent=dieselAll.filter(r=>r.matchStatus==='Manual').length;el('hpPendingCount').textContent=dieselAll.filter(r=>!r.saved&&r.approval==='PENDING'&&r.matchStatus!=='WhatsApp Matched'&&r.matchStatus!=='Manual').length;el('hpAllCount').textContent=rows.length;el('hpApprovalInfo').textContent=`${rows.filter(r=>!r.saved&&r.approval==='VERIFIED').length} verified · ${rows.filter(r=>r.saved).length} saved · ${rows.filter(r=>!r.saved&&r.approval==='APPROVED').length} approved, not saved · ${rows.filter(r=>!r.saved&&r.approval==='PENDING').length} pending`; root.querySelectorAll('[data-review]').forEach(b=>{const selected=b.dataset.review===reviewFilter;b.setAttribute('aria-pressed',String(selected));b.classList.toggle('ring-2',selected);b.classList.toggle('ring-blue-500',selected)});const reviewOK=r=>reviewFilter==='all'||(category(r)==='diesel'&&(reviewFilter==='auto'?r.matchStatus==='WhatsApp Matched':reviewFilter==='manual'?r.matchStatus==='Manual':!r.saved&&r.approval==='PENDING'&&r.matchStatus!=='WhatsApp Matched'&&r.matchStatus!=='Manual'));const d=el('hpDate').value,q=el('hpSearch').value.trim().toUpperCase(),t=el('hpType').value;view=rows.filter(r=>reviewOK(r)&&(!d||dateKey(r.date)===d)&&(!t||category(r)===t)&&(!q||[r.id,r.pump,r.original,r.actual,r.owner].some(x=>String(x).toUpperCase().includes(q))));const max=Math.max(0,Math.ceil(view.length/PAGE)-1);page=Math.min(page,max);const diesel=view.filter(r=>category(r)==='diesel');el('hpCount').textContent=view.length.toLocaleString('en-IN');el('hpLitres').textContent=diesel.reduce((a,r)=>a+r.litres,0).toFixed(3);el('hpAmount').textContent=money(diesel.reduce((a,r)=>a+r.amount,0));el('hpCorrected').textContent=view.filter(r=>category(r)==='diesel'&&!!norm(r.actual)&&norm(r.actual)!==norm(r.original)).length;const shown=view.slice(page*PAGE,(page+1)*PAGE);el('hpRows').innerHTML=shown.map((r,i)=>`<tr class="border-t"><td class="p-2">${page*PAGE+i+1}</td><td class="p-2">${esc(r.id)}</td><td class="p-2 whitespace-nowrap">${esc(r.date)}</td><td class="p-2">${esc(r.pump)}</td><td class="p-2"><input class="hp-actual border rounded px-2 py-1 w-32 uppercase ${category(r)!=='diesel'?'bg-slate-100 text-slate-400':r.matchStatus==='WhatsApp Matched'?'bg-yellow-100 border-yellow-400':r.matchStatus==='Manual'?'bg-green-100 border-green-400':'bg-white'}" data-key="${esc(r.key)}" value="${category(r)==='diesel'?esc(r.actual):''}" placeholder="${category(r)==='diesel'?'Enter / Match':'Not required'}" ${category(r)!=='diesel'?'disabled':''} aria-label="Actual Vehicle" />${!r.saved&&r.approval==='PENDING'&&r.matchStatus==='Review Pending'&&(matchChoices.get(r.key)||[]).length?`<div class="flex flex-col gap-1 mt-1 min-w-[190px]"><select class="hp-choice border rounded px-1 py-1 w-full max-w-[205px] text-[11px]" data-key="${esc(r.key)}" aria-label="WhatsApp vehicle suggestions"><option value="">Choose WhatsApp vehicle</option>${matchChoices.get(r.key).map(c=>`<option value="${esc(c.w.id)}">${esc(norm(c.w.vehicle))} · ${c.mins.toFixed(1)} min${c.litresMismatch?' · WA '+c.w.litres+' L':''}</option>`).join('')}</select><button type="button" class="hp-confirm bg-blue-700 text-white rounded px-2 py-1 text-[11px] w-fit" data-key="${esc(r.key)}">Confirm Match</button></div>`:''}</td><td class="p-2">${esc(r.owner)}</td><td class="p-2">${esc(r.type)}</td><td class="p-2">${esc(r.product)}</td><td class="p-2">${r.litres||'-'}</td><td class="p-2">${r.price||'-'}</td><td class="p-2">${r.amount.toFixed(2)}</td><td class="p-2">${esc(r.direction)}</td><td class="p-2">${r.balance.toFixed(2)}</td><td class="p-2">${esc(r.saved?'Saved':(r.matchStatus|| (category(r)==='diesel'?'Review Pending':'Ledger entry')))}<span class="block font-bold text-blue-700">${esc(r.approval||'PENDING')}</span>${r.matchInfo?`<span class="block text-slate-500" title="${esc(r.matchInfo)}">${esc(r.matchInfo)}</span>`:''}</td></tr>`).join('')||'<tr><td colspan="14" class="p-5 text-center">No matching transactions</td></tr>';el('hpPaging').textContent=`Showing ${shown.length? page*PAGE+1:0}–${page*PAGE+shown.length} of ${view.length} filtered rows`;el('hpPrev').disabled=page===0;el('hpNext').disabled=page>=max}
+root.querySelectorAll('[data-fuel-source]').forEach(btn=>btn.addEventListener('click',()=>{root.querySelectorAll('[data-fuel-source]').forEach(b=>{b.setAttribute('aria-pressed','false');b.classList.remove('border-2','border-blue-500');b.classList.add('border','border-slate-200')});btn.setAttribute('aria-pressed','true');btn.classList.remove('border','border-slate-200');btn.classList.add('border-2','border-blue-500');const hp=btn.dataset.fuelSource==='hpcl';el('fuelHpclPanel').classList.toggle('hidden',!hp);el('fuelOtherPanel').classList.toggle('hidden',hp||btn.dataset.fuelSource==='pump'||btn.dataset.fuelSource==='cash');el('dieselCashPanel').classList.toggle('hidden',btn.dataset.fuelSource!=='cash');if(btn.dataset.fuelSource==='cash')window.EktaDieselCash?.refresh();el('pumpLedgerPanel').classList.toggle('hidden',btn.dataset.fuelSource!=='pump');el('fuelOtherTitle').textContent=({iocl:'Indian Oil',pump:'Pump',cash:'Cash'})[btn.dataset.fuelSource]||''}));
+el('hpFile').addEventListener('change',async e=>{try{const f=e.target.files[0];if(!f)return;message('Reading HPCL Excel...');await lib();const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});let data=null,idx=-1;for(const name of wb.SheetNames){const a=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:false});const n=a.findIndex(r=>r.some(x=>String(x).trim()==='Txn ID')&&r.some(x=>String(x).trim()==='Txn Date and Time'));if(n>=0){data=a;idx=n;break}}if(!data)throw Error('HPCL transaction header not found (Txn ID / Txn Date and Time).');const h=data[idx];const required=['Txn ID','Txn Date and Time','Retail Outlet Name','Txn Type','Amount','Credit/Debit'];for(const k of required)if(!h.some(x=>String(x).trim().toLowerCase()===k.toLowerCase()))throw Error('Missing column: '+k);const seen=new Set();let duplicates=0;const parsed=[];for(const r of data.slice(idx+1)){const id=String(cell(r,h,'Txn ID')).trim();if(!id)continue;const key=id;if(seen.has(key)){duplicates++;continue}seen.add(key);const original=String(cell(r,h,'Vehicle No./Card Identifier')).trim();parsed.push({key,id,date:String(cell(r,h,'Txn Date and Time')),pump:String(cell(r,h,'Retail Outlet Name')),original,actual:'',owner:'',type:String(cell(r,h,'Txn Type')),product:String(cell(r,h,'Product')),litres:num(cell(r,h,'Volume(Ltr.)')),price:num(cell(r,h,'Price')),amount:num(cell(r,h,'Amount')),direction:String(cell(r,h,'Credit/Debit')),balance:num(cell(r,h,'Closing Balance')),approval:'PENDING',saved:false})}rows=parsed;rows.forEach(r=>r.owner=ownerOf(r.actual));page=0;matchWhats();await markExistingSaved();const credit=rows.filter(r=>r.direction.toLowerCase()==='credit').reduce((a,r)=>a+r.amount,0),debit=rows.filter(r=>r.direction.toLowerCase()==='debit').reduce((a,r)=>a+r.amount,0);el('hpLedger').textContent=`${rows.length} unique transactions | Credit ${money(credit)} | Debit ${money(debit)} | Net ${money(credit-debit)}. HPCL closing balances are displayed per transaction; opening/closing reconciliation needs a verified period and ordering.`;message(`Loaded ${rows.length} HPCL transactions. ${duplicates} duplicate Txn IDs skipped within this file. Actual Vehicle starts blank; WhatsApp matching or staff entry fills diesel rows only.`)}catch(err){message('Import error: '+err.message)}});
+root.querySelectorAll('[data-review]').forEach(b=>b.addEventListener('click',()=>{reviewFilter=b.dataset.review;page=0;render()}));
+['hpDate','hpSearch','hpType'].forEach(id=>el(id).addEventListener(id==='hpSearch'?'input':'change',()=>{page=0;render()}));el('hpClear').addEventListener('click',()=>{el('hpDate').value='';el('hpSearch').value='';el('hpType').value='';reviewFilter='all';page=0;render()});el('hpPrev').addEventListener('click',()=>{if(page>0){page--;render()}});el('hpNext').addEventListener('click',()=>{if((page+1)*PAGE<view.length){page++;render()}});
+// Table scrolling: arrow keys scroll the register when focus is on its scroll area.
+// Inside input/select, leave keyboard navigation and caret behavior native.
+const hpScrollArea=el('hpRows').closest('.overflow-auto');
+if(hpScrollArea){
+ hpScrollArea.setAttribute('tabindex','0');
+ hpScrollArea.setAttribute('aria-label','Fuel transactions table - use arrow keys to scroll');
+ hpScrollArea.addEventListener('keydown',e=>{
+  if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return;
+  if(e.target.closest('input,select,button,textarea'))return;
+  const delta=(e.key==='ArrowDown'||e.key==='ArrowRight')?1:-1;
+  if(e.key==='ArrowUp'||e.key==='ArrowDown')hpScrollArea.scrollTop+=delta*75;
+  else hpScrollArea.scrollLeft+=delta*130;
+  e.preventDefault();
+ });
+}
+el('hpRows').addEventListener('change',e=>{if(!e.target.classList.contains('hp-actual'))return;const r=rows.find(x=>x.key===e.target.dataset.key);if(r){if(category(r)!=='diesel'){message('Financial ledger entries do not need a vehicle.');render();return;}if(r.approval==='APPROVED'||r.saved){message('Approved/saved entry cannot be edited.');render();return;}r.actual=norm(e.target.value);r.whatsId=null;if(!r.actual){r.owner='';r.matchStatus='Review Pending';r.matchInfo='';r.approval='PENDING';render();return;}r.owner=ownerOf(r.actual);r.matchStatus='Manual';r.matchInfo='Manually reviewed';r.approval='VERIFIED';render()}});
+ // Explicit review: reserve a WhatsApp message for only one HPCL transaction.
+ el('hpRows').addEventListener('click',e=>{
+  const btn=e.target.closest('.hp-confirm');if(!btn)return;
+  const r=rows.find(x=>x.key===btn.dataset.key);
+  if(!r||r.saved||r.approval!=='PENDING'||r.matchStatus!=='Review Pending')return message('This entry is no longer available for confirmation.');
+  const select=[...el('hpRows').querySelectorAll('.hp-choice')].find(x=>x.dataset.key===r.key);
+  const id=select?.value;if(!id)return message('Choose a suggested WhatsApp vehicle first.');
+  const choice=(matchChoices.get(r.key)||[]).find(c=>c.w.id===id);
+  if(!choice)return message('Suggestion expired. Re-import the WhatsApp file.');
+  const taken=rows.some(x=>x!==r&&x.whatsId===id);
+  if(taken)return message('This WhatsApp message is already linked to another HPCL transaction.');
+  if(!confirm(`Confirm HPCL ${r.id} (${r.date}, ${r.litres} L, ${money(r.amount)}) with WhatsApp vehicle ${norm(choice.w.vehicle)}?\nWhatsApp: ${choice.w.pre}\nTime difference: ${choice.mins.toFixed(1)} minutes${choice.litresMismatch?'\nLITRES MISMATCH: HPCL '+r.litres+' L / WhatsApp '+choice.w.litres+' L. This confirms VEHICLE ONLY; HPCL litres/amount will not change.':''}`))return;
+  r.actual=norm(choice.w.vehicle);r.owner=ownerOf(r.actual);r.whatsId=id;r.matchStatus='Manual';r.matchInfo=`Confirmed WhatsApp ${choice.w.pre} | ${choice.mins.toFixed(1)} min${choice.litresMismatch?' | LITRES DIFFER: HPCL '+r.litres+' / WA '+choice.w.litres:''}`;r.approval='VERIFIED';
+  matchWhats();message(`Confirmed ${r.id} → ${r.actual}. Other pending suggestions updated; nothing saved to database.`);
+ });
+ el('hpWhatsFile').addEventListener('change',async e=>{try{
+  const f=e.target.files[0];if(!f)return;let records;
+  if(/\.xlsx?$/i.test(f.name)){
+   await lib();const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});
+   const sheet=wb.Sheets[wb.SheetNames[0]];records=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
+  }else records=parseCSV(await f.text());
+  if(!records.length)throw Error('Empty WhatsApp file');
+  const headers=records[0].map(x=>String(x).trim().toLowerCase());
+  for(const col of ['id','pre','vehicle','pump','litres','amount'])if(!headers.includes(col))throw Error('Missing WhatsApp column: '+col);
+  const seen=new Set();whatsRows=records.slice(1).map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]??'']))).filter(w=>{const id=String(w.id||'').trim();if(!id||seen.has(id))return false;seen.add(id);w.litres=num(w.litres);w.amount=num(w.amount);return true});
+  matchWhats();message(`Imported ${whatsRows.length} WhatsApp Reader entries from ${f.name}. Original WhatsApp messages were not modified.`)
+ }catch(err){message('WhatsApp import failed: '+err.message)}});
+
+async function updateDevAccess(){
+ const label=el('hpAuthState');if(!S?.auth){label.textContent='Supabase Auth unavailable';return}
+ try{const {data,error}=await S.auth.getUser();if(error)throw error;label.textContent=data?.user?'Connected: '+data.user.email:'Test mode: anon database access';label.className=data?.user?'text-emerald-700':'text-amber-700'}catch(e){label.textContent='Auth check failed: '+safeErr(e)}
+}
+el('hpDevSignIn').addEventListener('click',async()=>{
+ const email=el('hpDevEmail').value.trim(),password=el('hpDevPassword').value;
+ if(!email||!password)return message('Enter your temporary Supabase Auth email and password.');
+ const btn=el('hpDevSignIn');btn.disabled=true;
+ try{if(!S?.auth?.signInWithPassword)throw Error('Supabase Auth client unavailable');const {error}=await S.auth.signInWithPassword({email,password});if(error)throw error;el('hpDevPassword').value='';await updateDevAccess();message('Supabase Auth connected. Database policy still controls permissions.');if(rows.length)await markExistingSaved()}
+ catch(e){message('Development access failed: '+safeErr(e))}finally{btn.disabled=false}
+});
+el('hpDevSignOut').addEventListener('click',async()=>{try{const {error}=await S.auth.signOut();if(error)throw error;el('hpDevPassword').value='';await updateDevAccess();message('Development database access disconnected.')}catch(e){message('Disconnect failed: '+safeErr(e))}});
+if(S?.auth?.onAuthStateChange)S.auth.onAuthStateChange(()=>{updateDevAccess()});
+updateDevAccess();
+async function getFuelUser(){
+ if(!S?.auth?.getUser)throw Error('Supabase client/auth unavailable.');
+ const {data,error}=await S.auth.getUser();if(error)throw error;
+ if(!data?.user)throw Error('Supabase Auth session not found. Dashboard login alone may not be a Supabase Auth login.');
+ return data.user;
+}
+async function markExistingSaved(){
+ if(!rows.length)return;
+ try{
+  if(!S?.from)throw Error("Supabase client unavailable. Check db.js.");
+  for(let i=0;i<rows.length;i+=100){
+   const part=rows.slice(i,i+100);
+   const {data,error}=await S.from('hpcl_fuel_transactions').select('txn_id,review_status,actual_vehicle').in('txn_id',part.map(r=>r.id));
+   if(error)throw error;
+   const saved=new Map((data||[]).map(x=>[String(x.txn_id),x]));
+   part.forEach(r=>{if(saved.has(String(r.id))){r.saved=true;r.approval=saved.get(String(r.id)).review_status==='APPROVED'?'APPROVED':'PENDING';r.actual=category(r)==='diesel'?(saved.get(String(r.id)).actual_vehicle||''):'';r.owner=ownerOf(r.actual);r.matchStatus='Saved'}});
+  }
+  render();
+ }catch(e){message('Saved-ID lookup unavailable: '+safeErr(e)+'; entries not marked saved. Do not retry saving blindly.');}
+}
+async function loadSavedHistory(){
+ const status=el('hpHistoryStatus'),body=el('hpHistoryRows');status.textContent='Loading…';
+ try{
+  if(!S?.from)throw Error("Supabase client unavailable. Check db.js.");
+  const from=el('hpHistoryFrom').value,to=el('hpHistoryTo').value;
+  if(from&&to&&from>to){status.textContent='From Date cannot be after To Date';return}
+  let data=[],offset=0;
+  while(offset<10000){
+   const {data:chunk,error}=await S.from('hpcl_fuel_transactions').select('txn_id,txn_datetime_raw,pump_name,original_vehicle,actual_vehicle,txn_type,litres,amount,review_status').order('txn_datetime_raw',{ascending:false}).range(offset,offset+499);
+   if(error)throw error;
+   data.push(...(chunk||[]));if(!chunk||chunk.length<500)break;offset+=500;
+  }
+  const filtered=data.filter(r=>{const d=dateKey(r.txn_datetime_raw);return (!from||d>=from)&&(!to||d<=to)});
+  body.innerHTML=filtered.map(r=>`<tr class="border-t"><td class="p-2">${esc(r.txn_id)}</td><td class="p-2 whitespace-nowrap">${esc(r.txn_datetime_raw)}</td><td class="p-2">${esc(r.pump_name)}</td><td class="p-2 font-semibold">${esc(r.actual_vehicle||'Vehicle Pending')}</td><td class="p-2">${esc(r.txn_type)}</td><td class="p-2 text-right">${esc(r.litres)}</td><td class="p-2 text-right">${money(r.amount)}</td><td class="p-2 font-semibold">${esc(r.review_status)}</td></tr>`).join('')||'<tr><td colspan="8" class="p-4 text-center">No saved records for the selected date range.</td></tr>';
+  status.textContent=`${filtered.length} displayed / ${data.length} saved records loaded${data.length>=10000?' (first 10,000 only)':''}`;
+  const savedById=new Map(data.map(r=>[String(r.txn_id),r]));
+  rows.forEach(r=>{const stored=savedById.get(String(r.id));if(stored){r.saved=true;r.approval=stored.review_status;r.actual=category(r)==='diesel'?(stored.actual_vehicle||''):'';r.owner=ownerOf(r.actual);r.matchStatus='Saved'}});render();
+ }catch(e){status.textContent='History load failed: '+safeErr(e);body.innerHTML='<tr><td colspan="8" class="p-4 text-center">Unable to load history. Check Auth/RLS and error above.</td></tr>';}
+}
+el('hpHistory').addEventListener('click',()=>{const panel=el('hpHistoryPanel');panel.classList.toggle('hidden');if(!panel.classList.contains('hidden'))loadSavedHistory()});
+el('hpHistoryReload').addEventListener('click',loadSavedHistory);
+el('hpHistoryFrom').addEventListener('change',loadSavedHistory);
+el('hpHistoryTo').addEventListener('change',loadSavedHistory);
+el('hpHistoryClear').addEventListener('click',()=>{el('hpHistoryFrom').value='';el('hpHistoryTo').value='';loadSavedHistory()});
+// Bulk verification is an explicit staff decision. Unmatched rows must be checked manually first.
+el('hpVerifyAll').addEventListener('click',()=>{
+ const eligible=rows.filter(r=>!r.saved&&r.approval==='PENDING'&&(r.matchStatus==='WhatsApp Matched'||r.matchStatus==='Manual'));
+ if(!eligible.length)return message('No reviewed diesel entries to verify. Use Verify Financial Entries for Recharge / TDS rows.');
+ if(!confirm(`Mark ${eligible.length} matched/corrected transactions as VERIFIED? Confirm that you checked them.`))return;
+ eligible.forEach(r=>r.approval='VERIFIED');render();message(`${eligible.length} entries verified. Review Pending entries remain pending.`);
+});
+// Financial ledger verification is independent of WhatsApp/vehicle matching.
+// Staff explicitly confirms the original HPCL credit/debit rows before approval.
+el('hpVerifyFinancial').addEventListener('click',()=>{
+ const pending=rows.filter(r=>!r.saved&&r.approval==='PENDING'&&category(r)!=='diesel');
+ if(!pending.length)return message('No pending financial ledger entries to verify.');
+ const valid=pending.filter(r=>r.id&&r.date&&Number.isFinite(r.amount)&&r.amount>0&&['credit','debit'].includes(r.direction.trim().toLowerCase()));
+ const invalid=pending.filter(r=>!valid.includes(r));
+ if(!valid.length)return message(`${invalid.length} financial entries need valid HPCL Txn ID, date, amount and Credit/Debit before verification.`);
+ const details=valid.map(r=>`${r.id} | ${r.type} | ${r.direction} | ${money(r.amount)}`).join('\n');
+ if(!confirm(`Verify ${valid.length} HPCL FINANCIAL LEDGER entries (no vehicle required)?\n\n${details}\n\nCheck these amounts and directions against the official HPCL Excel.`))return;
+ valid.forEach(r=>{r.actual='';r.owner='';r.approval='VERIFIED';r.matchStatus='Ledger verified';});
+ render();message(`${valid.length} financial entries VERIFIED. Click Approve All Verified, then Save Fuel Register.${invalid.length?' '+invalid.length+' invalid entries remain pending.':''}`);
+});
+el('hpApproveAll').addEventListener('click',()=>{
+ const eligible=rows.filter(r=>!r.saved&&r.approval==='VERIFIED');
+ if(!eligible.length)return message('No verified entries to approve. Verify reviewed entries first.');
+ if(!confirm(`FINAL STAFF APPROVAL for ${eligible.length} verified entries? Unreviewed entries stay pending.`))return;
+ eligible.forEach(r=>r.approval='APPROVED');render();message(`${eligible.length} entries approved locally. Ready to save using temporary development access.`);
+});
+// TEMPORARY DEVELOPMENT MODE: insert-only anon access; never overwrite existing records.
+el('hpSave').addEventListener('click',async()=>{
+ const approved=rows.filter(r=>r.approval==='APPROVED'&&!r.saved);
+ if(!approved.length)return message('No new approved entries to save.');
+ if(!S?.from)return message('Supabase client unavailable. Check db.js.');
+ if(!confirm(`TEST DATABASE SAVE: Save ${approved.length} APPROVED entries? This uses temporary public anon access.`))return;
+ const btn=el('hpSave');btn.disabled=true;
+ try{
+  let saved=0,duplicates=0;
+  for(const r of approved){
+   // Check by official HPCL transaction ID first; insert is intentionally never an upsert.
+   const {data:existing,error:lookupError}=await S.from('hpcl_fuel_transactions').select('txn_id').eq('txn_id',r.id).limit(1);
+   if(lookupError)throw Error('Duplicate check: '+safeErr(lookupError));
+   if(existing?.length){r.saved=true;duplicates++;continue;}
+   const payload={txn_id:r.id,txn_datetime_raw:r.date,pump_name:r.pump,original_vehicle:r.original,actual_vehicle:r.actual||null,vehicle_owner:r.owner||null,txn_type:r.type,product:r.product,litres:r.litres,price:r.price,amount:r.amount,direction:r.direction,closing_balance:r.balance,review_status:'APPROVED'};
+   const {error:insertError}=await S.from('hpcl_fuel_transactions').insert(payload);
+   if(insertError){if(insertError.code==='23505'){r.saved=true;duplicates++;continue;}throw Error('Txn '+r.id+': '+safeErr(insertError));}
+   const {data:confirmed,error:confirmError}=await S.from('hpcl_fuel_transactions').select('txn_id').eq('txn_id',r.id).limit(1);
+   if(confirmError||!confirmed?.length)throw Error('Inserted '+r.id+' but read-back confirmation failed: '+safeErr(confirmError||'not found'));
+   r.saved=true;saved++;
+  }
+  render();message(`Supabase confirmed ${saved} new entries; ${duplicates} existing IDs skipped. Open Saved History to verify.`);
+  if(!el('hpHistoryPanel').classList.contains('hidden'))await loadSavedHistory();
+ }catch(e){render();message('Fuel save stopped: '+safeErr(e)+' | Already confirmed rows remain marked saved. Check Supabase SQL before retrying.');}
+ finally{btn.disabled=false}
+});
+loadFleet();
+const firstHpCard=root.querySelector('[data-fuel-source="hpcl"]');if(firstHpCard)firstHpCard.click();
+el('hpExport').addEventListener('click',()=>{if(!view.length)return message('No rows to export.');const cols=['Txn ID','Txn Date and Time','Retail Outlet Name','Vehicle Number (Actual)','VEHICLE OWNERS','Txn Type','Product','Volume(Ltr.)','Price','Amount','Credit/Debit','Closing Balance','Vehicle Review','WhatsApp Match Detail','Staff Approval','Saved'];const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const lines=[cols,...view.map(r=>[r.id,r.date,r.pump,r.actual||'Vehicle Pending',r.owner,r.type,r.product,r.litres,r.price,r.amount,r.direction,r.balance,r.matchStatus|| (category(r)==='diesel'?'Review Pending':'Ledger'),r.matchInfo||'',r.approval||'PENDING',r.saved?'YES':'NO'])].map(r=>r.map(quote).join(','));const url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Ekta_HPCL_FULL_DETAILS_Working.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)});
+})();
+</script>
+
+
+<script>
+/* Pump register isolated from HPCL transaction processing */
+(()=>{
+ const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const STORE='ekta_pump_register_test_v1';
+ const defaults=[]; // Pump Master starts empty: user adds each real pump.
+ let state;try{state=JSON.parse(localStorage.getItem(STORE)||'null')}catch(e){}
+ if(!state||!Array.isArray(state.pumps)||!Array.isArray(state.entries))state={pumps:[],entries:[]};
+ // Clean up untouched sample pump tabs from older test versions, without deleting any real ledger entries or configured pump.
+ // Existing manually configured pumps and all pumps with transactions are preserved.
+ state.pumps=state.pumps.filter(p=>!(/^fixed[0-7]$/.test(String(p.id)) && !state.entries.some(e=>e.pumpId===p.id) && !Number(p.rate) && !Number(p.discountPerLitre) && !Number(p.opening)));
+
+ state.pumps.forEach(p=>{p.rate=Number(p.rate)||0;p.discountPerLitre=Number(p.discountPerLitre)||0;p.opening=Number(p.opening)||0});
+ let current=state.pumps[0]?.id||'',shown=[];
+ const colors=['#dbeafe','#dcfce7','#fef3c7','#fce7f3','#ede9fe','#cffafe','#ffedd5','#e2e8f0'];
+ const cash=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ let cloudQueue=Promise.resolve(), cloudReady=false, cloudBusy=false;
+ const cloudStatus=(t,err=false)=>{const x=$('pumpCloudStatus');if(x){x.textContent=t;x.style.color=err?'#b91c1c':'#047857'}};
+ const pumpDbRow=p=>({id:p.id,name:p.name,location:p.location||'',address:p.address||'',contact_person:p.contactPerson||'',phone:p.phone||'',gstin:p.gstin||'',rate:p.rate||0,discount_per_litre:p.discountPerLitre||0,opening_balance:p.opening||0});
+ const entryDbRow=e=>({id:e.id,pump_id:e.pumpId,entry_date:e.date,entry_time:e.time||null,kind:e.kind,reference:e.slip||'',source_txn_id:e.sourceTxnId||null,vehicle:e.vehicle||'',litres:e.litres||0,rate:e.rate||0,discount:e.discount||0,amount:e.amount,source:e.source||'',remarks:e.remarks||'',created_ms:e.created||0});
+ async function persistCloud(){const db=window.supabaseClient;if(!db?.from)throw Error('Supabase client missing (check db.js)');const pumps=state.pumps.map(pumpDbRow);if(pumps.length){const {error}=await db.from('ekta_pump_master').upsert(pumps,{onConflict:'id'});if(error)throw error;}for(let i=0;i<state.entries.length;i+=150){const {error}=await db.from('ekta_pump_ledger').upsert(state.entries.slice(i,i+150).map(entryDbRow),{onConflict:'id'});if(error)throw error;}}
+ function queueCloud(){cloudStatus('Saving to Supabase…');cloudQueue=cloudQueue.catch(()=>{}).then(async()=>{await persistCloud();cloudStatus('Saved in Supabase')}).catch(e=>{cloudStatus('Supabase save failed — local backup retained: '+e.message,true);console.error('Pump cloud save',e)});return cloudQueue;}
+ const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(state));queueCloud();return true}catch(e){alert('Browser storage failed: '+e.message);return false}};
+ const say=t=>$('pumpStatus').textContent=t;
+ const syncInfo=t=>$('pumpSyncInfo').textContent=t;
+ const currentPump=()=>state.pumps.find(p=>p.id===current);
+ const fleet=new Map();const normal=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ async function loadPumpFleet(){const db=window.supabaseClient;if(!db?.from){$('pumpTruckInfo').textContent='Fleet connection unavailable';return}try{for(let off=0;off<10000;off+=1000){const {data,error}=await db.from('trucks').select('truck_number,owner_name').range(off,off+999);if(error)throw error;(data||[]).forEach(t=>fleet.set(normal(t.truck_number),t.owner_name||''));if(!data||data.length<1000)break}$('pumpTruckInfo').textContent=fleet.size+' fleet vehicles loaded'}catch(e){$('pumpTruckInfo').textContent='Fleet lookup unavailable: '+e.message}}
+ function suggestTruck(){const q=normal($('pumpVehicle').value),list=$('pumpTruckSuggestions');list.innerHTML='';if(q.length<3)return;const matches=[...fleet.entries()].filter(([v])=>v.includes(q)).slice(0,20);list.innerHTML=matches.map(([v,owner])=>`<option value="${esc(v)}" label="${esc(owner)}"></option>`).join('');$('pumpTruckInfo').textContent=matches.length===1?'Found: '+matches[0][0]+' · '+matches[0][1]:matches.length+' matches; select full vehicle number'}
+ $('pumpVehicle').addEventListener('input',suggestTruck);
+ function fillPumpSettings(){const p=currentPump();$('pumpFixedRate').value=p?.rate||'';$('pumpFixedDiscount').value=p?.discountPerLitre||0;$('pumpEditOpening').value=p?.opening??0;$('pumpRate').value=p?.rate||'';$('pumpDiscount').value=p?.discountPerLitre||0;calc()}
+ $('pumpSaveSettings').addEventListener('click',()=>{const p=currentPump(),rate=Number($('pumpFixedRate').value),discount=Number($('pumpFixedDiscount').value),opening=Number($('pumpEditOpening').value);if(!p||![rate,discount,opening].every(Number.isFinite)||rate<0||discount<0||(rate>0&&discount>rate))return alert('Enter valid rate, discount and opening balance.');if(p.opening!==opening&&state.entries.some(r=>r.pumpId===current)&&!confirm('Changing opening balance recalculates ALL running balances for this pump. Continue?'))return;p.rate=rate;p.discountPerLitre=discount;p.opening=opening;if(save()){fillPumpSettings();render();say('Pump rate, discount and opening balance saved for '+p.name)}});
+ const getView=()=>state.entries.filter(r=>r.pumpId===current&&(!$('pumpFrom').value||r.date>=$('pumpFrom').value)&&(!$('pumpTo').value||r.date<=$('pumpTo').value)&&(!$('pumpSearch').value||[r.vehicle,r.slip,r.remarks].some(v=>String(v||'').toLowerCase().includes($('pumpSearch').value.toLowerCase()))));
+ function render(){
+  const hasPump=!!currentPump();
+  $('pumpEmptySide').classList.toggle('hidden',state.pumps.length>0);
+  const adding=!$('pumpAddForm').classList.contains('hidden');
+  $('pumpEmptyWorkspace').classList.toggle('hidden',hasPump||adding);
+  document.querySelectorAll('#pumpLedgerPanel .pump-workspace-content > :not(#pumpAddForm):not(#pumpEmptyWorkspace)').forEach(node=>node.classList.toggle('hidden',!hasPump||adding));
+  $('pumpTabs').innerHTML=state.pumps.map((p,i)=>`<button type="button" class="pump-tab" data-id="${esc(p.id)}" style="--pump-accent:${colors[i%colors.length]}" role="tab" aria-selected="${p.id===current}"><span class="pump-tab-icon"><i class="fa-solid fa-gas-pump"></i></span><span class="pump-tab-name">${esc(p.name)}<small>${esc(p.location||'Fuel Station')}</small></span><i class="fa-solid fa-chevron-right pump-chevron"></i></button>`).join('');
+  $('pumpCurrentName').textContent=currentPump()?.name||'Select Pump';
+  shown=getView().slice().sort((a,b)=>(b.date+' '+(b.time||'00:00:00')).localeCompare(a.date+' '+(a.time||'00:00:00'))||(Number(b.created)||0)-(Number(a.created)||0));
+  let litres=0,diesel=0,payments=0,adjust=0,tds=0;
+  for(const r of shown){if(r.kind==='DIESEL'){litres+=r.litres;diesel+=r.amount}else if(r.kind==='PAYMENT')payments+=r.amount;else if(r.kind==='TDS')tds+=r.amount;else adjust+=r.amount}
+  $('pumpSumLitres').textContent=litres.toFixed(3);$('pumpSumDiesel').textContent=cash(diesel);$('pumpSumPayments').textContent=cash(payments);$('pumpSumDue').textContent=cash((currentPump()?.opening||0)+state.entries.filter(r=>r.pumpId===current).reduce((n,r)=>n+(r.kind==='PAYMENT'||r.kind==='TDS'?-r.amount:r.amount),0));$('pumpOpeningDisplay').textContent=cash(currentPump()?.opening||0);$('pumpTdsDisplay').textContent=cash(tds);
+  const running=new Map();let runningTotal=currentPump()?.opening||0;for(const r of state.entries.filter(r=>r.pumpId===current).slice().sort((a,b)=>(a.date+' '+(a.time||'00:00:00')).localeCompare(b.date+' '+(b.time||'00:00:00'))||a.created-b.created)){runningTotal+=(r.kind==='PAYMENT'||r.kind==='TDS'?-r.amount:r.amount);running.set(r.id,runningTotal)}
+  $('pumpRows').innerHTML=shown.map(r=>`<tr class="border-t"><td class="p-2 whitespace-nowrap">${esc(r.date)} ${esc(r.time||'')}</td><td class="p-2">${esc(r.kind==='PAYMENT'?'Payment Credit (Through '+(r.source==='Bank'?'Bank':r.source||'Unspecified')+')':r.kind==='DIESEL'?'Diesel Debit':r.kind==='TDS'?'TDS Adjustment (Monthly)':r.kind)}</td><td class="p-2">${esc(r.slip)}</td><td class="p-2 font-medium">${esc(r.vehicle)}</td><td class="p-2 text-right">${r.litres||''}</td><td class="p-2 text-right">${r.rate||''}</td><td class="p-2 text-right">${r.discount||''}</td><td class="p-2 text-right">${r.kind==='PAYMENT'||r.kind==='TDS'?'—':cash(r.amount)}</td><td class="p-2 text-right">${r.kind==='PAYMENT'||r.kind==='TDS'?cash(r.amount):'—'}</td><td class="p-2 text-right font-semibold">${cash(running.get(r.id))}</td><td class="p-2">${esc(r.remarks)}</td><td class="p-2"><button type="button" class="pump-action pump-edit" data-id="${esc(r.id)}">Edit</button><button type="button" class="pump-action pump-delete" data-id="${esc(r.id)}">Delete</button></td></tr>`).join('')||'<tr><td colspan="12" class="text-center text-slate-500 p-5">No entries yet. Start with New Manual Entry.</td></tr>';
+  say(`${shown.length} entries shown for ${currentPump()?.name||'pump'}.`);
+ }
+ $('pumpTabs').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b){current=b.dataset.id;$('pumpAddForm').classList.add('hidden');fillPumpSettings();render()}});
+ $('pumpAdd').addEventListener('click',()=>{$('pumpAddForm').classList.remove('hidden');render();$('pumpNewName').focus()});
+ $('pumpCancelAdd').addEventListener('click',()=>{$('pumpAddForm').classList.add('hidden');render()});
+ $('pumpAddForm').addEventListener('submit',e=>{e.preventDefault();const name=$('pumpNewName').value.trim(),location=$('pumpNewLocation').value.trim(),address=$('pumpNewAddress').value.trim(),contactPerson=$('pumpNewContact').value.trim(),phone=$('pumpNewPhone').value.trim(),gstin=$('pumpNewGst').value.trim().toUpperCase(),rate=Number($('pumpNewRate').value),discountPerLitre=Number($('pumpNewDiscount').value),opening=Number($('pumpNewOpening').value);if(!name)return alert('Enter pump name.');if(phone&&!/^[+0-9()\-\s]{7,20}$/.test(phone))return alert('Enter a valid contact phone number.');if(gstin&&!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin))return alert('Enter a valid 15-character GSTIN, or leave it blank.');if(state.pumps.some(p=>p.name.toLowerCase()===name.toLowerCase()))return alert('This pump already exists.');if(![rate,discountPerLitre,opening].every(Number.isFinite)||rate<0||discountPerLitre<0||discountPerLitre>rate&&rate>0)return alert('Check rate, discount and opening balance.');const id='pump'+Date.now();state.pumps.push({id,name,location,address,contactPerson,phone,gstin,rate,discountPerLitre,opening});if(save()){current=id;$('pumpAddForm').reset();$('pumpAddForm').classList.add('hidden');fillPumpSettings();render();say('New pump created: '+name)}});
+ $('pumpTdsMonth').value=new Date().toLocaleDateString('en-CA').slice(0,7);
+ let tdsDraft=null;
+ function resetTdsPreview(){tdsDraft=null;$('pumpTdsPost').disabled=true;$('pumpTdsPreview').textContent='Choose month and applicable TDS rate, then Calculate. Only diesel purchases for this pump count.'}
+ $('pumpTdsMonth').addEventListener('change',resetTdsPreview);
+ $('pumpTdsPercent').addEventListener('input',resetTdsPreview);
+ $('pumpTabs').addEventListener('click',resetTdsPreview);
+ $('pumpTdsCalculate').addEventListener('click',()=>{
+   const month=$('pumpTdsMonth').value,rate=Number($('pumpTdsPercent').value),pump=currentPump();
+   if(!pump||!/^\d{4}-\d{2}$/.test(month)||!Number.isFinite(rate)||rate<=0||rate>100)return alert('Select a month and enter the accountant-approved TDS percentage (greater than 0).');
+   const purchases=state.entries.filter(r=>r.pumpId===current&&r.kind==='DIESEL'&&r.date?.slice(0,7)===month);
+   const total=Math.round(purchases.reduce((n,r)=>n+Number(r.amount||0),0)*100)/100;
+   const tds=Math.round(total*rate)/100;
+   const exists=state.entries.some(r=>r.pumpId===current&&r.kind==='TDS'&&r.slip===month);
+   tdsDraft=total>0&&tds>0&&!exists?{pumpId:current,month,rate,total,tds,entryIds:purchases.map(r=>r.id)}:null;
+   $('pumpTdsPost').disabled=!tdsDraft;
+   $('pumpTdsPreview').textContent=`${pump.name} | ${month} | ${purchases.length} diesel entries | Monthly net diesel purchase ${cash(total)} × ${rate}% = TDS ${cash(tds)}.${exists?' TDS already posted for this month.':!tdsDraft?' Nothing eligible to post.':' Check with accountant, then Confirm & Post.'}`;
+ });
+ $('pumpTdsPost').addEventListener('click',()=>{
+   if(!tdsDraft||tdsDraft.pumpId!==current)return resetTdsPreview();
+   const d=tdsDraft;
+   if(state.entries.some(r=>r.pumpId===current&&r.kind==='TDS'&&r.slip===d.month))return alert('TDS already posted for this month.');
+   const entries=state.entries.filter(r=>r.pumpId===current&&r.kind==='DIESEL'&&r.date?.slice(0,7)===d.month);
+   const total=Math.round(entries.reduce((n,r)=>n+Number(r.amount||0),0)*100)/100;
+   if(Math.abs(total-d.total)>0.009||entries.length!==d.entryIds.length)return alert('Monthly purchases changed. Recalculate TDS before posting.');
+   if(!confirm(`Post monthly TDS credit ${cash(d.tds)} for ${currentPump().name} (${d.month})?\nDiesel purchases ${cash(d.total)} × ${d.rate}%\nThis reduces pump payable balance. Confirm applicable tax treatment with accountant.`))return;
+   const [year,month]=d.month.split('-').map(Number),date=`${year}-${String(month).padStart(2,'0')}-${String(new Date(year,month,0).getDate()).padStart(2,'0')}`;
+   state.entries.push({id:'tds'+Date.now(),pumpId:current,date,kind:'TDS',slip:d.month,vehicle:'',litres:0,rate:0,discount:0,amount:d.tds,source:'',remarks:`Monthly purchase TDS ${d.rate}% on ${cash(d.total)} (${entries.length} diesel entries)`,created:Date.now()});
+   if(save()){resetTdsPreview();render();say('Monthly TDS posted as credit for '+d.month)}
+ });
+ $('pumpDate').value=new Date().toLocaleDateString('en-CA');
+ function calc(){if($('pumpKind').value==='DIESEL'){const l=Number($('pumpLitresInput').value),r=Number($('pumpRate').value),d=Number($('pumpDiscount').value);if(l>0&&r>0)$('pumpAmountInput').value=Math.max(0,l*(r-d)).toFixed(2)}}
+ ['pumpLitresInput','pumpRate','pumpDiscount'].forEach(id=>$(id).addEventListener('input',calc));
+ $('pumpKind').addEventListener('change',()=>{const diesel=$('pumpKind').value==='DIESEL';for(const id of ['pumpVehicle','pumpLitresInput','pumpRate','pumpDiscount'])$(id).disabled=!diesel;$('pumpPaySource').disabled=$('pumpKind').value!=='PAYMENT';$('pumpSlip').placeholder=$('pumpKind').value==='TDS'?'Month / TDS reference':'Slip no. / Payment reference';$('pumpAmountInput').value='';if(diesel)fillPumpSettings()});
+ $('pumpEntryForm').addEventListener('submit',e=>{e.preventDefault();if(!currentPump())return alert('Add a pump first.');const kind=$('pumpKind').value,litres=Number($('pumpLitresInput').value||0),rate=Number($('pumpRate').value||0),discount=Number($('pumpDiscount').value||0),amount=Number($('pumpAmountInput').value||0),source=$('pumpPaySource').value;let vehicle=normal($('pumpVehicle').value);if(kind==='TDS'&&!$('pumpSlip').value.trim())return alert('Enter month / TDS reference (e.g. 2026-10).');if(kind==='PAYMENT'&&!source)return alert('Select payment source: HPCL OTP, Bank, Cash or Other.');if(kind==='PAYMENT'&&!$('pumpSlip').value.trim())return alert('Enter payment reference to avoid duplicate posting.');if(kind==='DIESEL'&&fleet.size){const matches=[...fleet.keys()].filter(v=>v===vehicle||v.endsWith(vehicle));if(matches.length===1)vehicle=matches[0];else if(!fleet.has(vehicle))return alert(matches.length?'Multiple trucks match. Select the complete truck number.':'Truck not found in Fleet Master.');}if(kind==='DIESEL'&&(!vehicle||litres<=0||rate<=0||discount>rate))return alert('Diesel entry needs Truck Number, Litres and Rate.');if(!Number.isFinite(amount)||amount<=0)return alert('Enter a valid positive amount.');if(kind==='TDS'&&state.entries.some(x=>x.kind==='TDS'&&x.pumpId===current&&x.slip.toLowerCase()===$('pumpSlip').value.trim().toLowerCase()))return alert('TDS entry with this reference already exists for this pump.');if(kind==='PAYMENT'&&state.entries.some(x=>x.kind==='PAYMENT'&&x.pumpId===current&&x.source===source&&x.slip.toLowerCase()===$('pumpSlip').value.trim().toLowerCase()))return alert('Payment source + reference already exists for this pump.');const entry={source:kind==='PAYMENT'?source:'',id:'e'+Date.now()+Math.random().toString(36).slice(2,7),pumpId:current,date:$('pumpDate').value,kind,slip:$('pumpSlip').value.trim(),vehicle:kind==='DIESEL'?vehicle:'',litres:kind==='DIESEL'?litres:0,rate:kind==='DIESEL'?rate:0,discount:kind==='DIESEL'?discount:0,amount,remarks:$('pumpRemarks').value.trim(),created:Date.now()};state.entries.push(entry);if(save()){$('pumpEntryForm').reset();$('pumpDate').value=new Date().toLocaleDateString('en-CA');$('pumpKind').dispatchEvent(new Event('change'));fillPumpSettings();render();$('pumpVehicle').focus()}});
+ $('pumpRows').addEventListener('click',async e=>{
+  const b=e.target.closest('.pump-edit,.pump-delete');if(!b)return;
+  const r=state.entries.find(x=>x.id===b.dataset.id);if(!r)return;
+  const db=window.supabaseClient;if(!db?.from)return alert('Supabase connection unavailable. No changes made.');
+  b.disabled=true;
+  try{
+    await cloudQueue; // Avoid an older queued save overwriting this action.
+    if(b.classList.contains('pump-delete')){
+      if(r.sourceTxnId)return alert('This HPCL-linked payment is an approved source transaction. Delete/correct it through an audited reversal workflow, not directly here.');
+      if(!confirm(`Permanently delete ${r.kind} ${cash(r.amount)} dated ${r.date} from Supabase? This will recalculate the balance.`))return;
+      const {error}=await db.from('ekta_pump_ledger').delete().eq('id',r.id);
+      if(error)throw error;
+      state.entries=state.entries.filter(x=>x.id!==r.id);
+      localStorage.setItem(STORE,JSON.stringify(state));render();cloudStatus('Deleted from Supabase');say('Entry deleted from Supabase.');
+    }else{
+      // Source-linked HPCL financial amounts and references are immutable for audit.
+      if(r.sourceTxnId)return alert('HPCL-linked payments cannot be edited here. Keep the approved amount, date and transaction reference unchanged.');
+      const date=prompt('Entry date (YYYY-MM-DD)',r.date);if(date===null)return;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date)))return alert('Invalid date.');
+      const slip=prompt('Slip / reference',r.slip||'');if(slip===null)return;
+      const amountText=prompt('Amount ₹',String(r.amount));if(amountText===null)return;
+      const amount=Number(amountText);if(!Number.isFinite(amount)||amount<=0)return alert('Enter a positive amount.');
+      const remarks=prompt('Remarks',r.remarks||'');if(remarks===null)return;
+      const updated={...r,date,slip:slip.trim(),amount,remarks:remarks.trim()};
+      if(r.kind==='DIESEL'){
+        const vehicle=prompt('Truck number',r.vehicle||'');if(vehicle===null)return;
+        const litresText=prompt('Litres',String(r.litres||0));if(litresText===null)return;
+        const rateText=prompt('Rate ₹/L',String(r.rate||0));if(rateText===null)return;
+        const discountText=prompt('Discount ₹/L',String(r.discount||0));if(discountText===null)return;
+        const litres=Number(litresText),rate=Number(rateText),discount=Number(discountText);
+        if(!vehicle.trim()||!Number.isFinite(litres)||litres<=0||!Number.isFinite(rate)||rate<=0||!Number.isFinite(discount)||discount<0||discount>rate)return alert('Invalid diesel details.');
+        Object.assign(updated,{vehicle:normal(vehicle),litres,rate,discount});
+      }
+      if(r.kind==='TDS')return alert('Posted monthly TDS must be corrected with an audited adjustment, not edited directly.');
+      if(r.kind==='PAYMENT'&&state.entries.some(x=>x.id!==r.id&&x.pumpId===r.pumpId&&x.kind==='PAYMENT'&&x.source===r.source&&x.slip===updated.slip))return alert('Duplicate payment reference.');
+      if(!confirm('Save these changes to Supabase? Running balances will be recalculated.'))return;
+      const {error}=await db.from('ekta_pump_ledger').update(entryDbRow(updated)).eq('id',r.id);
+      if(error)throw error;
+      Object.assign(r,updated);localStorage.setItem(STORE,JSON.stringify(state));render();cloudStatus('Updated in Supabase');say('Entry updated in Supabase.');
+    }
+  }catch(err){alert('Supabase operation failed: '+err.message+' — entry unchanged.');cloudStatus('Supabase operation failed',true)}finally{b.disabled=false}
+});
+ ['pumpFrom','pumpTo','pumpSearch'].forEach(id=>$(id).addEventListener('input',render));$('pumpClearFilters').addEventListener('click',()=>{['pumpFrom','pumpTo','pumpSearch'].forEach(id=>$(id).value='');render()});
+ const runningBalanceFor=r=>{let n=currentPump()?.opening||0;for(const x of state.entries.filter(x=>x.pumpId===current).slice().sort((a,b)=>(a.date+' '+(a.time||'00:00:00')).localeCompare(b.date+' '+(b.time||'00:00:00'))||a.created-b.created)){n+=(x.kind==='PAYMENT'||x.kind==='TDS'?-x.amount:x.amount);if(x.id===r.id)return n}return n};
+ const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+ $('pumpExport').addEventListener('click',()=>{const heads=['Date & Time','Type','Slip','Truck Number','Litres','Rate','Discount per Litre','Amount','Remarks','Payment Source','Running Balance'];const lines=[heads,...shown.map(r=>[r.date+(r.time?' '+r.time:''),r.kind,r.slip,r.vehicle,r.litres,r.rate,r.discount,r.amount,r.remarks,r.source||'',runningBalanceFor(r)])].map(a=>a.map(csvCell).join(','));const url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Ekta_Pump_'+(currentPump()?.name||'Ledger').replace(/[^A-Za-z0-9]+/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+ function parseCSV(t){const rows=[];let line=[],cell='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'&&t[i+1]==='"'){cell+='"';i++}else if(c==='"')q=false;else cell+=c}else if(c==='"')q=true;else if(c===','){line.push(cell);cell=''}else if(c==='\r'||c==='\n'){if(c==='\r'&&t[i+1]==='\n')i++;line.push(cell);if(line.some(x=>String(x).trim()))rows.push(line);line=[];cell=''}else cell+=c}line.push(cell);if(line.some(x=>String(x).trim()))rows.push(line);return rows}
+ async function excelLib(){if(window.XLSX)return;await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=()=>rej(Error('Excel library unavailable'));document.head.appendChild(s)})}
+ $('pumpImport').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{let arr;if(/\.csv$/i.test(f.name))arr=parseCSV(await f.text());else{await excelLib();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});arr=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false})}const hdr=(arr[0]||[]).map(x=>String(x).trim().toLowerCase());const find=(...names)=>hdr.findIndex(x=>names.includes(x));const indexes={date:find('date'),vehicle:find('truck number','vehicle','vehicle no','vehicle number'),litres:find('litres','liters','volume','volume(ltr.)'),rate:find('rate','price'),amount:find('amount','total'),slip:find('slip','slip no','slip number'),discount:find('discount'),remarks:find('remarks','remark','notes'),kind:find('type','entry type'),source:find('payment source','source')};if(indexes.date<0||indexes.amount<0)throw Error('Import needs a header row with Date and Amount. Use Export CSV as a template.');const val=(r,k)=>indexes[k]<0?'':r[indexes[k]];const parsed=arr.slice(1).filter(r=>r.some(x=>String(x).trim())).map(r=>{let d=String(val(r,'date')).trim();if(/^\d{2}-\d{2}-\d{4}$/.test(d)){const [day,month,year]=d.split('-');d=`${year}-${month}-${day}`}const kind=String(val(r,'kind')||'DIESEL').toUpperCase();return {id:'imp'+Date.now()+Math.random().toString(36).slice(2,8),pumpId:current,date:d,kind:['DIESEL','PAYMENT','TDS','ADJUSTMENT'].includes(kind)?kind:'DIESEL',slip:String(val(r,'slip')),vehicle:String(val(r,'vehicle')).toUpperCase(),litres:Number(val(r,'litres'))||0,rate:Number(val(r,'rate'))||0,discount:Number(val(r,'discount'))||0,amount:Number(val(r,'amount'))||0,remarks:String(val(r,'remarks')),source:String(val(r,'source')||''),created:Date.now()}});const good=parsed.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)&&r.amount>0&&(r.kind!=='DIESEL'||(r.vehicle&&r.litres>0)));if(!good.length)throw Error('No valid entries. Check Date (YYYY-MM-DD), Amount, Truck Number and Litres.');if(!confirm(`${good.length} valid of ${parsed.length} rows found in ${f.name}.\nImport into ${currentPump().name}?\nReview source file before confirming. Existing entries are not changed.`))return;state.entries.push(...good);if(save())render()}catch(err){alert('Pump import: '+err.message)}finally{e.target.value=''}});
+
+ // Pump Ledger cloud backup and HPCL OTP credit bridge. Requires the companion SQL migration.
+ const cloud=window.supabaseClient;
+ const cleanName=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const parseHpDate=raw=>{const v=String(raw||'');let m=v.match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:[ T](\d{2}:\d{2}:\d{2}))?/);if(m)return {date:`${m[3]}-${m[2]}-${m[1]}`,time:m[4]||'00:00:00'};m=v.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}:\d{2}))?/);return m?{date:`${m[1]}-${m[2]}-${m[3]}`,time:m[4]||'00:00:00'}:null};
+ async function fetchHpclPaid(){if(!cloud?.from)throw Error('Supabase unavailable');let result=[];for(let offset=0;offset<100000;offset+=500){const {data,error}=await cloud.from('hpcl_fuel_transactions').select('txn_id,txn_datetime_raw,pump_name,actual_vehicle,amount,review_status').eq('review_status','APPROVED').range(offset,offset+499);if(error)throw error;result.push(...(data||[]));if(!data||data.length<500)break;}return result.filter(r=>String(r.actual_vehicle||'').trim().toUpperCase()==='PAID')}
+ $('pumpSyncHpcl').addEventListener('click',async()=>{const pump=currentPump();if(!pump)return alert('Select or add a pump first.');const btn=$('pumpSyncHpcl');btn.disabled=true;try{const paid=await fetchHpclPaid();const matching=paid.filter(r=>cleanName(r.pump_name)===cleanName(pump.name));const pending=matching.filter(r=>!state.entries.some(e=>e.kind==='PAYMENT'&&e.sourceTxnId===String(r.txn_id)));const mismatched=paid.filter(r=>!state.pumps.some(p=>cleanName(p.name)===cleanName(r.pump_name)));if(!pending.length){syncInfo(`No new approved PAID transactions for ${pump.name}. ${mismatched.length} PAID transactions have no exact pump-name mapping.`);return;}const total=pending.reduce((n,r)=>n+Number(r.amount||0),0);if(!confirm(`${pump.name}\n${pending.length} approved HPCL PAID transaction(s), total ${cash(total)}.\nPost each as Payment Credit (Through HPCL OTP), preserving official date/time and txn ID?\nThis is saved in browser until you save to Supabase.`))return;for(const r of pending){const dt=parseHpDate(r.txn_datetime_raw);if(!dt||!(Number(r.amount)>0))continue;state.entries.push({id:'hpcl'+String(r.txn_id),pumpId:pump.id,date:dt.date,time:dt.time,kind:'PAYMENT',slip:String(r.txn_id),sourceTxnId:String(r.txn_id),vehicle:'',litres:0,rate:0,discount:0,amount:Number(r.amount),source:'HPCL OTP',remarks:'Approved HPCL OTP payment · '+r.pump_name,created:Date.now()});}if(save()){render();syncInfo(`${pending.length} HPCL payments added to browser ledger. Click Save Pump Ledger to Supabase for shared storage.`)}}catch(e){syncInfo('HPCL sync failed: '+e.message)}finally{btn.disabled=false}});
+ $('pumpCloudSave').addEventListener('click',async()=>{if(!cloud?.from)return alert('Supabase unavailable');if(!confirm('Save all Pump Master and Ledger entries to Supabase? Ensure SQL migration and secure RLS are installed.'))return;const btn=$('pumpCloudSave');btn.disabled=true;try{const pumpRows=state.pumps.map(p=>({id:p.id,name:p.name,location:p.location||'',address:p.address||'',contact_person:p.contactPerson||'',phone:p.phone||'',gstin:p.gstin||'',rate:p.rate||0,discount_per_litre:p.discountPerLitre||0,opening_balance:p.opening||0}));if(pumpRows.length){const {error}=await cloud.from('ekta_pump_master').upsert(pumpRows,{onConflict:'id'});if(error)throw error;}for(let i=0;i<state.entries.length;i+=200){const chunk=state.entries.slice(i,i+200).map(e=>({id:e.id,pump_id:e.pumpId,entry_date:e.date,entry_time:e.time||null,kind:e.kind,reference:e.slip||'',source_txn_id:e.sourceTxnId||null,vehicle:e.vehicle||'',litres:e.litres||0,rate:e.rate||0,discount:e.discount||0,amount:e.amount,source:e.source||'',remarks:e.remarks||'',created_ms:e.created||0}));const {error}=await cloud.from('ekta_pump_ledger').upsert(chunk,{onConflict:'id'});if(error)throw error;}syncInfo(`Supabase saved ${pumpRows.length} pumps and ${state.entries.length} entries.`)}catch(e){syncInfo('Supabase save failed: '+e.message+' — browser entries unchanged.')}finally{btn.disabled=false}});
+ $('pumpCloudLoad').addEventListener('click',async()=>{if(!cloud?.from)return alert('Supabase unavailable');if(!confirm('Load Pump Master and Ledger from Supabase? Browser-only entries not yet uploaded could be lost. Export CSV and Save to Supabase first.'))return;const btn=$('pumpCloudLoad');btn.disabled=true;try{let ps=[],es=[];for(let offset=0;offset<100000;offset+=500){const {data,error}=await cloud.from('ekta_pump_master').select('*').range(offset,offset+499);if(error)throw error;ps.push(...(data||[]));if(!data||data.length<500)break;}for(let offset=0;offset<100000;offset+=500){const {data,error}=await cloud.from('ekta_pump_ledger').select('*').range(offset,offset+499);if(error)throw error;es.push(...(data||[]));if(!data||data.length<500)break;}state.pumps=ps.map(p=>({id:p.id,name:p.name,location:p.location,address:p.address,contactPerson:p.contact_person,phone:p.phone,gstin:p.gstin,rate:Number(p.rate),discountPerLitre:Number(p.discount_per_litre),opening:Number(p.opening_balance)}));state.entries=es.map(e=>({id:e.id,pumpId:e.pump_id,date:e.entry_date,time:e.entry_time||'',kind:e.kind,slip:e.reference,sourceTxnId:e.source_txn_id,vehicle:e.vehicle,litres:Number(e.litres),rate:Number(e.rate),discount:Number(e.discount),amount:Number(e.amount),source:e.source,remarks:e.remarks,created:Number(e.created_ms)}));current=state.pumps[0]?.id||'';save();fillPumpSettings();render();syncInfo(`Loaded ${ps.length} pumps and ${es.length} entries from Supabase.`)}catch(e){syncInfo('Supabase load failed: '+e.message)}finally{btn.disabled=false}});
+ async function initializePumpCloud(){const db=window.supabaseClient;if(!db?.from){cloudStatus('Supabase unavailable — local backup only',true);return}cloudStatus('Loading from Supabase…');try{let ps=[],es=[];for(let off=0;off<100000;off+=500){const {data,error}=await db.from('ekta_pump_master').select('*').range(off,off+499);if(error)throw error;ps.push(...(data||[]));if((data||[]).length<500)break;}for(let off=0;off<100000;off+=500){const {data,error}=await db.from('ekta_pump_ledger').select('*').range(off,off+499);if(error)throw error;es.push(...(data||[]));if((data||[]).length<500)break;}const knownP=new Set(state.pumps.map(p=>p.id)),knownE=new Set(state.entries.map(e=>e.id));for(const p of ps)if(!knownP.has(p.id))state.pumps.push({id:p.id,name:p.name,location:p.location,address:p.address,contactPerson:p.contact_person,phone:p.phone,gstin:p.gstin,rate:Number(p.rate),discountPerLitre:Number(p.discount_per_litre),opening:Number(p.opening_balance)});for(const e of es)if(!knownE.has(e.id))state.entries.push({id:e.id,pumpId:e.pump_id,date:e.entry_date,time:e.entry_time||'',kind:e.kind,slip:e.reference,sourceTxnId:e.source_txn_id,vehicle:e.vehicle,litres:Number(e.litres),rate:Number(e.rate),discount:Number(e.discount),amount:Number(e.amount),source:e.source,remarks:e.remarks,created:Number(e.created_ms)});current=current||state.pumps[0]?.id||'';localStorage.setItem(STORE,JSON.stringify(state));fillPumpSettings();render();await queueCloud();await postApprovedHpcl();}catch(e){cloudStatus('Supabase load failed — local backup retained: '+e.message,true)}}
+ async function postApprovedHpcl(){try{const paid=await fetchHpclPaid();let added=0;for(const r of paid){const p=state.pumps.find(p=>cleanName(p.name)===cleanName(r.pump_name));if(!p||state.entries.some(e=>String(e.sourceTxnId||'')===String(r.txn_id)))continue;const dt=parseHpDate(r.txn_datetime_raw);if(!dt||!(Number(r.amount)>0))continue;state.entries.push({id:'hpcl'+String(r.txn_id),pumpId:p.id,date:dt.date,time:dt.time,kind:'PAYMENT',slip:String(r.txn_id),sourceTxnId:String(r.txn_id),vehicle:'',litres:0,rate:0,discount:0,amount:Number(r.amount),source:'HPCL OTP',remarks:'Payment Credit (Through HPCL OTP) · '+r.pump_name,created:Date.now()});added++;}if(added){save();render();say(added+' approved HPCL payments automatically credited');}}catch(e){console.warn('HPCL auto posting:',e.message)}}
+ document.getElementById('hpSave')?.addEventListener('click',()=>{setTimeout(()=>postApprovedHpcl(),1800)});
+ fillPumpSettings();loadPumpFleet();render();initializePumpCloud();
+})();
+
+// Workspace-wide arrow scrolling (does not interfere with editing form fields).
+document.addEventListener('keydown',function(e){
+ const keys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+ if(!keys.includes(e.key)||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||e.defaultPrevented)return;
+ const target=e.target;
+ if(target?.closest?.('input,textarea,select,[contenteditable="true"],[role="textbox"],[role="grid"]'))return;
+ const active=[...root.querySelectorAll('#fuelHpclPanel,#pumpLedgerPanel')].find(x=>!x.classList.contains('hidden'));
+ if(!active)return;
+ const horizontal=e.key==='ArrowLeft'||e.key==='ArrowRight';
+ const direction=(e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1;
+ const candidates=[...active.querySelectorAll('.overflow-auto')].filter(x=>x.getClientRects().length);
+ const visible=candidates.filter(x=>{const r=x.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth});
+ const scrollable=x=>horizontal?x.scrollWidth>x.clientWidth+2:x.scrollHeight>x.clientHeight+2;
+ const container=(visible.find(x=>x.contains(target)&&scrollable(x))||visible.find(scrollable));
+ if(horizontal){if(!container)return;container.scrollLeft+=direction*110;e.preventDefault();return;}
+ if(container&&container.contains(target)&&scrollable(container)){container.scrollTop+=direction*75;e.preventDefault();return;}
+ window.scrollBy({top:direction*90,behavior:'instant'});e.preventDefault();
+},false);
+</script>
+<script>
+/* Diesel Cash register: bank transactions are read-only from confirmed account_transactions. */
+(function(){'use strict';const $=id=>document.getElementById(id), S=()=>window.supabaseClient;let entries=[];let editingId=null;const hiddenKey='ekta_diesel_register_hidden_bank_v1';let showHidden=false;const getHidden=()=>{try{return new Set(JSON.parse(localStorage.getItem(hiddenKey)||'[]'))}catch{return new Set()}};const saveHidden=set=>localStorage.setItem(hiddenKey,JSON.stringify([...set]));const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const amt=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});const msg=t=>{$('dcMessage').textContent=t};
+async function refresh(){if(!S()?.from){msg('Supabase connection unavailable');return}const [cash,bank]=await Promise.all([S().from('diesel_cash_entries').select('*').order('entry_date',{ascending:false}).limit(1000),S().from('account_transactions').select('*').eq('posting_status','CONFIRMED').eq('category','DIESEL').order('transaction_date',{ascending:false}).limit(1000)]);if(cash.error){msg('Cash register: '+cash.error.message)}else msg('');if(bank.error)msg('Accounts: '+bank.error.message);entries=[...(cash.data||[]).map(r=>({id:r.id,date:r.entry_date,time:r.entry_time,vehicle:r.vehicle_number,litres:r.litres,amount:r.amount,source:'Cash',bank:'',account:'',pump:r.pump_name,ref:r.reference_number,remarks:r.remarks,editable:true})),...(bank.data||[]).map(r=>({id:r.id,date:r.transaction_date,time:r.transaction_time,vehicle:r.vehicle_number||'',litres:r.quantity_litres,amount:r.debit,source:'Bank Statement',bank:r.bank_name||'',account:r.bank_account_name||'',pump:r.bank_narration,ref:r.reference_number,remarks:r.user_remark||r.ai_remark,editable:false,truck_id:r.truck_id}))];const missing=entries.filter(r=>r.source==='Bank Statement'&&!r.vehicle&&r.truck_id);if(missing.length){const ids=[...new Set(missing.map(r=>r.truck_id))];const t=await S().from('trucks').select('id,truck_number').in('id',ids);const map=new Map((t.data||[]).map(r=>[String(r.id),r.truck_number]));missing.forEach(r=>r.vehicle=map.get(String(r.truck_id))||'Unmatched')}render()}
+function render(){const q=$('dcSearch').value.toLowerCase(),from=$('dcFrom').value,to=$('dcTo').value;const hidden=getHidden();$('dcShowHidden').textContent=(showHidden?'Hide Hidden':'Show Hidden')+' ('+hidden.size+')';const shown=entries.filter(r=>(r.editable||showHidden||!hidden.has(String(r.id)))&&(!from||r.date>=from)&&(!to||r.date<=to)&&(!q||[r.vehicle,r.ref,r.bank,r.account,r.remarks].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.time||'').localeCompare(String(a.time||'')));$('dcLitres').textContent=shown.reduce((s,r)=>s+Number(r.litres||0),0).toFixed(3)+' L';$('dcAmount').textContent=amt(shown.reduce((s,r)=>s+Number(r.amount||0),0));$('dcCount').textContent=shown.length;$('dcRows').innerHTML=shown.map(r=>{let rate=Number(r.litres)>0?(Number(r.amount)/Number(r.litres)).toFixed(2):'—';return '<tr class="hover:bg-blue-50">'+[r.date||'—',r.time||'—',r.vehicle||'Not matched',r.litres??'—',rate,amt(r.amount),r.source,r.bank||'—',r.account||'—',r.pump||'—',r.ref||'—',r.remarks||'—'].map(v=>'<td class="p-3 border-b border-r align-middle">'+esc(v)+'</td>').join('')+'<td class="p-3 border-b">'+(r.editable?'<button type="button" class="text-blue-700 font-bold mr-3" data-edit="'+esc(r.id)+'">Edit</button><button type="button" class="text-red-700" data-delete="'+esc(r.id)+'">Delete</button>':'<button type="button" class="text-blue-700 font-semibold mr-3 hover:underline" data-edit-bank="'+esc(r.id)+'">Edit</button><button type="button" class="text-red-700 font-semibold" data-hide-bank="'+esc(r.id)+'">'+(hidden.has(String(r.id))?'Restore':'Delete')+'</button>')+'</td></tr>'+ (editingId===String(r.id)?inlineEditor(r):'')}).join('')||'<tr><td colspan="13" class="p-5 text-center">No diesel entries found</td></tr>'}
+function inlineEditor(r){
+ const field=(label,key,value,type='text',readonly=false)=>'<label class="block text-xs font-semibold text-slate-700">'+esc(label)+'<input data-field="'+key+'" type="'+type+'" '+(readonly?'readonly':'')+' value="'+esc(value??'')+'" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm '+(readonly?'bg-slate-100 text-slate-500':'bg-white')+'"></label>';
+ const bank=!r.editable;
+ return '<tr class="bg-blue-50"><td colspan="13" class="p-4 border-b border-blue-200"><div class="rounded-xl border border-blue-200 bg-white p-4 space-y-3"><div class="flex justify-between items-center gap-3"><b class="text-sm text-blue-900">Edit '+(bank?'Bank Statement Diesel':'Cash Diesel')+' — '+esc(r.vehicle||'')+'</b><span class="text-xs text-slate-500">Edit here, no popups</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">'+
+ (bank?field('Date', 'date',r.date,'text',true)+field('Vehicle', 'vehicle',r.vehicle,'text',true)+field('Litres','litres',r.litres,'number')+field('Amount ₹','amount',r.amount,'number',true)+field('Bank Name','bank',r.bank)+field('Account Name','account',r.account)+field('Pump / Bank Narration','pump',r.pump,'text',true)+field('Reference / UTR','ref',r.ref,'text',true)+field('Remarks','remarks',r.remarks):field('Date','date',r.date,'date')+field('Time','time',r.time,'time')+field('Vehicle','vehicle',r.vehicle)+field('Litres','litres',r.litres,'number')+field('Amount ₹','amount',r.amount,'number')+field('Pump / Particulars','pump',r.pump)+field('Slip / Reference','ref',r.ref)+field('Remarks','remarks',r.remarks))+
+ '</div><div class="flex flex-wrap gap-2 items-center"><button type="button" data-inline-save="'+esc(r.id)+'" class="rounded-lg bg-blue-700 px-5 py-2 text-white text-sm font-bold">Save Changes</button><button type="button" data-inline-cancel="'+esc(r.id)+'" class="rounded-lg border border-slate-300 px-5 py-2 text-sm">Cancel</button><span class="text-xs text-slate-500">'+(bank?'Original bank amount, date, reference and narration stay unchanged.':'Changes save to Supabase.')+'</span></div></div></td></tr>';
+}
+async function save(e){e.preventDefault();const f=new FormData(e.target),vehicle=String(f.get('vehicle')||'').trim().toUpperCase();const payload={entry_date:f.get('date'),entry_time:f.get('time')||null,vehicle_number:vehicle,litres:Number(f.get('litres')),amount:Number(f.get('amount')),pump_name:f.get('pump')||null,reference_number:f.get('reference')||null,remarks:f.get('remarks')||null};if(!payload.vehicle_number||!payload.entry_date||payload.litres<=0||payload.amount<=0)return msg('Enter valid date, vehicle, litres and amount');const id=e.target.dataset.editId;const q=id?S().from('diesel_cash_entries').update(payload).eq('id',id):S().from('diesel_cash_entries').insert(payload);const {error}=await q;if(error)return msg('Save failed: '+error.message);e.target.reset();delete e.target.dataset.editId;e.target.querySelector('button[type=submit]').textContent='Save Cash Diesel to Supabase';await refresh()}
+$('dcForm').addEventListener('submit',save);$('dcRefresh').addEventListener('click',refresh);['dcSearch','dcFrom','dcTo'].forEach(id=>$(id).addEventListener('input',render));$('dcClear').addEventListener('click',()=>{['dcSearch','dcFrom','dcTo'].forEach(id=>$(id).value='');render()});$('dcShowHidden').addEventListener('click',()=>{showHidden=!showHidden;render()});$('dcRows').addEventListener('click',async e=>{let b=e.target.closest('button');if(!b)return;if(b.dataset.editBank || b.dataset.edit){
+ editingId=String(b.dataset.editBank||b.dataset.edit);render();
+ const row=[...$('dcRows').querySelectorAll('button[data-inline-save]')].find(x=>x.dataset.inlineSave===editingId);
+ row?.closest('tr')?.scrollIntoView({behavior:'smooth',block:'nearest'});return;
+ }if(b.dataset.inlineCancel){editingId=null;render();return;
+ }if(b.dataset.inlineSave){
+ const id=String(b.dataset.inlineSave),r=entries.find(x=>String(x.id)===id);if(!r)return;
+ const row=b.closest('tr'),v=k=>row.querySelector('[data-field="'+k+'"]')?.value?.trim()||'';
+ const litres=Number(v('litres'));
+ if(!Number.isFinite(litres)||litres<=0){msg('Enter valid litres greater than zero.');return}
+ let payload;
+ if(r.editable){const amount=Number(v('amount'));if(!v('date')||!v('vehicle')||!Number.isFinite(amount)||amount<=0){msg('Enter valid date, vehicle and amount.');return}
+ payload={entry_date:v('date'),entry_time:v('time')||null,vehicle_number:v('vehicle').toUpperCase(),litres,amount,pump_name:v('pump')||null,reference_number:v('ref')||null,remarks:v('remarks')||null};
+ }else{payload={quantity_litres:litres,bank_name:v('bank')||null,bank_account_name:v('account')||null,user_remark:v('remarks')};}
+ b.disabled=true;b.textContent='Saving...';
+ try{let query=r.editable?S().from('diesel_cash_entries').update(payload).eq('id',id):S().from('account_transactions').update(payload).eq('id',id).eq('posting_status','CONFIRMED').eq('category','DIESEL');
+ const {data,error}=await query.select('id');if(error)throw error;if(!data?.length)throw Error('No matching entry was updated');editingId=null;await refresh();msg('Diesel entry updated successfully in Supabase.');
+ }catch(err){msg('Edit failed: '+err.message);b.disabled=false;b.textContent='Save Changes'}return;
+ }if(b.dataset.hideBank){const id=String(b.dataset.hideBank),hidden=getHidden();if(hidden.has(id)){hidden.delete(id);saveHidden(hidden);render();return}if(!confirm('Hide this bank diesel entry from this register on this browser? Original Master Accounts transaction will NOT be deleted.'))return;hidden.add(id);saveHidden(hidden);render();return}let id=b.dataset.edit||b.dataset.delete,r=entries.find(x=>String(x.id)===String(id)&&x.editable);if(!r)return;if(b.dataset.delete){if(!confirm('Delete this cash diesel entry from Supabase?'))return;const {error}=await S().from('diesel_cash_entries').delete().eq('id',id);if(error)return msg(error.message);await refresh();return}editingId=id;render()});window.EktaDieselCash={refresh};})();
+</script>
+
+<script id="ektaHpclPresentationOnly">
+(function(){
+ const panel=document.getElementById('fuelHpclPanel');
+ const file=document.getElementById('hpFile');
+ const history=document.getElementById('hpHistory');
+ const historyPanel=document.getElementById('hpHistoryPanel');
+ const close=document.getElementById('hpHistoryClose');
+ if(!panel||!file||!history||!historyPanel||!close)return;
+ function syncUpload(){panel.classList.toggle('hp-has-upload',Boolean(file.files&&file.files.length));}
+ function syncHistory(){panel.classList.toggle('hp-history-view',!historyPanel.classList.contains('hidden'));}
+ file.addEventListener('change',syncUpload);
+ history.addEventListener('click',()=>{syncHistory();});
+ close.addEventListener('click',()=>{historyPanel.classList.add('hidden');syncHistory();});
+ syncUpload();syncHistory();
+})();
+</script>
+</body></html>

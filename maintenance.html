@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Fleet Care &amp; Maintenance | Ekta Transport</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><style>
+#ecm{font:13px/1.45 system-ui,Arial;color:#18314e}#ecm *{box-sizing:border-box}#ecm .head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}#ecm h2{font-size:23px;font-weight:800;margin:0}#ecm .muted{color:#7c8da1;font-size:11px}#ecm .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}#ecm button{cursor:pointer}#ecm .tab,#ecm .btn{border:1px solid #d9e5f0;border-radius:9px;padding:9px 13px;background:#fff;color:#285178;font-weight:700}#ecm .tab.active,#ecm .primary{background:#2669a8;color:#fff;border-color:#2669a8}#ecm .panel,#ecm .stat{background:#fff;border:1px solid #e1eaf2;border-radius:14px;padding:15px;box-shadow:0 3px 13px #163c6110}#ecm .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}#ecm .stat strong{display:block;font-size:23px;margin-top:5px}#ecm .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}#ecm h3{font-weight:800;font-size:16px;margin:0}#ecm .table-wrap{overflow:auto;max-height:55vh}#ecm table{width:100%;border-collapse:collapse;white-space:nowrap}#ecm th,#ecm td{text-align:left;border-bottom:1px solid #edf1f5;padding:10px;font-size:12px}#ecm th{background:#f6f9fd;position:sticky;top:0;color:#5b718b}#ecm input,#ecm select,#ecm textarea{width:100%;padding:9px 10px;border:1px solid #d7e2ed;border-radius:8px;background:#fff;color:#17304d}#ecm .search{max-width:270px}#ecm .empty{padding:35px;text-align:center;color:#8495a8}#ecm .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}#ecm label{font-weight:700;font-size:11px;color:#536b84;display:block}#ecm label input,#ecm label select,#ecm label textarea{margin-top:5px;font-weight:400}#ecm .modal-back{position:fixed;inset:0;background:#0c203c8c;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}#ecm .modal{background:white;width:min(900px,100%);max-height:90vh;overflow:auto;border-radius:16px;padding:22px}#ecm .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}#ecm .actions{display:flex;justify-content:flex-end;gap:9px;margin-top:17px}#ecm .danger{color:#c02b3b}#ecm .pill{padding:4px 8px;border-radius:50px;background:#eef5fd;font-size:11px}#ecm .notice{background:#fff8e9;border:1px solid #f2dbad;padding:10px 13px;border-radius:9px;margin-bottom:12px;color:#7b5723}#ecm .subnav{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}#ecm .subnav button{font-size:12px}body.theme-dark #ecm .panel,body.theme-dark #ecm .stat,body.theme-dark #ecm .modal{background:#172437;color:#e7f0fa;border-color:#31435a}body.theme-dark #ecm{color:#e7f0fa}body.theme-dark #ecm th{background:#1d3049}body.theme-dark #ecm .tab,body.theme-dark #ecm .btn{background:#243850;color:#e7f0fa}body.theme-dark #ecm .tab.active,body.theme-dark #ecm .primary{background:#2669a8;color:white}@media(max-width:800px){#ecm .stats{grid-template-columns:repeat(2,1fr)}#ecm .form-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){#ecm .form-grid{grid-template-columns:1fr}}
+
+:root{color-scheme:light}html,body{margin:0;min-height:100%;background:#f3f6fa;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#18314e}body{overflow-x:hidden}
+.ecm-topbar{height:70px;background:#fff;border-bottom:1px solid #e2eaf3;display:flex;align-items:center;justify-content:space-between;padding:0 30px;gap:16px;box-shadow:0 2px 9px #193c6008}
+.ecm-brand{display:flex;align-items:center;gap:13px;min-width:0}.ecm-logo{display:grid;place-items:center;width:41px;height:41px;background:#eaf3fd;border-radius:12px;color:#2769a6;font-size:18px}.ecm-brand h1{font-size:19px;font-weight:800;letter-spacing:-.35px;margin:0;line-height:1.2}.ecm-brand p{font-size:11px;color:#8293a7;margin:3px 0 0}.ecm-top-actions{display:flex;align-items:center;gap:14px}.ecm-back{border:1px solid #d8e5f1;background:#fff;color:#2c5d88;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:750;white-space:nowrap}.ecm-back:hover{background:#f1f7fd}.ecm-status{font-size:11px;color:#62809e;background:#f0f6fd;border-radius:30px;padding:8px 11px;white-space:nowrap}
+#ecm{max-width:1700px;margin:auto;padding:25px 30px 36px;font-size:13px}#ecm .stats{gap:15px}#ecm .stat{border-radius:15px;padding:19px 22px;min-height:110px;box-shadow:0 5px 18px #153c6110}#ecm .stat strong{font-size:28px;letter-spacing:-.5px}#ecm .tabs{margin:22px 0 17px;gap:9px}#ecm .tab{padding:12px 18px;border-radius:10px}#ecm .panel{padding:23px;border-radius:16px;min-height:350px;box-shadow:0 6px 24px #153c610b}#ecm .toolbar{margin-bottom:18px;align-items:center}#ecm .toolbar h3{font-size:17px;letter-spacing:-.2px}#ecm .search{max-width:310px;min-width:220px}#ecm .btn{padding:10px 15px}#ecm .table-wrap{max-height:calc(100vh - 365px);min-height:180px}#ecm th{font-size:11px;text-transform:uppercase;letter-spacing:.35px}#ecm td{padding:13px 10px}#ecm button:focus-visible,#ecm input:focus-visible,#ecm select:focus-visible{outline:2px solid #70a7db;outline-offset:2px}
+@media(max-width:700px){.ecm-topbar{padding:0 14px}.ecm-brand h1{font-size:15px}.ecm-brand p{display:none}.ecm-status{display:none}#ecm{padding:17px 12px}#ecm .panel{padding:14px}#ecm .search{min-width:0;max-width:100%}#ecm .toolbar>div{width:100%}}
+
+/* Ekta Transport compact professional polish — presentation only */
+html,body{font-family:Inter,"Segoe UI",Arial,sans-serif;background:#f5f7fb}
+.ecm-topbar{height:62px;padding:0 24px;box-shadow:none}
+.ecm-logo{width:36px;height:36px;border-radius:10px;font-size:16px}
+.ecm-brand h1{font-size:17px;font-weight:750;letter-spacing:-.35px}
+.ecm-brand p{font-size:11px}
+.ecm-back{padding:8px 12px;border-radius:8px}
+.ecm-status{padding:6px 10px}
+#ecm{max-width:1700px;padding:18px 24px 28px;font-size:12.5px;line-height:1.45}
+#ecm .stats{gap:12px}
+#ecm .stat{padding:13px 16px;min-height:76px;border-radius:11px;box-shadow:0 2px 8px #183b5b09}
+#ecm .stat strong{font-size:22px;margin-top:3px;font-weight:750;letter-spacing:-.3px}
+#ecm .muted{font-size:11px}
+#ecm .tabs{margin:14px 0 13px;gap:7px}
+#ecm .tab{padding:8px 13px;border-radius:8px;font-size:12.5px;font-weight:650}
+#ecm .panel{padding:17px 19px;min-height:250px;border-radius:12px;box-shadow:0 2px 10px #183b5b09}
+#ecm .toolbar{margin-bottom:12px;gap:12px}
+#ecm .toolbar h3{font-size:15px;font-weight:750}
+#ecm .toolbar>div{flex-wrap:nowrap!important}
+#ecm .search{min-width:190px;max-width:265px;width:265px}
+#ecm input,#ecm select,#ecm textarea{padding:8px 10px;font-size:12.5px}
+#ecm .btn{padding:8px 12px;border-radius:8px;font-size:12px;font-weight:650;white-space:nowrap}
+#ecm .subnav{gap:6px;margin-bottom:10px}
+#ecm .table-wrap{max-height:calc(100vh - 300px);min-height:130px}
+#ecm th,#ecm td{padding:9px 10px;font-size:12px}
+#ecm .empty{padding:26px 10px}
+#ecm .modal{border-radius:12px}
+@media(max-width:700px){.ecm-topbar{padding:0 12px}#ecm{padding:14px 12px}#ecm .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#ecm .stat{padding:11px 12px;min-height:70px}#ecm .toolbar>div{flex-wrap:wrap!important}#ecm .search{width:100%;max-width:100%}#ecm .panel{padding:13px}}
+
+#ecm .import-note{padding:11px 13px;background:#f0f6fd;border:1px solid #d7e7f5;border-radius:9px;margin-bottom:14px;color:#375d81;font-size:12px}
+#ecm .import-summary{font-weight:650;margin:15px 0 8px}#ecm .import-table-wrap{overflow:auto;max-height:42vh;border:1px solid #e2eaf2;border-radius:8px}
+#ecm .import-table-wrap table{width:max-content;min-width:100%}#ecm .import-table-wrap th{position:sticky;top:0;z-index:1}#ecm .import-cell{width:150px;min-width:120px;font-size:12px}
+#ecm .import-warn{color:#a25d16;font-weight:700}#ecm .import-table-wrap input[type=checkbox]{width:auto}
+#ecm .modal:has(.import-table-wrap){width:min(1250px,98vw)}
+</style></head><body>
+<header class="ecm-topbar"><div class="ecm-brand"><span class="ecm-logo"><i class="fa-solid fa-screwdriver-wrench"></i></span><div><h1>Fleet Care &amp; Maintenance</h1><p>Ekta Transport · Workshop Operations</p></div></div><div class="ecm-top-actions"><span id="ecm-connection" class="ecm-status">Connecting…</span><a class="ecm-back" href="owner-dashboard.html"><i class="fa-solid fa-arrow-left"></i> Dashboard</a></div></header>
+
+<div id="ecm"><div class="stats" id="ecm-stats"></div><div class="tabs" id="ecm-tabs"></div><div id="ecm-message"></div><section class="panel"><div class="toolbar"><h3 id="ecm-heading"></h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input class="search" id="ecm-search" placeholder="Search records / truck / vendor…"><button class="btn primary" id="ecm-add">+ Add New</button></div></div><div id="ecm-subnav"></div><div class="table-wrap" id="ecm-table"></div></section><div id="ecm-dialog"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="db.js"></script><script src="maintenance.js?v=4"></script></body></html>

@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ekta Transport — Billing Working Sheet</title><script src="https://cdn.tailwindcss.com"></script><style>html,body{margin:0;min-height:100%;background:#f8fafc;color:#1e293b}#ektaLedgerPage{position:relative!important;min-height:100vh}#ektaInvoiceWorkspace{position:fixed!important}#ledgerTripRows td,#ledgerTripHead th{vertical-align:top}
+/* Minimal company-only working sheet; preserve IDs for the existing ledger renderer. */
+#ektaLedgerPage > div > div:first-child,
+#ledgerBillingTab, #ledgerTransporterTab, #ledgerSearchWrap,
+#ledgerBillingCards, #ledgerBackToSummary, #ledgerMessage,
+#ledgerBillingUnitChooser, #ledgerBillingStatementHint,
+#ledgerPartySummary {display:none!important}
+#ektaLedgerPage .flex.flex-wrap.items-center.gap-2:has(> #ledgerBillingTab){display:none!important}
+#ektaLedgerPage > div{max-width:none!important;padding:12px 16px!important}
+#ledgerPartyHeading{font-size:16px;font-weight:800}
+#ledgerStatementSearchWrap{margin-top:12px}
+#ledgerTripHead th{position:sticky;top:0;background:#f1f5f9;z-index:1}
+</style><script>window.EKTA_BILLING_STANDALONE=true;try{if(!window.opener||window.opener.closed||window.opener.location.origin!==window.location.origin||!window.opener.supabaseClient)throw Error('Open this sheet from the Ekta Transport Party Ledger tab.');window.supabaseClient=window.opener.supabaseClient;}catch(e){window.addEventListener('DOMContentLoaded',()=>{document.body.innerHTML='<div style="padding:28px;font-family:Arial"><h2>Billing Working Sheet cannot connect</h2><p>'+e.message+'</p><p>Go back to Ekta Transport and click the party category again.</p></div>'});}</script></head><body><section id="ektaLedgerPage" class="hidden fixed inset-0 bg-slate-50 overflow-auto" style="z-index:100600;font-family:Inter,Segoe UI,Arial,sans-serif">
+  <div class="max-w-[1900px] mx-auto p-4 space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-xl font-black text-slate-800">EKTA TRANSPORT — PARTY LEDGER</h2><p class="text-xs text-slate-500">Trip-wise freight register · Manual billing rates · Invoice draft preview</p></div><div class="flex gap-2"><button onclick="window.EktaPartyLedger.refresh()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">↻ Refresh</button><button onclick="window.EktaPartyLedger.close()" class="px-4 py-2 bg-white border rounded-lg text-xs font-bold">← Parties</button></div></div>
+    <div class="bg-white border rounded-xl p-3 space-y-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="ledgerBillingTab" onclick="window.EktaPartyLedger.setType('Billing Client')" class="px-4 py-2 rounded-lg text-xs font-bold">Billing Parties</button>
+        <button id="ledgerTransporterTab" onclick="window.EktaPartyLedger.setType('Transporter')" class="px-4 py-2 rounded-lg text-xs font-bold">Transporters</button>
+        <div class="relative flex-1 min-w-[240px]" id="ledgerSearchWrap">
+          <input id="ledgerSearch" autocomplete="off" onfocus="window.EktaPartyLedger.searchInput(true)" oninput="window.EktaPartyLedger.searchInput(true)" onkeydown="window.EktaPartyLedger.searchKey(event)" placeholder="Search party code, name, unit, city, truck or LR..." class="w-full border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200">
+          <div id="ledgerDropdown" class="hidden absolute z-50 left-0 right-0 top-full mt-1 max-h-64 overflow-auto rounded-lg border bg-white shadow-xl"></div>
+        </div>
+      </div>
+      <div id="ledgerMessage" class="text-xs text-slate-500"></div>
+      <div id="ledgerBillingCards" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button onclick="window.EktaPartyLedger.filter('all')" data-ledger-filter="all" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-blue-700">All</span><b id="ledgerAllCount" class="text-2xl">0</b></button>
+        <button onclick="window.EktaPartyLedger.filter('ready')" data-ledger-filter="ready" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-emerald-700">Ready for Billing</span><b id="ledgerReadyCount" class="text-2xl">0</b></button>
+        <button onclick="window.EktaPartyLedger.filter('pending')" data-ledger-filter="pending" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-amber-700">Pending for Billing</span><b id="ledgerPendingCount" class="text-2xl">0</b></button>
+        <button onclick="window.EktaPartyLedger.filter('billed')" data-ledger-filter="billed" class="border rounded-xl p-3 text-left"><span class="block text-xs font-bold text-violet-700">Billed</span><b id="ledgerBilledCount" class="text-2xl">0</b></button>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div id="ledgerPartyHeading" class="font-bold text-sm">Select a party from search</div>
+        <div class="flex items-center gap-2"><span id="ledgerSelection" class="text-xs text-slate-500">0 selected</span><button onclick="window.EktaPartyLedger.preview()" class="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-bold">Create / Preview Invoice</button><button onclick="window.EktaInvoice.openHistory()" class="px-3 py-2 bg-indigo-700 text-white rounded-lg text-xs font-bold">Invoice History</button></div>
+      </div>
+      <div id="ledgerBillingUnitChooser" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-3"></div>
+      <div id="ledgerBillingStatementHint" class="hidden text-[11px] text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-2">Plant Name = selected billing unit; Party Name = verified POD consignee. Unverified fields are left blank.</div>
+      <div id="ledgerStatementSearchWrap" class="flex flex-wrap items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+        <div class="flex-1 min-w-[240px]"><input id="ledgerStatementSearch" type="search" autocomplete="off" placeholder="Search vehicle no., LR no., date, destination, consignee..." oninput="window.EktaPartyLedger.setStatementSearch(this.value)" class="w-full border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200"></div>
+        <span id="ledgerStatementCount" class="text-xs text-slate-500">0 trips</span>
+      </div>
+      <div class="overflow-auto border rounded-lg"><table class="w-full text-xs whitespace-nowrap"><thead id="ledgerTripHead" class="bg-slate-100"></thead><tbody id="ledgerTripRows"></tbody></table></div>
+      <p class="text-[11px] text-slate-500">Billing freight overrides do not modify Tracking. POD View/OCR uses the existing POD module when loaded.</p>
+    </div>
+  </div>
+</section>
+<section id="ektaInvoiceWorkspace" class="hidden fixed inset-0 overflow-auto bg-slate-100" style="z-index:100700;font-family:Inter,Segoe UI,Arial,sans-serif"><div class="max-w-[1800px] mx-auto p-4 space-y-4"><div class="bg-white rounded-xl border p-4 flex flex-wrap justify-between gap-3"><div><h2 class="font-black text-xl">ETC — Freight Invoice</h2><p id="invoiceHeading" class="text-xs text-slate-500">New Draft Invoice</p></div><div class="flex flex-wrap gap-2"><button onclick="EktaInvoice.historyLoad()" class="border rounded-lg px-3 py-2 text-xs">Refresh History</button><button onclick="EktaInvoice.close()" class="border rounded-lg px-3 py-2 text-xs">← Ledger</button></div></div><div class="bg-white rounded-xl border p-4"><div class="flex flex-wrap gap-2 mb-4"><button id="invoiceSave" onclick="EktaInvoice.save()" class="bg-blue-600 text-white rounded-lg px-4 py-2 text-xs font-bold">Save / Edit Draft</button><button id="invoiceIssue" onclick="EktaInvoice.issue()" class="bg-green-700 text-white rounded-lg px-4 py-2 text-xs font-bold">Issue Invoice</button><button onclick="EktaInvoice.printInvoice()" class="bg-slate-800 text-white rounded-lg px-4 py-2 text-xs font-bold">Preview / Print / Save PDF</button></div><div id="ektaInvoiceEditor"></div><div id="invoiceTotals" class="text-right mt-4 p-3 bg-blue-50 rounded-lg text-xs"></div><p class="text-xs text-amber-700 mt-3">Verify GST applicability, invoice data and party GSTIN before issue. Issued invoices are locked; statutory corrections require appropriate credit/debit note workflow.</p></div><div class="bg-white border rounded-xl p-4"><h3 class="font-bold text-sm mb-2">Invoice History (latest 200)</h3><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-100"><th class="p-2 text-left">Invoice</th><th class="p-2 text-left">Party</th><th class="p-2 text-left">Date</th><th class="p-2 text-left">Total / Status</th><th class="p-2">Action</th></tr></thead><tbody id="invoiceHistoryRows"></tbody></table></div></div></div></section>
+<script src="party-ledger.js?v=20261014-billing-new-tab-1"></script><script src="invoice.js"></script></body></html>

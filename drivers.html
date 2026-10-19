@@ -1,0 +1,718 @@
+<div id="driversModule" class="space-y-3 max-w-7xl mx-auto pb-12 text-xs">
+
+    <!-- =========================================================
+         EKTA TRANSPORT - DRIVERS MANAGEMENT
+         Uses parent dashboard's window.supabaseClient
+         Existing tables only:
+         - public.drivers
+         - public.trucks
+         - public.truck_driver_assignments
+         ========================================================= -->
+<style>
+#driversModule { max-width: none; }
+#driversModule .driver-summary-grid .driver-section-card {
+  min-height: 83px; border: 1px solid #e1e8f1 !important;
+  background: linear-gradient(145deg,#fff,#fafcff);
+  border-radius: 16px; box-shadow: 0 4px 16px rgba(30,49,78,.045);
+  padding: 12px 16px; gap: 8px;
+}
+#driversModule .driver-summary-grid .driver-section-card:hover {
+  transform: translateY(-1px); box-shadow: 0 7px 19px rgba(30,49,78,.09);
+  border-color: #b6c9e1 !important;
+}
+#driversModule .driver-summary-grid .driver-section-card.border-blue-500 {
+  border-color: #4474ba !important; box-shadow: 0 0 0 1px rgba(68,116,186,.14),0 5px 18px rgba(30,49,78,.06);
+}
+#driversModule .driver-summary-grid .driver-section-card > div:last-child {
+  background: #edf3fa !important; color: #44658e !important;
+  border-radius: 12px; width: 38px; height: 38px; flex-shrink: 0;
+}
+#driversModule .driver-summary-grid .driver-section-card [id$="Summary"] { color: #355f94 !important; }
+#driversModule .driver-summary-grid .driver-section-card h3 { font-size: 13px; line-height: 1.5; }
+
+#driversModule .driver-accordion { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .32s ease,opacity .22s ease; }
+#driversModule .driver-accordion > form { min-height:0; overflow:hidden; padding-top:0; padding-bottom:0; transition:padding .32s ease; }
+#driversModule .driver-accordion.is-open { grid-template-rows:1fr; opacity:1; }
+#driversModule .driver-accordion.is-open > form { padding-top:1rem; padding-bottom:1rem; }
+#driversModule .driver-chevron-open { transform:rotate(180deg); }
+@media(prefers-reduced-motion:reduce){#driversModule .driver-accordion,#driversModule .driver-accordion > form{transition:none}}
+</style>
+
+    <!-- SUMMARY CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 driver-summary-grid">
+
+        <div
+            onclick="window.EktaDrivers.switchSection('master')"
+            data-driver-section="master"
+            class="driver-section-card bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer transition flex items-center justify-between"
+        >
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">1. Master</p>
+                <h3 class="text-xs font-bold text-slate-800">Total Drivers</h3>
+                <span id="driversTotalSummary" class="text-[10px] text-blue-600 font-bold">0 Drivers</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i class="fa-solid fa-users"></i>
+            </div>
+        </div>
+
+        <div
+            onclick="window.EktaDrivers.switchSection('assignment')"
+            data-driver-section="assignment"
+            class="driver-section-card bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer transition flex items-center justify-between"
+        >
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">2. Operations</p>
+                <h3 class="text-xs font-bold text-slate-800">Assigned Drivers</h3>
+                <span id="driversAssignedSummary" class="text-[10px] text-emerald-600 font-bold">0 Assigned</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <i class="fa-solid fa-truck"></i>
+            </div>
+        </div>
+
+        <div
+            onclick="window.EktaDrivers.switchSection('history')"
+            data-driver-section="history"
+            class="driver-section-card bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer transition flex items-center justify-between"
+        >
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">3. History</p>
+                <h3 class="text-xs font-bold text-slate-800">Assignments</h3>
+                <span id="driversHistorySummary" class="text-[10px] text-purple-600 font-bold">0 Records</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+        </div>
+
+        <div
+            onclick="window.EktaDrivers.switchSection('reports')"
+            data-driver-section="reports"
+            class="driver-section-card bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer transition flex items-center justify-between"
+        >
+            <div>
+                <p class="text-[10px] text-slate-500 font-medium">4. Reports</p>
+                <h3 class="text-xs font-bold text-slate-800">Driver Summary</h3>
+                <span id="driversReportSummary" class="text-[10px] text-amber-600 font-bold">Open Summary</span>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i class="fa-solid fa-chart-pie"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         SECTION 1 - DRIVER MASTER
+         ========================================================= -->
+    <section id="driverSectionMaster" class="driver-section space-y-4">
+
+        <!-- ADD / EDIT FORM -->
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <button type="button" onclick="window.EktaDrivers.togglePanel('master')" id="driverToggleMaster" aria-expanded="false" aria-controls="driverPanelMaster" class="h-10 w-full bg-slate-900 text-white px-4 flex items-center justify-between text-left hover:bg-slate-800 transition-colors">
+                <h3 class="font-bold text-xs flex items-center">
+                    <i class="fa-solid fa-circle-plus text-amber-400 mr-2"></i>
+                    <span id="driverFormTitle">Add New Driver</span>
+                </h3>
+                <i id="driverChevronMaster" class="fa-solid fa-chevron-down text-amber-400 transition-transform duration-300"></i>
+            </button>
+
+            <div id="driverPanelMaster" class="driver-accordion" aria-hidden="true">
+            <form
+                id="driverMasterForm"
+                onsubmit="window.EktaDrivers.saveDriver(event); return false;"
+                class="p-4 space-y-3"
+            >
+                <input type="hidden" id="editDriverId" value="">
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Driver Code *
+                        </label>
+                        <input
+                            type="text"
+                            id="driverCode"
+                            required
+                            readonly
+                            autocomplete="off"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-slate-100 text-slate-700 outline-none uppercase font-mono cursor-not-allowed"
+                            placeholder="Auto: DRV001"
+                            onkeydown="window.EktaDrivers.formKey(event, 'driverName')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Driver Name *
+                        </label>
+                        <input
+                            type="text"
+                            id="driverName"
+                            required
+                            autocomplete="off"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none"
+                            placeholder="Driver full name"
+                            onkeydown="window.EktaDrivers.formKey(event, 'driverPhone')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Phone
+                        </label>
+                        <input
+                            type="tel"
+                            id="driverPhone"
+                            autocomplete="off"
+                            inputmode="numeric"
+                            maxlength="10"
+                            pattern="[0-9]{10}"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-mono"
+                            placeholder="10 digit mobile"
+                            oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)"
+                            onkeydown="window.EktaDrivers.formKey(event, 'driverLicense')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            License Number
+                        </label>
+                        <input
+                            type="text"
+                            id="driverLicense"
+                            autocomplete="off"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none uppercase font-mono"
+                            placeholder="Driving license number"
+                            onkeydown="window.EktaDrivers.formKey(event, 'driverLicenseExpiry')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            License Expiry
+                        </label>
+                        <input
+                            type="date"
+                            id="driverLicenseExpiry"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none"
+                            onkeydown="window.EktaDrivers.formKey(event, 'driverStatus')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Status *
+                        </label>
+                        <select
+                            id="driverStatus"
+                            required
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                            onkeydown="window.EktaDrivers.formKey(event, 'driverSaveBtn')"
+                        >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Driver Photo</label>
+                        <input type="file" id="driverPhotoFile" accept="image/*" class="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[10px] bg-slate-50">
+                        <div id="driverPhotoPreview" class="mt-2"></div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Referral Name</label>
+                        <input type="text" id="driverReferralName" autocomplete="off" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-blue-500" placeholder="Referral person">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Referral Contact</label>
+                        <input type="tel" id="driverReferralPhone" autocomplete="off" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-blue-500 font-mono" placeholder="10 digit mobile">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Payment QR Code</label>
+                        <input type="file" id="driverQrFile" accept="image/*" class="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[10px] bg-slate-50">
+                        <div id="driverQrPreview" class="mt-2"></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-slate-700"><i class="fa-solid fa-file-shield text-blue-600 mr-1"></i> Driver Documents</span>
+                        <span class="text-[10px] text-slate-400">License + Aadhaar + PAN</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Aadhaar Card</label>
+                            <input type="file" id="driverAadhaarFile" accept="image/*,.pdf" class="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[10px] bg-white">
+                            <div id="driverAadhaarStatus" class="mt-1 text-[10px] text-slate-400">Not uploaded</div>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">PAN Card</label>
+                            <input type="file" id="driverPanFile" accept="image/*,.pdf" class="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[10px] bg-white">
+                            <div id="driverPanStatus" class="mt-1 text-[10px] text-slate-400">Not uploaded</div>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Driving License Document</label>
+                            <input type="file" id="driverLicenseFile" accept="image/*,.pdf" class="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[10px] bg-white">
+                            <div id="driverLicenseStatus" class="mt-1 text-[10px] text-slate-400">Not uploaded</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button
+                        type="button"
+                        onclick="window.EktaDrivers.resetForm()"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition"
+                    >
+                        Clear
+                    </button>
+
+                    <button
+                        type="submit"
+                        id="driverSaveBtn"
+                        class="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md shadow-2xs transition"
+                    >
+                        <i class="fa-solid fa-floppy-disk mr-1"></i>
+                        Save Driver
+                    </button>
+                </div>
+            </form>
+            </div>
+        </div>
+
+        <!-- DRIVER DIRECTORY -->
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+
+            <div class="p-3 border-b border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-2 bg-slate-50/50">
+
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center">
+                    <i class="fa-solid fa-id-card text-blue-600 mr-2"></i>
+                    Driver Master Directory
+                </h3>
+
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <input
+                        type="search"
+                        id="driverSearch"
+                        oninput="window.EktaDrivers.renderDriverTable()"
+                        class="px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-blue-500 text-[11px] w-52"
+                        placeholder="Search code, name, phone..."
+                    >
+
+                    <select
+                        id="driverStatusFilter"
+                        onchange="window.EktaDrivers.renderDriverTable()"
+                        class="px-2.5 py-1.5 border border-slate-200 rounded-md outline-none text-[11px] bg-white"
+                    >
+                        <option value="">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+
+                    <button
+                        type="button"
+                        onclick="window.EktaDrivers.refresh()"
+                        class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded shadow-2xs transition text-[11px]"
+                    >
+                        <i class="fa-solid fa-rotate mr-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200 text-[11px]">
+                            <th class="py-2.5 px-3 w-10 text-center">S.No</th>
+                            <th class="py-2.5 px-3">Driver Code</th>
+                            <th class="py-2.5 px-3">Driver Name</th>
+                            <th class="py-2.5 px-3">Phone</th>
+                            <th class="py-2.5 px-3">License No.</th>
+                            <th class="py-2.5 px-3">License Expiry</th>
+                            <th class="py-2.5 px-3">Assigned Truck</th>
+                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody
+                        id="driverTableBody"
+                        class="divide-y divide-slate-100 text-slate-700"
+                    ></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 2 - TRUCK ASSIGNMENT
+         ========================================================= -->
+    <section id="driverSectionAssignment" class="driver-section hidden space-y-4">
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+
+            <button type="button" onclick="window.EktaDrivers.togglePanel('assignment')" id="driverToggleAssignment" aria-expanded="false" aria-controls="driverPanelAssignment" class="h-10 w-full bg-slate-900 text-white px-4 flex items-center justify-between text-left hover:bg-slate-800 transition-colors">
+                <h3 class="font-bold text-xs flex items-center">
+                    <i class="fa-solid fa-circle-plus text-amber-400 mr-2"></i>
+                    Driver ↔ Truck Assignment
+                </h3>
+                <i id="driverChevronAssignment" class="fa-solid fa-chevron-down text-amber-400 transition-transform duration-300"></i>
+            </button>
+
+            <div id="driverPanelAssignment" class="driver-accordion" aria-hidden="true">
+            <form
+                id="driverAssignmentForm"
+                onsubmit="window.EktaDrivers.saveAssignment(event); return false;"
+                class="p-4 space-y-3"
+            >
+                <input type="hidden" id="editAssignmentId" value="">
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Select Driver *
+                        </label>
+                        <select
+                            id="assignmentDriver"
+                            required
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                            onkeydown="window.EktaDrivers.formKey(event, 'assignmentTruck')"
+                        ></select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Select Truck *
+                        </label>
+                        <div class="relative">
+    <input
+        type="text"
+        id="assignmentTruckSearch"
+        autocomplete="off"
+        placeholder="Type truck number..."
+        class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+        onfocus="window.EktaDrivers.openTruckPicker()"
+        oninput="window.EktaDrivers.filterTruckPicker()"
+        onkeydown="window.EktaDrivers.truckPickerKey(event)"
+    >
+
+    <input
+        type="hidden"
+        id="assignmentTruck"
+        required
+    >
+
+    <div
+        id="assignmentTruckDropdown"
+        class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-[100] max-h-60 overflow-y-auto"
+    ></div>
+</div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Assigned From *
+                        </label>
+                        <input
+                            type="date"
+                            id="assignedFrom"
+                            required
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-emerald-500"
+                            onkeydown="window.EktaDrivers.formKey(event, 'assignedUntil')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Assigned Until
+                        </label>
+                        <input
+                            type="date"
+                            id="assignedUntil"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-emerald-500"
+                            onkeydown="window.EktaDrivers.formKey(event, 'assignmentStatus')"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Status *
+                        </label>
+                        <select
+                            id="assignmentStatus"
+                            required
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                            onkeydown="window.EktaDrivers.formKey(event, 'assignmentNotes')"
+                        >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Notes
+                        </label>
+                        <input
+                            type="text"
+                            id="assignmentNotes"
+                            autocomplete="off"
+                            class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-emerald-500"
+                            placeholder="Optional notes"
+                            onkeydown="window.EktaDrivers.formKey(event, 'assignmentSaveBtn')"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button
+                        type="button"
+                        onclick="window.EktaDrivers.resetAssignmentForm()"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition"
+                    >
+                        Clear
+                    </button>
+
+                    <button
+                        type="submit"
+                        id="assignmentSaveBtn"
+                        class="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md shadow-2xs transition"
+                    >
+                        <i class="fa-solid fa-link mr-1"></i>
+                        Save Assignment
+                    </button>
+                </div>
+            </form>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+            <div class="p-3 border-b border-slate-200 bg-slate-50/50">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center">
+                    <i class="fa-solid fa-link text-emerald-600 mr-2"></i>
+                    Current Driver Assignments
+                </h3>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200 text-[11px]">
+                            <th class="py-2.5 px-3">S.No</th>
+                            <th class="py-2.5 px-3">Driver</th>
+                            <th class="py-2.5 px-3">Truck Number</th>
+                            <th class="py-2.5 px-3">From</th>
+                            <th class="py-2.5 px-3">Until</th>
+                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3">Notes</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody
+                        id="assignmentTableBody"
+                        class="divide-y divide-slate-100 text-slate-700"
+                    ></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 3 - ASSIGNMENT HISTORY
+         ========================================================= -->
+    <section id="driverSectionHistory" class="driver-section hidden space-y-4">
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+
+            <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
+                <h3 class="font-bold text-xs flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-purple-500 mr-2"></i>
+                    Driver Assignment History
+                </h3>
+
+                <span class="text-[10px] text-slate-400">
+                    Historical records from Supabase
+                </span>
+            </div>
+
+            <div class="p-3 border-b border-slate-200 bg-slate-50/50 flex flex-wrap items-center gap-2">
+                <input
+                    type="search"
+                    id="historySearch"
+                    oninput="window.EktaDrivers.renderHistory()"
+                    class="px-2.5 py-1.5 border border-slate-200 rounded-md outline-none focus:ring-1 focus:ring-purple-500 text-[11px] w-64"
+                    placeholder="Search driver or truck..."
+                >
+
+                <select
+                    id="historyStatusFilter"
+                    onchange="window.EktaDrivers.renderHistory()"
+                    class="px-2.5 py-1.5 border border-slate-200 rounded-md outline-none text-[11px] bg-white"
+                >
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+
+                <button
+                    type="button"
+                    onclick="window.EktaDrivers.refresh()"
+                    class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded shadow-2xs transition text-[11px]"
+                >
+                    <i class="fa-solid fa-rotate mr-1"></i> Refresh
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200 text-[11px]">
+                            <th class="py-2.5 px-3">S.No</th>
+                            <th class="py-2.5 px-3">Driver</th>
+                            <th class="py-2.5 px-3">Truck</th>
+                            <th class="py-2.5 px-3">Assigned From</th>
+                            <th class="py-2.5 px-3">Assigned Until</th>
+                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3">Notes</th>
+                            <th class="py-2.5 px-3">Created</th>
+                        </tr>
+                    </thead>
+
+                    <tbody
+                        id="historyTableBody"
+                        class="divide-y divide-slate-100 text-slate-700"
+                    ></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 4 - REPORTS
+         ========================================================= -->
+    <section id="driverSectionReports" class="driver-section hidden space-y-4">
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+
+            <div class="h-10 bg-slate-900 text-white px-4 flex items-center justify-between">
+                <h3 class="font-bold text-xs flex items-center">
+                    <i class="fa-solid fa-chart-pie text-amber-500 mr-2"></i>
+                    Driver Summary Report
+                </h3>
+
+                <button
+                    type="button"
+                    onclick="window.EktaDrivers.printReport()"
+                    class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded text-[11px]"
+                >
+                    <i class="fa-solid fa-print mr-1"></i> Print / PDF
+                </button>
+            </div>
+
+            <div class="p-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                    <div class="rounded-lg border border-blue-100 bg-blue-50 p-4">
+                        <p class="text-[10px] text-blue-700 font-bold uppercase">Total Drivers</p>
+                        <p id="reportTotalDrivers" class="text-2xl font-black text-blue-800 mt-1">0</p>
+                    </div>
+
+                    <div class="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                        <p class="text-[10px] text-emerald-700 font-bold uppercase">Active Drivers</p>
+                        <p id="reportActiveDrivers" class="text-2xl font-black text-emerald-800 mt-1">0</p>
+                    </div>
+
+                    <div class="rounded-lg border border-amber-100 bg-amber-50 p-4">
+                        <p class="text-[10px] text-amber-700 font-bold uppercase">Assigned Drivers</p>
+                        <p id="reportAssignedDrivers" class="text-2xl font-black text-amber-800 mt-1">0</p>
+                    </div>
+                </div>
+
+                <!-- Driver report quick search: name, phone, code, truck / last 4 digits -->
+                <div class="mt-4 mb-3 relative" id="driverReportSearchWrap">
+                    <label for="driverReportSearch" class="block text-[11px] font-bold text-slate-600 mb-1.5">Find Driver / Truck</label>
+                    <div class="relative max-w-xl">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input id="driverReportSearch" type="search" autocomplete="off"
+                            placeholder="Driver name, phone, truck number or last 4 digits..."
+                            oninput="window.EktaDrivers.reportSearchChanged()"
+                            onfocus="window.EktaDrivers.reportSearchChanged()"
+                            onkeydown="window.EktaDrivers.reportSearchKey(event)"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-10 py-2.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
+                        <button type="button" id="driverReportSearchClear" onclick="window.EktaDrivers.clearReportSearch()"
+                            class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
+                        <div id="driverReportSuggestions" role="listbox" aria-label="Matching drivers"
+                            class="hidden absolute z-50 top-full mt-1 left-0 right-0 bg-white rounded-xl border border-slate-200 shadow-xl max-h-64 overflow-y-auto"></div>
+                    </div>
+                    <p id="driverReportSearchCount" class="mt-1.5 text-[10px] text-slate-500" aria-live="polite"></p>
+                </div>
+
+                <div class="mt-4 overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 font-bold text-[11px]">
+                                <th class="py-2.5 px-3">S.No</th>
+                                <th class="py-2.5 px-3">Driver Code</th>
+                                <th class="py-2.5 px-3">Driver</th>
+                                <th class="py-2.5 px-3">Phone</th>
+                                <th class="py-2.5 px-3">Status</th>
+                                <th class="py-2.5 px-3">Current Truck</th>
+                            </tr>
+                        </thead>
+
+                        <tbody
+                            id="reportTableBody"
+                            class="divide-y divide-slate-100 text-slate-700"
+                        ></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATABASE NOTE -->
+        <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 text-[10px] text-blue-800">
+            <div class="font-bold mb-1">
+                <i class="fa-solid fa-database mr-1"></i>
+                Database structure used
+            </div>
+            <div>
+                Driver Master → <b>public.drivers</b>
+                &nbsp; | &nbsp;
+                Truck Assignment → <b>public.truck_driver_assignments</b>
+                &nbsp; | &nbsp;
+                Truck Master → <b>public.trucks</b>
+            </div>
+        </div>
+    </section>
+
+
+
+<div id="driverProfileDrawer" class="hidden fixed inset-0 z-[9999] bg-black/40 backdrop-blur-xs">
+    <div class="absolute right-0 top-0 h-full w-full sm:w-[430px] bg-white shadow-2xl overflow-y-auto">
+        <div class="h-12 bg-slate-900 text-white px-4 flex items-center justify-between sticky top-0 z-10">
+            <h3 class="font-bold text-xs"><i class="fa-solid fa-id-card mr-2 text-blue-400"></i>Driver Profile</h3>
+            <button type="button" onclick="window.EktaDrivers.closeProfile()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="driverProfileContent" class="p-4 space-y-4"></div>
+    </div>
+</div>
+</div>
+
+<script src="drivers.js"></script>
+<script>
+(function(){
+    if (window.EktaDrivers && window.EktaDrivers.__initialized) return;
+    var s=document.createElement("script");
+    s.src="drivers.js?v=driver-profile-2";
+    s.onload=function(){ console.log("[EKTA DRIVERS] drivers.js loaded successfully."); };
+    s.onerror=function(e){ console.error("[EKTA DRIVERS] drivers.js failed to load.",e); };
+    document.body.appendChild(s);
+})();
+</script>

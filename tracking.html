@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ekta Transport — Live Tracking</title>
+
+<!--
+=============================================================
+ EKTA TRANSPORT — LIVE TRACKING
+ APPROVED DEMO DESIGN + LIVE DATABASE STRUCTURE
+ ------------------------------------------------------------
+ SOURCE DESIGN:
+ Ekta Transport — Tracking Final Demo V2
+
+ IMPORTANT:
+ - Visual layout follows the approved demo.
+ - Only one top action was added: E-WAY BILL RECORDS.
+ - Existing database JS naming uses et* IDs.
+ - Owner Dashboard remains untouched underneath.
+=============================================================
+-->
+
+<style>
+
+:root{--navy:#173653;--blue:#3677b6;--green:#09995f;--orange:#d98900;--red:#d9293e;--purple:#7131c7;--line:#e4ebf4;--muted:#68758a;--bg:#f5f8fc}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:#1b2a3d;font-size:13px}
+.wrap{padding:20px;max-width:1800px;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.title h1{margin:0;font-size:24px;color:var(--navy)}.title p{margin:5px 0 0;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid #d6e0ec;background:#fff;color:var(--navy);border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.green{background:var(--green);border-color:var(--green);color:#fff}.btn.red{background:#fff1f2;color:var(--red);border-color:#ffd0d5}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}.toolbar input,.toolbar select{border:1px solid #d7e2ef;background:#fff;border-radius:9px;padding:10px 11px;outline:none}.toolbar input{min-width:240px}
+.cards{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:14px}.card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:13px;box-shadow:0 2px 9px #1736530b;cursor:pointer}.card small{color:var(--muted);font-weight:800}.card strong{display:block;font-size:24px;margin-top:5px}.c-loading strong{color:var(--orange)}.c-running strong{color:var(--green)}.c-reporting strong{color:var(--blue)}.c-empty strong{color:#64748b}.c-nodriver strong,.c-delay strong,.c-alert strong{color:var(--red)}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.75fr);gap:14px}.panel{background:#fff;border:1px solid var(--line);border-radius:11px;overflow:hidden}.ph{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}.ph b{font-size:14px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap}th{font-size:11px;color:#5b6b82;background:#f8fafc}td{font-size:12px}.truck{color:#1268df;font-weight:900;cursor:pointer}.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:7px;font-size:10px;font-weight:900}.b-loading{background:#fff0d5;color:#c97900}.b-running{background:#dff8eb;color:#087a4b}.b-reporting{background:#e3efff;color:#1264da}.b-empty{background:#edf2f8;color:#52647a}.b-delay{background:#ffe1e3;color:#c52031}.b-exception{background:#fff1f2;color:#c52031}
+.zone{font-weight:900}.rightbody{padding:14px}.map{height:270px;background:linear-gradient(135deg,#edf5ed,#f4efe3);border-radius:9px;border:1px solid var(--line);position:relative;overflow:hidden;margin-bottom:12px}.map:before{content:"";position:absolute;inset:0;background-image:linear-gradient(25deg,transparent 48%,#d5dfd1 49%,transparent 51%),linear-gradient(100deg,transparent 48%,#d5dfd1 49%,transparent 51%);opacity:.7}.pin{position:absolute;background:#fff;border:1px solid #d6e0ec;border-radius:9px;padding:7px 9px;box-shadow:0 3px 10px #17365320;font-size:11px;font-weight:800}.p1{left:12%;top:26%}.p2{left:48%;top:57%}.p3{right:10%;top:20%}.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;background:#3677b6}
+.alerts{display:flex;flex-direction:column;gap:8px}.alertrow{border:1px solid #ffd2d7;background:#fff6f7;border-radius:9px;padding:9px}.alertrow.delay{animation:blink 1.5s infinite}.alertrow b{color:#b92032}@keyframes blink{50%{box-shadow:0 0 0 3px #ffccd2}}
+.empty{padding:28px;text-align:center;color:#8a96a7}.modal{position:fixed;inset:0;background:#10233b66;display:none;align-items:center;justify-content:center;padding:16px;z-index:50}.modal.show{display:flex}.box{width:min(980px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:15px;box-shadow:0 20px 60px #10233b40}.mh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.mh b{font-size:16px}.x{border:0;background:#f1f4f8;border-radius:50%;width:30px;height:30px;cursor:pointer}.mb{padding:16px}.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.field label{display:block;font-size:10px;font-weight:900;color:#637188;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;border:1px solid #d7e2ef;border-radius:8px;padding:9px;background:#fff}.field textarea{min-height:70px}.full{grid-column:1/-1}.driverbox{display:flex;gap:14px;align-items:center;background:#f8fafc;border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:13px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.kpi{background:#f8fafc;border:1px solid var(--line);border-radius:9px;padding:10px}.kpi small{color:var(--muted)}.kpi b{display:block;margin-top:4px}.danger{color:var(--red);font-weight:900}.ok{color:var(--green);font-weight:900}.attention{border:1px solid #ffd18a;background:#fff8e9;border-radius:10px;padding:11px;margin:12px 0}.typeahead{position:relative}.suggestions{position:absolute;left:0;right:0;top:100%;z-index:80;background:#fff;border:1px solid #d7e2ef;border-radius:0 0 9px 9px;box-shadow:0 12px 25px #17365320;max-height:220px;overflow:auto;display:none}.suggestions.show{display:block}.suggestion{padding:10px 11px;cursor:pointer;border-bottom:1px solid #edf1f6}.suggestion:hover{background:#f4f8fc}.suggestion b{display:block}.suggestion span{font-size:10px;color:var(--muted)}.readonly{background:#f6f8fb!important}.flow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}.step{padding:6px 9px;border-radius:7px;background:#edf2f8;color:#64738a;font-size:10px;font-weight:900}.step.active{background:#dff0ff;color:#1264da}.fullpage{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;overflow:auto}.fullpage.show{display:block}.fullpage .inner{padding:20px;max-width:1800px;margin:auto}.notice{background:#eef7ff;border:1px solid #cfe4fb;border-radius:9px;padding:10px;margin-bottom:12px}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr}}@media(max-width:650px){.wrap{padding:12px}.cards{grid-template-columns:repeat(2,1fr)}.formgrid,.kpis{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+
+
+.et-tracking-fullwidth{grid-template-columns:minmax(0,1fr)}
+.et-tracking-fullwidth > #alerts{grid-column:1/-1}
+
+/* =========================================================
+   EKTA DATABASE INTEGRATION ADDITIONS
+   These additions do not change the approved demo layout.
+========================================================= */
+#trackingModule{position:fixed;inset:0;z-index:99999;width:100vw;height:100vh;overflow:auto;background:var(--bg)}
+.hidden-control{display:none!important}
+.map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:1}
+.map .mapoverlay{position:absolute;left:10px;bottom:10px;z-index:2;background:#fff;border:1px solid #d6e0ec;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:800;box-shadow:0 3px 10px #17365320}
+.map .maptruck{position:absolute;right:10px;top:10px;z-index:2;background:#fff;border:1px solid #d6e0ec;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:800;box-shadow:0 3px 10px #17365320}
+.mapbtn{position:absolute;right:10px;bottom:10px;z-index:3}
+.b-program{background:#e3efff;color:#1264da}
+.b-cancel{background:#f1f3f6;color:#6a7380}
+.ewaylist{display:flex;flex-direction:column;gap:9px}
+.ewaycard{border:1px solid var(--line);border-radius:10px;padding:11px;background:#fbfcfe}
+.ewayhead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.expiry{color:var(--red);font-weight:900}
+.muted{color:var(--muted)}
+.sendbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef7ff;border:1px solid #cfe4fb;border-radius:9px;padding:10px;margin-bottom:12px}
+
+
+
+/* =========================================================
+   LOCKED BASELINE — COMPACT FINAL POLISH
+   ---------------------------------------------------------
+   Same approved demo structure. Only size/spacing refined.
+========================================================= */
+#trackingModule{position:fixed;inset:0;z-index:99999;width:100vw;height:100vh;overflow:auto;background:var(--bg)}
+.wrap{padding:13px 18px 16px;max-width:1900px}
+.top{margin-bottom:9px;gap:10px}
+.title h1{font-size:21px;line-height:1.12}
+.title p{margin-top:3px;font-size:11px}
+.actions{gap:6px;flex-wrap:nowrap}
+.btn{border-radius:8px;padding:8px 11px;font-size:11px;min-height:36px}
+.toolbar{gap:7px;margin-bottom:9px;flex-wrap:nowrap}
+.toolbar input,.toolbar select{border-radius:8px;padding:8px 10px;min-height:38px;font-size:11px}
+.toolbar input:first-child{min-width:285px;flex:0 1 520px}
+.toolbar select{min-width:130px}
+.toolbar input[type="date"]{min-width:170px;flex:0 0 170px}
+.cards{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin-bottom:10px}
+.card{min-width:0;min-height:72px;padding:9px 11px;border-radius:10px}
+.card small{display:block;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card strong{font-size:21px;line-height:1;margin-top:5px}
+.c-program strong{color:#2563eb}.c-history strong{color:#465b73}.history-split{display:flex;gap:4px;align-items:baseline;flex-wrap:wrap}.history-split b{font-size:16px}.history-split span{font-size:8px;color:var(--muted);font-weight:800}
+.grid{gap:10px}.ph{padding:11px 13px}.rightbody{padding:11px}.map{height:300px}
+.hidden-control{display:none!important}
+.map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:1}
+.map .mapoverlay{position:absolute;left:10px;bottom:10px;z-index:2;background:#fff;border:1px solid #d6e0ec;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:800;box-shadow:0 3px 10px #17365320}
+.map .maptruck{position:absolute;right:10px;top:10px;z-index:2;background:#fff;border:1px solid #d6e0ec;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:800;box-shadow:0 3px 10px #17365320}
+.mapbtn{position:absolute;right:10px;bottom:10px;z-index:3}
+.b-program{background:#e3efff;color:#1264da}.b-cancel{background:#f1f3f6;color:#6a7380}
+.et-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.et-field label{display:block;font-size:10px;font-weight:900;color:#637188;margin-bottom:5px}.et-input{width:100%;border:1px solid #d7e2ef;border-radius:8px;padding:9px;background:#fff}.et-full{grid-column:1/-1}.et-footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:12px}.et-btn{border:1px solid #d6e0ec;background:#fff;color:var(--navy);border-radius:8px;padding:8px 11px;font-weight:800;cursor:pointer}.et-btn.et-primary{background:var(--blue);border-color:var(--blue);color:#fff}.et-badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:7px;font-size:10px;font-weight:900}.et-alert{border:1px solid #ffd2d7;background:#fff6f7;border-radius:9px;padding:9px}.et-truck{color:#1268df;font-weight:900;cursor:pointer}.et-eway{border:1px solid var(--line);border-radius:10px;padding:11px;background:#fbfcfe;margin-bottom:9px}.et-ewayhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.expiry{color:var(--red);font-weight:900}.muted{color:var(--muted)}
+.fullpage .inner{padding:13px 18px 16px;max-width:1900px}.fullpage .top{margin-bottom:8px}.fullpage .title h1{font-size:20px}.fullpage .toolbar{margin-bottom:8px}.sendbar{padding:8px 10px;margin-bottom:9px}.fullpage .ph{padding:9px 12px}
+@media(max-width:1250px){.cards{grid-template-columns:repeat(4,1fr)}.toolbar{flex-wrap:wrap}.actions{flex-wrap:wrap}}
+@media(max-width:650px){.cards{grid-template-columns:repeat(2,1fr)}.et-grid{grid-template-columns:1fr}.et-full{grid-column:auto}}
+
+
+/* =========================================================
+   TRACKING CORRECTION BATCH 01
+   Only approved Tracking UI refinements.
+========================================================= */
+
+/* Truck Details: fit in one viewport, no inner scrolling */
+#etTruckModal{padding:10px}
+#etTruckModal .box{
+    width:min(980px,calc(100vw - 20px));
+    max-height:calc(100vh - 20px);
+    overflow:hidden;
+}
+#etTruckModal .mh{padding:9px 14px}
+#etTruckModal .mb{padding:9px 14px}
+#etTruckModal .et-notice{padding:7px 9px;margin-bottom:7px}
+#etTruckModal .et-grid{gap:6px 10px}
+#etTruckModal .et-field label{margin-bottom:3px;font-size:9px}
+#etTruckModal .et-input{padding:7px 9px;min-height:34px}
+#etTruckModal .et-footer{margin-top:8px}
+#etTruckModal .et-btn{padding:7px 10px}
+
+/* Completed / Cancelled and E-Way helpers */
+.history-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.history-toolbar select{border:1px solid #d7e2ef;border-radius:8px;padding:8px 10px;background:#fff}
+.history-table{min-width:900px}
+.eway-pending{border-color:#ffd18a!important;background:#fffaf0!important}
+.eway-status-pending{color:#c87800;font-weight:900}
+.eway-status-ok{color:var(--green);font-weight:900}
+.detention-input{width:110px;border:1px solid #d7e2ef;border-radius:7px;padding:6px 7px}
+.et-inline-edit-row{background:#f7fbff}.et-inline-edit-row td{vertical-align:middle}.et-inline-edit-row .detention-input{min-height:34px;padding:5px 7px}
+
+
+/* =========================================================
+   CORRECTION #6 — NEW PROGRAM COMPACT / NO-SCROLL
+   UI ONLY. Program/Supabase logic untouched.
+========================================================= */
+#etProgramModal{padding:10px}
+#etProgramModal .box{
+    width:min(980px,calc(100vw - 20px));
+    max-height:calc(100vh - 20px);
+    overflow:visible;
+}
+#etProgramModal .mh{padding:8px 14px}
+#etProgramModal .mh b{font-size:14px}
+#etProgramModal .x{width:27px;height:27px}
+#etProgramModal .mb{padding:9px 14px 10px}
+#etProgramModal .flow{margin-bottom:7px;gap:4px}
+#etProgramModal .step{padding:5px 8px;font-size:9px}
+#etProgramModal .formgrid{gap:6px 10px}
+#etProgramModal .field label{font-size:9px;margin-bottom:3px}
+#etProgramModal .field input,
+#etProgramModal .field select{
+    padding:7px 9px;
+    min-height:33px;
+}
+#etProgramModal .field textarea{
+    padding:7px 9px;
+    min-height:44px;
+    height:44px;
+    resize:none;
+}
+#etProgramModal .notice{
+    padding:7px 9px;
+    margin:7px 0;
+    font-size:10px;
+    line-height:1.25;
+}
+#etProgramModal .btn{
+    padding:7px 10px;
+    min-height:32px;
+    font-size:10px;
+}
+@media(max-height:700px) and (min-width:651px){
+    #etProgramModal .mh{padding:6px 12px}
+    #etProgramModal .mb{padding:7px 12px 8px}
+    #etProgramModal .flow{margin-bottom:5px}
+    #etProgramModal .step{padding:4px 7px}
+    #etProgramModal .formgrid{gap:5px 9px}
+    #etProgramModal .field input,
+    #etProgramModal .field select{padding:6px 8px;min-height:30px}
+    #etProgramModal .field textarea{min-height:36px;height:36px}
+    #etProgramModal .notice{padding:5px 8px;margin:5px 0}
+}
+
+
+/* =========================================================
+   CORRECTION #08 — E-WAY SELF-CONTAINED MULTI-BILL
+========================================================= */
+#etEwayPage{z-index:130}
+.eway-table{min-width:980px}
+.eway-click{color:#1268df;font-weight:900;cursor:pointer}
+.eway-bills-cell{max-width:320px}
+.eway-bill-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.eway-bill-summary .slashlist{font-weight:800;color:#173653;white-space:normal}
+.eway-menu-wrap{position:relative;display:inline-block}
+.eway-menu-btn{border:1px solid #d6e0ec;background:#fff;border-radius:7px;padding:5px 8px;cursor:pointer;font-weight:800}
+.eway-menu{
+    position:absolute;right:0;top:calc(100% + 5px);z-index:220;min-width:230px;
+    background:#fff;border:1px solid #d7e2ef;border-radius:9px;
+    box-shadow:0 12px 28px #17365326;padding:6px;display:none
+}
+.eway-menu.show{display:block}
+.eway-menu button{width:100%;text-align:left;border:0;background:#fff;padding:8px 9px;border-radius:7px;cursor:pointer}
+.eway-menu button:hover{background:#f4f8fc}
+.eway-status-pill{display:inline-flex;align-items:center;padding:5px 8px;border-radius:7px;font-size:10px;font-weight:900}
+.eway-status-pill.pending{background:#fff0d5;color:#c97900}
+.eway-status-pill.ok{background:#dff8eb;color:#087a4b}
+.eway-status-pill.warn{background:#fff3cd;color:#a76b00}
+.eway-status-pill.expired{background:#ffe1e3;color:#c52031}
+#etEwayDetailModal{z-index:240}
+#etEwayEditModal{z-index:250}
+#etEwayDetailModal .box,#etEwayEditModal .box{max-height:calc(100vh - 24px)}
+.eway-doc-note{font-size:10px;color:var(--muted);margin-top:4px}
+.eway-upload-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.eway-upload-row input[type="file"]{padding:6px;background:#fff}
+
+
+/* =========================================================
+   CORRECTION #10 — MANUAL CURRENT LOCATION + AUTOCOMPLETE
+========================================================= */
+.et-location-wrap{display:flex;align-items:center;gap:6px;min-width:210px}
+.et-location-text{min-width:90px}
+.et-location-edit{
+    border:1px solid #d6e0ec;background:#fff;border-radius:6px;
+    padding:4px 7px;font-size:9px;font-weight:800;cursor:pointer;color:#173653
+}
+#etLocationModal{z-index:260}
+#etLocationModal .box{width:min(620px,calc(100vw - 24px))}
+.location-suggest-wrap{position:relative}
+.location-suggestions{
+    position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:300;
+    background:#fff;border:1px solid #d7e2ef;border-radius:8px;
+    box-shadow:0 10px 24px #17365322;max-height:220px;overflow:auto;display:none
+}
+.location-suggestions.show{display:block}
+.location-suggestions button{
+    width:100%;border:0;background:#fff;text-align:left;padding:9px 10px;cursor:pointer;
+    border-bottom:1px solid #eef3f8
+}
+.location-suggestions button:last-child{border-bottom:0}
+.location-suggestions button:hover{background:#f5f8fc}
+
+
+/* =========================================================
+   FINALIZATION #13 — QUICK PARTY + DRIVER CARD + PAGE ARROWS
+========================================================= */
+.party-label-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.party-add-btn{
+    border:1px solid #b9d7f4;background:#eef7ff;color:#1768b4;
+    border-radius:6px;padding:3px 7px;font-size:9px;font-weight:900;cursor:pointer
+}
+#etQuickPartyModal{z-index:100500}
+#etQuickPartyModal .box{width:min(720px,calc(100vw - 24px))}
+.et-driver-summary{
+    display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:center;
+    background:#f8fafc;border:1px solid #e4ebf4;border-radius:9px;
+    padding:8px 10px;margin-bottom:8px
+}
+.et-driver-photo{
+    width:58px;height:58px;border-radius:9px;object-fit:cover;
+    background:#e9eef5;border:1px solid #dce5ef
+}
+.et-driver-initials{
+    width:58px;height:58px;border-radius:9px;background:#e9eef5;border:1px solid #dce5ef;
+    display:flex;align-items:center;justify-content:center;font-weight:900;color:#52647a;font-size:18px
+}
+.et-driver-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:10px}
+.et-driver-meta b{color:#173653}
+.et-page-scroll{
+    position:fixed;right:14px;top:50%;transform:translateY(-50%);
+    z-index:100400;display:flex;flex-direction:column;gap:7px
+}
+.et-page-scroll button{
+    width:36px;height:36px;border-radius:9px;border:1px solid #cfdbe8;background:#fff;
+    box-shadow:0 5px 16px #17365325;color:#173653;font-size:16px;font-weight:900;cursor:pointer
+}
+.et-page-scroll button:hover{background:#eef7ff}
+@media(max-width:700px){
+    .et-driver-meta{grid-template-columns:1fr}
+    .et-page-scroll{right:7px}
+}
+
+
+/* FINAL LOCK #13 FIX1 — keep externally mounted utility overlays above #trackingModule (z-index:99999) */
+#etQuickPartyModal{z-index:100500!important}
+.et-page-scroll{z-index:100400!important}
+
+
+/* FINALIZATION #14 — full Party Master form inside Tracking */
+#etQuickPartyModal .box{width:min(900px,calc(100vw - 24px));max-height:calc(100vh - 20px);overflow:auto}
+#etQuickPartyModal .mh{padding:9px 14px}
+#etQuickPartyModal .mb{padding:10px 14px}
+#etQuickPartyModal .formgrid{gap:7px 10px}
+#etQuickPartyModal .field label{font-size:9px;margin-bottom:3px}
+#etQuickPartyModal .field input,
+#etQuickPartyModal .field select,
+#etQuickPartyModal .field textarea{padding:7px 9px;min-height:33px}
+#etQuickPartyModal .field textarea{min-height:48px;height:48px}
+
+
+/* =========================================================
+   DRIVER APP — PENDING APPROVAL STRIP
+   Approval UI only. Existing Tracking / Map layout untouched.
+========================================================= */
+.et-driver-approval-head{
+    padding:10px 13px;
+    border-bottom:1px solid #f2e4c8;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.et-driver-approval-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+}
+.et-driver-approval-title b{font-size:13px;color:#173653}
+.et-driver-approval-count{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:24px;
+    height:22px;
+    padding:0 7px;
+    border-radius:999px;
+    background:#fff0d5;
+    color:#b96e00;
+    font-size:10px;
+    font-weight:900;
+}
+.et-driver-approval-list{
+    display:flex;
+    gap:8px;
+    padding:9px 11px;
+    overflow-x:auto;
+    scrollbar-width:thin;
+}
+.et-driver-request-card{
+    flex:0 0 auto;
+    min-width:245px;
+    max-width:310px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:9px;
+    border:1px solid #e5ebf2;
+    background:#fff;
+    border-radius:9px;
+    padding:8px 9px;
+    box-shadow:0 2px 7px #1736530a;
+}
+.et-driver-request-main{min-width:0}
+.et-driver-request-truck{
+    font-size:11px;
+    font-weight:900;
+    color:#173653;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.et-driver-request-status{
+    color:#c52132;
+    font-weight:900;
+}
+.et-driver-request-meta{
+    margin-top:3px;
+    font-size:9px;
+    line-height:1.3;
+    color:#718096;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.et-driver-approve-btn{
+    border:0;
+    border-radius:7px;
+    padding:7px 9px;
+    background:#09995f;
+    color:#fff;
+    font-size:9px;
+    font-weight:900;
+    cursor:pointer;
+    white-space:nowrap;
+}
+.et-driver-approve-btn:disabled{opacity:.55;cursor:wait}
+.et-driver-approval-empty{
+    width:100%;
+    padding:9px 4px;
+    color:#7b8797;
+    font-size:10px;
+    font-weight:700;
+}
+@media(max-width:650px){
+    .et-driver-request-card{min-width:225px}
+}
+
+
+/* =========================================================
+   DRIVER PROGRAM REQUEST — LIVE ALERT INTEGRATION
+   Existing Tracking / GPS / status approval UI untouched.
+========================================================= */
+.et-program-request-alert{border-color:#cfe4fb!important;background:#f5faff!important}
+.et-program-request-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.et-program-request-title{font-size:10px;font-weight:900;color:#1768b4}
+.et-program-request-title span{margin-left:5px;padding:3px 6px;border-radius:999px;background:#e7efff;color:#2d6cdf;font-size:8px}
+.et-program-request-main{margin-top:4px;font-size:11px;color:#173653}
+.et-program-request-meta{margin-top:3px;font-size:9px;color:#718096}
+.et-program-request-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.et-program-open-btn,.et-program-reject-btn{border:0;border-radius:7px;padding:7px 9px;font-size:9px;font-weight:900;cursor:pointer;white-space:nowrap}
+.et-program-open-btn{background:#1768b4;color:#fff}
+.et-program-reject-btn{background:#fff1f2;color:#c52132;border:1px solid #ffd0d5}
+.et-program-open-btn:disabled,.et-program-reject-btn:disabled{opacity:.55;cursor:wait}
+#etProgramRequestContext{display:none;margin-bottom:7px;padding:7px 9px;border:1px solid #cfe4fb;background:#eef7ff;border-radius:8px;color:#173653;font-size:10px}
+@media(max-width:650px){.et-program-request-top{align-items:flex-start;flex-direction:column}.et-program-request-actions{justify-content:flex-start}}
+
+
+
+/* =========================================================
+   LIVE MAP FULL SCREEN — Google Maps JavaScript API
+   Existing Tracking layout remains unchanged.
+========================================================= */
+.et-map-fullpage{position:fixed;inset:0;z-index:100900;background:#f5f8fc;display:none;overflow:hidden}
+.et-map-fullpage.show{display:block}
+.et-map-full-head{height:58px;padding:10px 14px;background:#fff;border-bottom:1px solid #dbe5ef;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.et-map-full-title{min-width:0}.et-map-full-title b{display:block;font-size:16px;color:#173653}.et-map-full-title span{display:block;margin-top:2px;font-size:10px;color:#68758a}
+.et-map-full-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.et-map-full-canvas{position:absolute;left:0;right:0;top:58px;bottom:0;background:#e9eef5}
+.et-map-api-note{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;width:min(620px,calc(100% - 30px));padding:18px;background:#fff;border:1px solid #d7e2ef;border-radius:12px;box-shadow:0 15px 40px #17365325;color:#173653;line-height:1.5}
+.et-map-api-note code{background:#f2f5f9;padding:2px 5px;border-radius:5px}
+.et-fleet-legend{position:absolute;left:12px;bottom:24px;z-index:5;background:#fff;border:1px solid #d7e2ef;border-radius:9px;padding:8px 10px;box-shadow:0 5px 18px #17365320;font-size:10px;color:#52647a;pointer-events:none}
+.et-fleet-legend b{color:#173653}.et-map-info{min-width:220px;line-height:1.45}.et-map-info b{font-size:13px;color:#173653}.et-map-info .muted{font-size:10px}
+.et-map-fullscreen-btn{position:absolute;left:10px;top:10px;z-index:3}
+@media(max-width:700px){.et-map-full-head{height:auto;min-height:58px;align-items:flex-start}.et-map-full-canvas{top:82px}.et-map-full-actions{justify-content:flex-end}.et-map-full-title span{display:none}}
+
+
+/* =========================================================
+   LOCKED LIVE MAP DESIGN — 19 SEP 2026
+   Map ~70% + vehicle list ~30%. Existing Tracking untouched.
+========================================================= */
+.et-fleet-shell{position:absolute;left:0;right:0;top:58px;bottom:0;display:grid;grid-template-columns:minmax(0,7fr) minmax(360px,3fr);background:#eef3f8}
+.et-fleet-map-wrap{position:relative;min-width:0;overflow:hidden;border-right:1px solid #dbe5ef}
+.et-fleet-map-wrap .et-map-full-canvas{position:absolute;inset:0;background:#e9eef5}
+.et-fleet-side{min-width:0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.et-fleet-side-head{padding:12px 13px 9px;border-bottom:1px solid #e4ebf4}
+.et-fleet-side-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.et-fleet-side-title b{font-size:16px;color:#173653}.et-fleet-count{font-size:10px;color:#68758a;font-weight:800}
+.et-fleet-tabs{display:flex;gap:5px;overflow-x:auto;padding:9px 0 1px}.et-fleet-tab{border:1px solid #dce6f0;background:#f8fafc;color:#173653;border-radius:7px;padding:6px 8px;font-size:9px;font-weight:900;white-space:nowrap;cursor:pointer}.et-fleet-tab.active{background:#173653;color:#fff;border-color:#173653}
+.et-fleet-search{margin-top:8px;width:100%;border:1px solid #d7e2ef;border-radius:8px;padding:8px 10px;outline:none;font-size:11px}
+.et-fleet-cols{display:grid;grid-template-columns:1.05fr .9fr 1.25fr 1.25fr;gap:7px;padding:7px 11px;background:#f7f9fc;border-bottom:1px solid #e7edf4;color:#5d6d82;font-size:9px;font-weight:900}
+.et-fleet-list{overflow:auto;flex:1}.et-fleet-row{display:grid;grid-template-columns:1.05fr .9fr 1.25fr 1.25fr;gap:7px;padding:9px 11px;border-bottom:1px solid #edf1f6;cursor:pointer;align-items:start}.et-fleet-row:hover,.et-fleet-row.selected{background:#eef7ff}.et-fleet-veh{font-weight:900;color:#173653;font-size:10px}.et-fleet-cell{font-size:9px;line-height:1.35;color:#31445d;overflow-wrap:anywhere}.et-fleet-time{display:block;color:#718096;margin-top:2px;font-size:8px}.et-fleet-pill{display:inline-flex;padding:4px 6px;border-radius:6px;font-size:8px;font-weight:900}.et-fleet-pill.RUNNING{background:#dff8eb;color:#087a4b}.et-fleet-pill.LOADING{background:#fff0d5;color:#c97900}.et-fleet-pill.REPORTING{background:#efe3ff;color:#7131c7}.et-fleet-pill.EMPTY{background:#edf2f8;color:#52647a}.et-fleet-pill.PROGRAM{background:#e3efff;color:#1264da}
+.et-fleet-map-card{position:absolute;z-index:6;left:50%;top:18px;transform:translateX(-50%);width:min(420px,calc(100% - 30px));background:#fff;border:1px solid #dce5ef;border-radius:12px;box-shadow:0 12px 30px #1736532a;padding:11px 13px;display:none}.et-fleet-map-card.show{display:block}.et-fleet-card-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.et-fleet-card-top b{font-size:14px;color:#173653}.et-fleet-card-x{border:0;background:transparent;font-size:18px;cursor:pointer;color:#52647a}.et-fleet-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin-top:8px;font-size:9px;color:#52647a}.et-fleet-card-grid b{display:block;color:#173653;font-size:10px;margin-top:2px}.et-fleet-card-actions{display:flex;gap:7px;margin-top:9px}.et-fleet-card-actions button{border:1px solid #d6e0ec;background:#fff;border-radius:7px;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}.et-fleet-card-actions .primary{background:#1768b4;color:#fff;border-color:#1768b4}
+.et-fleet-legend{left:12px;bottom:14px}.et-fleet-empty{padding:25px 12px;text-align:center;color:#7b8797;font-size:10px}
+@media(max-width:900px){.et-fleet-shell{grid-template-columns:1fr}.et-fleet-map-wrap{min-height:58vh;border-right:0;border-bottom:1px solid #dbe5ef}.et-fleet-side{min-height:42vh}.et-fleet-cols,.et-fleet-row{grid-template-columns:1fr .8fr 1.15fr 1.15fr}}
+@media(max-width:700px){.et-fleet-shell{top:82px}.et-fleet-map-wrap{min-height:52vh}.et-fleet-cols,.et-fleet-row{grid-template-columns:1fr .85fr 1.15fr}.et-fleet-cols>div:nth-child(3),.et-fleet-row>div:nth-child(3){display:none}}
+
+
+/* MAP HISTORY POLISH — map-only addition; locked Tracking UI remains unchanged */
+.et-fleet-view-switch{display:flex;gap:4px;padding-right:7px;margin-right:2px;border-right:1px solid #d9e3ed}.et-fleet-view-switch button{background:#f5f9fd!important;border-color:#c9d9e8!important;color:#173653!important}.et-fleet-view-switch button:hover{background:#e7f2fb!important}.et-fleet-view-switch button:first-child{background:#173653!important;color:#fff!important;border-color:#173653!important}.et-fleet-history-meta{font-weight:800!important;color:#173653!important}
+.et-fleet-historybar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px;background:#fff;border-bottom:1px solid #dfe8f1;position:absolute;left:0;right:0;top:0;z-index:7;box-shadow:0 2px 8px #17365310}.et-fleet-historybar button{border:1px solid #d7e2ef;background:#fff;color:#173653;border-radius:7px;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}.et-fleet-historybar button:hover{background:#eef7ff}.et-fleet-historybar .all{background:#173653;color:#fff;border-color:#173653}.et-fleet-history-window{font-size:9px;color:#68758a;font-weight:800;margin-left:auto}.et-fleet-custom{display:none;gap:5px;align-items:center}.et-fleet-custom input{border:1px solid #d7e2ef;border-radius:7px;padding:5px 6px;font-size:9px}.et-fleet-history-meta{position:absolute;left:12px;top:53px;z-index:6;background:#fff;border:1px solid #d7e2ef;border-radius:8px;padding:6px 9px;box-shadow:0 4px 14px #17365318;font-size:9px;color:#52647a}.et-fleet-map-wrap .et-map-full-canvas{top:42px}.et-fleet-map-card{top:62px}.et-fleet-legend{bottom:14px}
+
+/* EKTA — approved status cards: entire surfaces, no layout changes */
+#trackingModule .cards .c-program{background:#dceaff;border-color:#9bc3ff;color:#154c9a}
+#trackingModule .cards .c-loading{background:#fff0d7;border-color:#f7c77d;color:#985300}
+#trackingModule .cards .c-running{background:#d9f6e8;border-color:#88d7ad;color:#087246}
+#trackingModule .cards .c-reporting{background:#e9dfff;border-color:#baa1f1;color:#5b2caa}
+#trackingModule .cards .c-empty{background:#e8edf4;border-color:#b6c4d4;color:#3d536c}
+#trackingModule .cards .c-nodriver{background:#ffe1e1;border-color:#f3a1a1;color:#a32323}
+#trackingModule .cards .c-delay{background:#fff0ca;border-color:#eec269;color:#8a5800}
+#trackingModule .cards .c-alert{background:#ffe1ed;border-color:#f4a5c6;color:#a9235c}
+#trackingModule .cards .card small,#trackingModule .cards .card strong{color:inherit}
+#trackingModule .et-eway-cell{min-width:150px;font-size:11px;line-height:1.4}
+#trackingModule .et-eway-btn{font-size:10px;padding:4px 7px;margin-top:4px;cursor:pointer;border:1px solid #c6d7ec;border-radius:6px;background:#fff;color:#173653}
+#trackingModule .et-eway-state{display:inline-block;border-radius:5px;padding:2px 6px;font-weight:800}
+#trackingModule .et-eway-ok{background:#d9f6e8;color:#087246}
+#trackingModule .et-eway-warning{background:#ffedc6;color:#8b5300}
+#trackingModule .et-eway-expired{background:#ffe0e0;color:#b42323}
+#trackingModule .et-eway-pending{background:#e9edf3;color:#5a6678}
+
+
+/* Expandable multiple E-Way Bills in each Tracking row */
+#trackingModule .et-eway-cell{min-width:205px;max-width:310px}
+#trackingModule .et-eway-toggle{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;background:#f8fbff;border:1px solid #cddbed;border-radius:8px;padding:7px 8px;color:#173653;cursor:pointer;font-weight:750;font-size:11px;text-align:left}
+#trackingModule .et-eway-toggle:hover{background:#edf5ff}
+#trackingModule .et-eway-list{margin-top:7px;padding:7px;background:#f7faff;border:1px solid #dbe6f5;border-radius:8px;max-height:330px;overflow-y:auto}
+#trackingModule .et-eway-item{padding:8px 5px;border-bottom:1px solid #dce5f0;line-height:1.7;overflow-wrap:anywhere}
+#trackingModule .et-eway-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;flex-wrap:wrap}
+#trackingModule .et-eway-empty{color:#68758a;padding:8px 2px}
+#trackingModule .et-eway-add{width:100%;margin-top:8px;font-weight:750;background:#e8f3ff}
+
+
+/* EKTA HEADER UTILITIES — scoped, no change to approved cards/table/maps */
+.et-head-tools{display:flex;align-items:center;gap:7px;position:relative}
+.et-head-btn{border:1px solid #d6e0ec;border-radius:9px;background:white;color:#173653;min-height:36px;padding:7px 10px;font-weight:800;cursor:pointer;white-space:nowrap}
+.et-head-btn[aria-expanded="true"]{background:#eef7ff;border-color:#81b6e5}
+.et-head-count{display:inline-block;background:#d9293e;color:white;border-radius:15px;padding:1px 6px;font-size:10px;margin-left:3px}
+.et-head-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(430px,calc(100vw - 32px));max-height:min(65vh,570px);overflow:auto;background:white;border:1px solid #dce6f0;border-radius:12px;box-shadow:0 16px 38px #10233b35;z-index:100650;padding:12px;display:none}
+.et-head-panel.show{display:block}
+.et-head-panel-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:14px}
+.et-head-close{border:0;background:#f1f4f8;border-radius:7px;padding:5px 9px;cursor:pointer}
+.et-head-panel .et-alert{margin-bottom:8px}
+.et-ai-input{width:100%;min-height:65px;border:1px solid #d6e0ec;border-radius:8px;padding:10px;resize:vertical;font:inherit}
+.et-ai-result{margin-top:10px;max-height:270px;overflow:auto;line-height:1.5}
+.et-ai-item{padding:9px;border:1px solid #e4ebf4;border-radius:8px;margin-bottom:6px}
+.et-ai-send{background:#3677b6;color:white;border:0;border-radius:8px;padding:8px 13px;font-weight:800;cursor:pointer;margin-top:7px}
+@media(max-width:1300px){#trackingModule .top{flex-wrap:wrap}#trackingModule .actions{flex-wrap:wrap}.et-head-tools{margin-left:auto}}
+
+/* File-only AI assistant: preserves header, cards, table and maps. */
+#etAIPanel .et-upload-group{border:1px solid #e1e9f3;border-radius:10px;padding:12px;margin:10px 0;background:#fbfdff}
+#etAIPanel .et-upload-group b{display:block;font-size:12px;margin-bottom:4px}
+#etAIPanel .et-upload-group p{font-size:11px;margin:4px 0 9px}
+#etAIPanel input[type=file],#etAIPanel .et-upload-trip{display:block;width:100%;max-width:100%;padding:9px;border:1px solid #d6e0ec;border-radius:8px;background:white;margin-bottom:8px;font-size:11px}
+#etAIPanel .et-upload-status{font-size:11px;color:#637188;line-height:1.45;margin:6px 0}
+#etAIPanel .et-ai-send{margin-top:5px}
+
+/* E-Way document intake belongs exclusively to the E-Way Records page. */
+#etEwayPage .et-eway-upload-bar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 12px;margin:0 0 8px;background:#fff;border:1px solid #dbe5f0;border-radius:10px}
+#etEwayPage .et-eway-upload-bar>div{flex:1 1 190px}
+#etEwayPage .et-eway-upload-bar input[type=file],#etEwayPage .et-eway-upload-bar select{max-width:290px;min-width:175px;padding:8px;border:1px solid #d6e0ec;border-radius:8px;background:#fff;font-size:11px}
+#etEwayPage .et-eway-upload-bar .et-upload-status{font-size:10px;color:#637188;max-width:230px;overflow-wrap:anywhere}
+#etEwayPage .et-eway-upload-message{font-size:11px;color:#637188;margin-bottom:8px}
+/* Billing pending: only additions to the approved tracking layout */
+.et-billing-cell{min-width:155px;max-width:210px;white-space:normal}
+.et-billing-pending{color:#bd2439;font-weight:800;font-size:10px}
+.et-billing-wait{color:#9b6400;font-weight:800;font-size:10px}
+.et-billing-done{color:#078453;font-weight:800;font-size:10px}
+.et-billing-edit{background:#fff;border:1px solid #cbd8e9;border-radius:6px;padding:4px 7px;font-size:10px;font-weight:800;cursor:pointer;color:#1768b4;margin-top:4px}
+#etBillingModal{z-index:100600}
+#etBillingModal .box{width:min(650px,calc(100vw - 24px))}
+/* Keyboard-only table navigation; no floating buttons */
+
+
+
+/* EKTA — compact tracking-only columns; all underlying records remain unchanged */
+#etRows td{vertical-align:middle}
+.et-table{min-width:1060px}
+.et-table th,.et-table td{padding:9px 10px}
+.et-table .et-route-cell{max-width:135px;min-width:100px;white-space:normal;overflow-wrap:anywhere;font-weight:700}
+.et-table .et-party-kind{display:inline-flex;align-items:center;padding:6px 10px;border-radius:8px;font-size:10px;font-weight:900;white-space:nowrap;letter-spacing:.2px}
+.et-table .et-party-kind.billing{background:#e7f0ff;color:#175cba;border:1px solid #c7dcff}
+.et-table .et-party-kind.transporter{background:#fff0d9;color:#a65c00;border:1px solid #ffdbab}
+.et-table .et-route-arrow{color:#3478bf;font-weight:900;margin-left:8px;font-size:16px;vertical-align:middle}
+.et-table .et-party-cell{max-width:330px;white-space:normal;overflow-wrap:anywhere}
+.et-table .et-party-pending{display:inline-block;margin-top:5px;font-size:10px}
+.et-table .et-location-wrap{min-width:0;max-width:265px;align-items:flex-start;flex-wrap:wrap}
+.et-table .et-location-text{min-width:0;max-width:245px;white-space:normal;overflow-wrap:anywhere;line-height:1.45}
+.et-table .et-location-edit{flex:0 0 auto}
+.et-table .et-gps-source{font-size:10px;font-weight:800;white-space:nowrap}
+
+
+/* EKTA PROGRAM FORM — VISUAL POLISH ONLY. Scoped to program modal. */
+#etProgramModal{background:rgba(19,37,62,.49);backdrop-filter:blur(2px)}
+#etProgramModal .box{border:1px solid #dfe8f4;border-radius:19px;box-shadow:0 22px 65px rgba(21,43,73,.24);overflow:visible}
+#etProgramModal .mh{padding:14px 19px;border-bottom:1px solid #e7edf6;background:linear-gradient(90deg,#f8fbff,#fff);border-radius:19px 19px 0 0}
+#etProgramModal .mh b{font-size:17px;letter-spacing:.15px;color:#173653}
+#etProgramModal .x{width:33px;height:33px;background:#edf3fa;color:#435670;font-size:18px;transition:background .15s}
+#etProgramModal .x:hover{background:#dce9f7}
+#etProgramModal .mb{padding:15px 19px 16px}
+#etProgramModal .flow{gap:7px;margin-bottom:13px}
+#etProgramModal .step{font-size:10px;padding:7px 10px;border-radius:8px}
+#etProgramModal .formgrid{gap:12px 16px}
+#etProgramModal .field label{font-size:11px;letter-spacing:.05px;color:#53647d;margin-bottom:6px}
+#etProgramModal .field input,#etProgramModal .field select,#etProgramModal .field textarea{min-height:42px;padding:10px 12px;border:1px solid #cfdced;border-radius:10px;color:#23364e;font-size:13px;box-shadow:0 1px 2px rgba(22,46,76,.03);transition:border-color .15s,box-shadow .15s}
+#etProgramModal .field textarea{height:50px;min-height:50px;resize:vertical}
+#etProgramModal .field input:focus,#etProgramModal .field select:focus,#etProgramModal .field textarea:focus{outline:none;border-color:#3c83c7;box-shadow:0 0 0 3px rgba(60,131,199,.13)}
+#etProgramModal .field input::placeholder,#etProgramModal .field textarea::placeholder{color:#9aa7b9}
+#etProgramModal .notice{background:#f2f7fe;border-color:#dceafa;border-radius:9px;color:#52667f;padding:10px 12px;margin:13px 0 12px;font-size:11px;line-height:1.5}
+#etProgramModal .btn{border-radius:9px;min-height:38px;padding:9px 15px;font-size:11px}
+#etProgramModal .btn.primary{background:#3677b6;box-shadow:0 3px 9px rgba(54,119,182,.18)}
+#etProgramModal .btn.primary:hover{background:#2768a7}
+@media(max-height:780px) and (min-width:651px){#etProgramModal .mh{padding:10px 16px}#etProgramModal .mb{padding:10px 16px}#etProgramModal .flow{margin-bottom:8px}#etProgramModal .formgrid{gap:7px 12px}#etProgramModal .field input,#etProgramModal .field select{min-height:36px;padding:7px 10px}#etProgramModal .field textarea{height:41px;min-height:41px}#etProgramModal .notice{margin:8px 0;padding:7px 10px}}
+@media(max-width:650px){#etProgramModal .box{max-height:95vh;overflow:auto}#etProgramModal .mh{padding:11px 13px}#etProgramModal .mb{padding:11px 13px}}
+
+#trackingModule .et-table thead th:nth-child(3),#trackingModule .et-table tbody td:nth-child(3){display:none!important}
+.et-stage-actions{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.et-stage-cancel,.et-stage-next{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:7px;cursor:pointer;font-size:16px;font-weight:900}
+.et-stage-cancel{border:1px solid #ffb8bf;background:#fff0f2;color:#d9293e}
+.et-stage-next{border:1px solid #91d8b3;background:#dcf8e9;color:#087a4b}
+.et-stage-next.et-stage-running{border-color:#cbb6ff;background:#f0e7ff;color:#7131c7}
+.et-stage-next.et-stage-reporting{border-color:#bdcce0;background:#e8eef6;color:#344e6a}
+
+/* Compact status actions and centered date dialog */
+.et-stage-actions{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.et-quick-date-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(20,40,65,.38);display:flex;align-items:center;justify-content:center;padding:18px}
+.et-quick-date-box{width:min(100%,360px);background:#fff;border:1px solid #d9e4f2;border-radius:16px;box-shadow:0 22px 65px rgba(20,40,65,.24);padding:22px;color:#18334e}
+.et-quick-date-title{font-size:19px;font-weight:800;margin-bottom:8px}
+.et-quick-date-sub{font-size:13px;color:#60738c;line-height:1.5;margin-bottom:16px}
+.et-quick-date-input{width:100%;box-sizing:border-box;border:1px solid #bdd2ed;border-radius:10px;padding:12px 14px;font-size:22px;color:#193650;outline:none}
+.et-quick-date-input:focus{border-color:#367cc4;box-shadow:0 0 0 3px #e0edfc}
+.et-quick-date-error{min-height:20px;color:#c6283d;font-size:12px;margin-top:5px}
+.et-quick-date-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
+.et-quick-date-actions button{padding:10px 17px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer}
+.et-quick-date-cancel{background:#fff;border:1px solid #cbd9ea;color:#29435f}
+.et-quick-date-confirm{background:#347cbe;border:1px solid #347cbe;color:white}
+
+/* FASTag history: independent of the live GPS map */
+#etFastagMapPage .et-fastag-historybar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 12px;background:#fff;border-bottom:1px solid #e2e9f2;position:absolute;left:0;right:0;top:0;z-index:8;box-shadow:0 2px 9px #17365312}
+#etFastagMapPage .et-fastag-historybar button{background:#fff;color:#173653;border:1px solid #d7e2ef;border-radius:9px;padding:8px 11px;font-size:11px;font-weight:800;cursor:pointer}
+#etFastagMapPage .et-fastag-historybar button.active{background:#173653;border-color:#173653;color:#fff}
+#etFastagMapPage .et-fastag-historybar button:hover{border-color:#3677b6}
+#etFastagMapPage .et-fastag-custom{display:none;align-items:center;gap:6px;flex-wrap:wrap}
+#etFastagMapPage .et-fastag-custom.show{display:flex}
+#etFastagMapPage .et-fastag-custom input{padding:6px;border:1px solid #d7e2ef;border-radius:7px;max-width:190px}
+#etFastagMapPage .et-fastag-history-meta{position:absolute;top:65px;left:12px;z-index:7;background:#fff;border:1px solid #e0e7f1;padding:7px 10px;border-radius:9px;box-shadow:0 3px 12px #17365320;font-size:11px;max-width:calc(100% - 24px)}
+#etFastagMapPage #etFastagMapCanvas{top:54px!important}
+#etFastagMapPage #etFastagMapCard{top:102px!important;max-height:calc(100% - 145px);overflow:auto}
+#etFastagMapPage .et-fastag-timeline{border-top:1px solid #e3e9f2;margin-top:10px;padding-top:9px;max-height:235px;overflow:auto}
+#etFastagMapPage .et-fastag-visit{width:100%;display:flex;gap:9px;align-items:center;text-align:left;border:1px solid #e5ebf4;background:#fff;padding:7px;margin:5px 0;border-radius:8px;cursor:pointer;font-size:11px;color:#173653}
+#etFastagMapPage .et-fastag-visit:hover{background:#eef7ff;border-color:#8db9ea}
+#etFastagMapPage .et-fastag-visit-num{background:#2563eb;color:#fff;border-radius:7px;padding:5px 7px;font-weight:900}
+#etFastagMapPage .et-fastag-visit small{display:block;color:#728198;margin-top:2px}
+@media(max-width:700px){#etFastagMapPage #etFastagMapCanvas{top:94px!important}#etFastagMapPage .et-fastag-history-meta{top:102px}}
+/* FASTag sidebar status + active trip filters */
+#etFastagTabs{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+#etFastagTabs button{border:1px solid #d9e4f1;border-radius:8px;background:#f8fafc;color:#173653;padding:6px 8px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
+#etFastagTabs button.active{background:#173653;color:white;border-color:#173653}
+#etFastagTabs button:focus-visible{outline:2px solid #3677b6;outline-offset:2px}
+
+/* Empty-list quick programming entry: visual addition only. */
+.et-add-program{display:inline-flex;align-items:center;justify-content:center;margin-top:7px;padding:6px 10px;border:1px solid #087a4b;background:#09995f;color:white;border-radius:8px;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px #09995f20}
+.et-add-program:hover{background:#087a4b}
+#etQuickProgramModal{z-index:100700;align-items:center;justify-content:center;background:#10233b80;backdrop-filter:blur(2px)}
+#etQuickProgramModal .box{width:min(465px,calc(100vw - 28px));max-height:calc(100vh - 32px);overflow:auto;border-radius:17px;box-shadow:0 24px 70px #10233b42}
+#etQuickProgramModal .mh{padding:17px 19px}
+#etQuickProgramModal .mb{padding:18px 19px 20px}
+.et-quick-route{display:grid;grid-template-columns:1fr 30px 1fr;align-items:end;gap:9px}
+.et-quick-route input{width:100%;min-width:0;border:1px solid #cfdced;border-radius:9px;padding:11px 10px;font-size:12px}
+.et-quick-route label{display:block;margin-bottom:6px;font-weight:900;color:#52647a;font-size:10px}
+.et-quick-arrow{text-align:center;padding-bottom:11px;color:#09995f;font-weight:900;font-size:20px}
+.et-quick-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:19px}
+.et-quick-actions button{padding:10px 13px;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;border:1px solid #d6e0ec;background:white;color:#173653}
+.et-quick-actions .save{background:#09995f;border-color:#09995f;color:white}
+
+
+.et-program-pending-pill{display:inline-flex;align-items:center;padding:5px 9px;border-radius:7px;background:#fff1d6;color:#a96000;border:1px solid #f6d396;font-size:10px;font-weight:900;letter-spacing:.3px}
+
+/* Breakdown alert: separate from trip status and next-stage action */
+.et-breakdown-btn{border:1px solid #f5b34e;background:#fff3dc;color:#a65d00;border-radius:9px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1}
+.et-breakdown-btn:hover{background:#ffe6b1}
+.et-breakdown-btn.et-breakdown-active{background:#ffd18a;border-color:#d97706}
+.et-breakdown-alert{border-left:4px solid #e49a20}
+.et-badge.et-badge-breakdown{background:#fee2e2!important;color:#b91c1c!important;border:1px solid #ef4444!important}
+
+/* Quick Assign Driver: visible only when a truck has no active driver. */
+.et-assign-driver-btn{border:1px solid #a7d8bc;background:#e9f9f0;color:#087a4b;border-radius:7px;padding:6px 8px;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}
+.et-assign-driver-btn:hover{background:#d5f4e3}
+#etAssignDriverModal{z-index:100510}
+
+/* EKTA TRACKING — STATUS ACTIONS PROFESSIONAL COMPACT ALIGNMENT (UI ONLY) */
+#trackingModule .et-stage-actions{
+ display:inline-flex;align-items:center;justify-content:flex-start;
+ flex-wrap:nowrap;gap:6px;white-space:nowrap;vertical-align:middle;
+ min-height:34px;width:max-content;max-width:none;
+}
+#trackingModule .et-stage-actions > *{flex:0 0 auto;box-sizing:border-box;margin:0!important;vertical-align:middle}
+#trackingModule .et-stage-actions .et-badge,
+#trackingModule .et-stage-actions .et-program-pending-pill{
+ display:inline-flex;align-items:center;justify-content:center;
+ height:32px;min-height:32px;padding:0 10px;border-radius:9px;
+ font-size:10px;font-weight:900;line-height:1;letter-spacing:0;
+}
+#trackingModule .et-stage-actions .et-stage-cancel,
+#trackingModule .et-stage-actions .et-stage-next,
+#trackingModule .et-stage-actions .et-breakdown-btn{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:33px;height:33px;min-width:33px;min-height:33px;
+ padding:0;border-radius:9px;font-size:17px;line-height:1;
+ box-shadow:none;transition:background-color .15s,border-color .15s;
+}
+#trackingModule .et-stage-actions .et-add-program,
+#trackingModule .et-stage-actions .et-assign-driver-btn{
+ display:inline-flex;align-items:center;justify-content:center;
+ height:33px;min-height:33px;padding:0 11px;
+ border-radius:9px;font-size:10px;font-weight:850;line-height:1;
+ box-shadow:none;letter-spacing:0;
+}
+#trackingModule .et-stage-actions .et-add-program{background:#09995f;color:#fff;border:1px solid #07834f}
+#trackingModule .et-stage-actions .et-add-program:hover{background:#087a4b}
+#trackingModule .et-stage-actions .et-assign-driver-btn{background:#e9f9f0;color:#087a4b;border:1px solid #a7d8bc}
+#trackingModule .et-stage-actions .et-assign-driver-btn:hover{background:#d5f4e3}
+#trackingModule .et-stage-actions .et-breakdown-btn{background:#fff0d5;border-color:#f5b34e}
+#trackingModule .et-stage-actions .et-breakdown-btn.et-breakdown-active{background:#ffd18a;border-color:#d97706}
+#trackingModule .et-stage-actions .et-badge-breakdown{background:#fee2e2!important;color:#b91c1c!important;border-color:#ef4444!important}
+#trackingModule .tablewrap td:has(> .et-stage-actions){vertical-align:middle;white-space:nowrap}
+
+
+/* E-Way compact professional register — scoped */
+#etEwayPage .inner{max-width:1580px;padding:17px 22px}#etEwayPage .title h1{font-size:19px;font-weight:800;letter-spacing:-.3px}#etEwayPage .title p{font-size:11px}#etEwayPage .toolbar{margin:10px 0}#etEwayPage .toolbar input{flex:1 1 320px;max-width:520px}#etEwayPage .toolbar select{min-width:155px}#etEwayPage .panel{border-radius:12px;box-shadow:0 3px 14px #1836530a}#etEwayPage .ph{padding:12px 15px}#etEwayPage .ph b{font-size:12px}#etEwayPage .eway-table{min-width:930px}#etEwayPage .eway-table th{font-size:10px;padding:11px 12px;text-transform:uppercase;letter-spacing:.35px}#etEwayPage .eway-table td{font-size:11px;padding:12px;vertical-align:middle}#etEwayPage .eway-table tbody tr:hover{background:#f7faff}.eway-smartbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #dce6f2;border-radius:11px;padding:12px 15px;margin:10px 0}.eway-smartbar>div{flex:1;min-width:220px}.eway-smartbar b{display:block;font-size:12px;color:#173653}.eway-smartbar span{display:block;color:#74839a;font-size:10px;margin-top:3px}.eway-smartbar .eway-total{font-size:11px;font-weight:800;color:#45647d;white-space:nowrap}.eway-stats{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}.eway-stat{border:1px solid #e2eaf3;background:#fff;border-radius:8px;padding:8px 12px;font-size:10px;color:#63758b}.eway-stat b{color:#193854;font-size:13px;margin-right:5px}.eway-number-list{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.eway-number{font-size:11px;font-weight:800;color:#2563eb}.eway-mini{font-size:9px;color:#8491a3;margin-top:3px}.eway-countdown{font-weight:800;font-variant-numeric:tabular-nums;color:#176e55}.eway-countdown.warn{color:#b9790b}.eway-countdown.expired{color:#ca3043}.eway-manage{padding:6px 9px!important;min-height:29px!important;font-size:10px!important}.eway-empty-cell{color:#8491a3}.eway-truck-cell strong{display:block;color:#1767ca;font-size:11px}.eway-truck-cell small{color:#8390a0;font-size:9px}.eway-scan-area{border:1px dashed #bed3eb;background:#f8fbff;border-radius:10px;padding:12px;margin-bottom:13px}.eway-scan-title{font-size:12px;font-weight:800;color:#173653}.eway-scan-title small{display:block;font-size:10px;font-weight:400;color:#718299;margin-top:3px}.eway-scan-controls{display:flex;align-items:center;gap:8px;margin-top:9px}.eway-scan-controls input{font-size:10px;min-width:0;flex:1}.eway-scan-controls .btn{white-space:nowrap}#etEWPaste{width:100%;resize:vertical;min-height:55px;margin-top:8px;border:1px solid #d9e4ef;border-radius:7px;padding:8px;font:11px inherit}.eway-text-read{border:0;background:transparent;color:#1767b4;font-weight:800;font-size:10px;cursor:pointer;padding:6px 0}.eway-edit-summary{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:#728198}.eway-edit-summary b{color:#173653}#etEwayEditModal .box{width:min(580px,calc(100vw - 24px));max-height:calc(100vh - 30px);overflow:auto}#etEwayEditModal .mh{padding:11px 15px}#etEwayEditModal .mh b{font-size:14px}#etEwayEditModal .mb{padding:13px 15px}#etEwayEditModal .formgrid{gap:10px}#etEwayEditModal .field input{padding:8px;font-size:11px}#etEwayEditModal .field label{font-size:10px}
+
+/* Separate quick manual bill entry from top-bar OCR entry */
+#etEwayEditModal.eway-manual-mode .eway-scan-area{display:none!important}
+#etEwayEditModal.eway-manual-mode .box{width:min(770px,calc(100vw - 24px))}
+#etEwayEditModal.eway-manual-mode .mb{padding:13px 16px}
+#etEWOcrTruckChoice select{width:100%;min-height:35px;border:1px solid #d7e2ef;border-radius:7px;background:#fff;padding:7px;font-size:11px}
+/* Compact horizontal multi-bill entry */
+#etEwayEditModal .box{width:min(850px,calc(100vw - 24px))}
+.eway-multi-head{display:flex;align-items:center;gap:9px;margin:10px 0 8px;flex-wrap:wrap;font-size:12px;color:#173653}
+.eway-multi-head span{color:#7a899b;font-size:10px}
+.eway-plus{min-height:28px!important;padding:5px 9px!important;color:#086b51!important;background:#e8f7ef!important;border-color:#a7dfc2!important}
+.eway-bill-rows{display:grid;gap:7px;max-height:260px;overflow-y:auto}
+.eway-bill-row{display:grid;grid-template-columns:26px minmax(145px,1fr) minmax(175px,1fr) 30px;align-items:end;gap:9px;padding:9px;background:#f8fafc;border:1px solid #e0e9f3;border-radius:9px}
+.eway-bill-row .field label{font-size:10px;color:#5c7087;font-weight:800;display:block;margin-bottom:5px}
+.eway-bill-row input{width:100%;min-width:0;border:1px solid #d7e2ef;border-radius:7px;background:white;padding:8px;font-size:11px;height:35px}
+.eway-bill-row .bill-index{font-size:11px;font-weight:900;color:#66809c;align-self:center}
+.eway-bill-row .bill-remove{border:0;background:#fff0f1;color:#b72c40;border-radius:7px;height:32px;cursor:pointer}
+@media(max-width:570px){.eway-bill-row{grid-template-columns:25px minmax(0,1fr) 30px}.eway-bill-row .eway-valid-field{grid-column:2}.eway-bill-row .bill-remove{grid-column:3;grid-row:1}}
+
+/* Final Report: compact date range search; no day pagination */
+#etFinalPage .et-final-filterbar{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+#etFinalPage .et-final-filter-label{display:flex;flex-direction:column;gap:4px;color:#637188;font-size:10px;font-weight:800}
+#etFinalPage .et-final-filter-label input{min-width:150px;flex:none}
+@media(max-width:650px){#etFinalPage .et-final-filter-label{flex:1 1 135px}#etFinalPage .et-final-filter-label input{width:100%;min-width:0}}
+
+/* EKTA PROGRAM — FINAL VISIBLE ACTIONS / SCROLLABLE FORM (UI only) */
+#etProgramModal{padding:12px!important;align-items:center!important;overscroll-behavior:contain}
+#etProgramModal>.box{width:min(1050px,100%)!important;max-height:calc(100dvh - 24px)!important;height:auto!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;border-radius:16px!important}
+#etProgramModal>.box>.mh{flex:0 0 auto;position:relative;z-index:3;padding:13px 20px!important;background:#f8fbff!important}
+#etProgramModal>.box>form.mb{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto!important;overscroll-behavior:contain;padding:14px 20px 0!important;scrollbar-width:thin}
+#etProgramModal .formgrid{gap:10px 16px!important}
+#etProgramModal .field input,#etProgramModal .field select{min-height:39px!important;padding:8px 11px!important}
+#etProgramModal .field textarea{min-height:47px!important;height:47px!important;resize:vertical}
+#etProgramModal .field label{margin-bottom:5px!important;font-size:11px!important}
+#etProgramModal .notice{margin:10px 0!important;padding:9px 12px!important;font-size:11px!important}
+#etProgramModal .et-program-actions{position:sticky;bottom:0;z-index:5;flex:0 0 auto;display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:0 -20px;padding:12px 20px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dfe7f1;box-shadow:0 -7px 18px rgba(23,54,83,.07)}
+#etProgramModal .et-program-actions .btn{min-height:42px!important;padding:10px 19px!important;font-size:12px!important;border-radius:9px!important}
+#etProgramModal .et-program-actions .et-program-save{background:#09995f!important;border-color:#09995f!important;color:#fff!important;min-width:154px;font-weight:900;box-shadow:0 4px 12px rgba(9,153,95,.17)}
+#etProgramModal .et-program-actions .et-program-save:hover{background:#087e50!important}
+#etProgramModal .et-program-actions .et-program-save:disabled{opacity:.65;cursor:wait}
+@media(max-width:650px){#etProgramModal{padding:7px!important}#etProgramModal>.box{max-height:calc(100dvh - 14px)!important}#etProgramModal>.box>form.mb{padding:12px 13px 0!important}#etProgramModal .et-program-actions{margin:0 -13px;padding:10px 13px;justify-content:stretch}#etProgramModal .et-program-actions .btn{flex:1;min-width:0}}
+
+/* Driver status notification action — scoped to Tracking header */
+#trackingModule .et-notify-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#trackingModule #etStatusNotifyBtn{white-space:nowrap;padding:7px 12px;min-height:32px}
+</style>
+</head>
+
+<body>
+
+<section id="trackingModule">
+
+<div class="wrap">
+
+    <!-- =====================================================
+         SECTION 1 — TOP HEADER
+         APPROVED DEMO LAYOUT
+         -----------------------------------------------------
+         Order:
+         New Program -> E-Way Bill Records -> Final Report
+         -> Export Excel -> Dashboard
+    ====================================================== -->
+    <div class="top">
+
+        <div class="title">
+            <h1>EKTA TRANSPORT — Live Tracking</h1>
+            <p>Operational Tracking • PROGRAM → RUNNING → REPORTING → EMPTY</p>
+        </div>
+
+        <div class="et-head-tools" id="etHeaderTools">
+          <button type="button" class="et-head-btn" id="etBellBtn" aria-expanded="false" aria-controls="etBellPanel" onclick="window.EktaTracking.toggleHeaderPanel('bell')">🔔 <span class="et-head-count" id="etBellCount">0</span></button>
+          <button type="button" class="et-head-btn" id="etAIBtn" aria-expanded="false" aria-controls="etAIPanel" onclick="window.EktaTracking.toggleHeaderPanel('ai')">✦ AI Assistant</button>
+          <section class="et-head-panel" id="etBellPanel" aria-label="Tracking notifications">
+            <div class="et-head-panel-title"><b>🔔 Notifications</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
+            <div id="etBellItems" class="et-head-notices">Loading notifications...</div>
+          </section>
+          <section class="et-head-panel" id="etAIPanel" aria-label="Tracking assistant">
+            <div class="et-head-panel-title"><b>✦ Ekta Tracking Assistant</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
+            <div class="et-upload-group">
+              <b>📋 Program File Upload</b>
+              <p class="muted">Excel, CSV, PDF या Photo चुनें। एक बार में एक File।</p>
+              <input type="file" id="etProgramUpload" accept=".xlsx,.xls,.csv,.pdf,image/*" onchange="window.EktaTracking.previewAIUpload('program')">
+              <div class="et-upload-status" id="etProgramUploadStatus" aria-live="polite">No file selected</div>
+              <button type="button" class="et-ai-send" onclick="window.EktaTracking.prepareProgramUpload()">Review Program File</button>
+            </div>
+            <div class="et-upload-status" id="etAIUploadMessage" aria-live="polite">AI extraction requires the existing Gemini backend connection. No data will be saved without confirmation.</div>
+          <div style="margin-top:8px"><label style="font-size:11px;font-weight:700">Or paste Excel rows here</label><textarea id="etProgramPaste" rows="3" placeholder="Paste copied Excel cells (tab-separated)" style="width:100%;font-size:11px;border:1px solid #ccd9e9;border-radius:7px;padding:8px"></textarea></div>
+            <div id="etAIProgramPreview" style="max-height:310px;overflow:auto"></div>
+          </section>
+        </div>
+
+        <div class="actions">
+
+            <button class="btn primary"
+                    onclick="window.EktaTracking.openProgram()">
+                ＋ New Program
+            </button>
+
+            <button class="btn green"
+                    onclick="window.EktaTracking.openFleetMap()">
+                🗺 LIVE MAP
+            </button>
+
+            <button class="btn green"
+                    onclick="window.EktaTracking.openFastagMap()">
+                🛣 LIVE MAP — FASTag
+            </button>
+
+            <button class="btn"
+                    onclick="window.EktaTracking.openEwayRecords()">
+                E-Way Bill Records
+            </button>
+
+            <button class="btn"
+                    onclick="window.EktaTracking.openFinalReport()">
+                Final Report
+            </button>
+
+            <div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <select id="etExcelCategory" aria-label="Select Excel report" title="Choose Excel report" style="height:36px;min-width:156px;border:1px solid #cbd5e1;border-radius:8px;padding:0 9px;background:#fff;color:#172033;font-weight:600">
+                    <option value="FASTAG">FASTag Location</option>
+                    <option value="GPS">GPS Location</option>
+                    <option value="PROGRAM_DETAILS">Program Details</option>
+                    <option value="ALL">All Vehicles</option>
+                    <option value="PROGRAM">Program Status</option>
+                    <option value="LOADING">Loading Status</option>
+                    <option value="RUNNING">Running Status</option>
+                    <option value="REPORTING">Reporting Status</option>
+                    <option value="EMPTY">Empty / MT Status</option>
+                </select>
+                <button class="btn" onclick="window.EktaTracking.exportTracking()">Export Excel</button>
+            </div>
+
+            <button class="btn red"
+                    onclick="window.EktaTracking.closeTracking()">
+                ← Dashboard
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         SECTION 2 — TOOLBAR
+         Approved demo toolbar retained.
+    ====================================================== -->
+    <div class="toolbar">
+
+        <input id="etSearch"
+               placeholder="Search truck / trip / party / location..."
+               oninput="window.EktaTracking.render()">
+
+        <button class="btn"
+                onclick="window.EktaTracking.viewAllTracking()">
+            All Tracking
+        </button>
+
+        <select id="etZoneFilter"
+                onchange="window.EktaTracking.render()">
+            <option value="">All Zones</option>
+            <option>NORTH</option>
+            <option>SOUTH</option>
+            <option>EAST</option>
+            <option>WEST</option>
+        </select>
+
+        <input id="etDate"
+               type="date"
+               onchange="window.EktaTracking.render()">
+
+        <button class="btn"
+                onclick="window.EktaTracking.shiftDate(-1)">
+            ‹ Previous
+        </button>
+
+        <button class="btn"
+                onclick="window.EktaTracking.setToday()">
+            Today
+        </button>
+
+        <button class="btn"
+                onclick="window.EktaTracking.shiftDate(1)">
+            Next ›
+        </button>
+
+        <button class="btn green"
+                onclick="window.EktaTracking.refresh()">
+            ↻ Refresh
+        </button>
+
+        <!-- Hidden compatibility controls used by tracking.js -->
+        <select id="etStatusFilter" class="hidden-control">
+            <option value=""></option>
+            <option>PROGRAM</option>
+            <option>LOADING</option>
+            <option>RUNNING</option>
+            <option>REPORTING</option>
+            <option>EMPTY</option>
+            <option>NO_DRIVER</option>
+            <option>DELAY</option>
+            <option>ALERT</option>
+        </select>
+
+        <select id="etDriverFilter" class="hidden-control">
+            <option value=""></option>
+        </select>
+
+
+    </div>
+
+
+    <!-- =====================================================
+         SECTION 3 — STATUS CARDS
+         Exact approved demo structure retained.
+    ====================================================== -->
+    <div class="cards">
+
+        <div class="card c-empty"
+             onclick="window.EktaTracking.setStatusFilter('EMPTY')">
+            <small>EMPTY (Available)</small>
+            <strong id="etNEmpty">0</strong>
+        </div>
+
+        <div class="card c-program"
+             onclick="window.EktaTracking.setStatusFilter('PROGRAM')">
+            <small>PROGRAM</small>
+            <strong id="etNProgram">0</strong>
+        </div>
+
+        <div class="card c-running"
+             onclick="window.EktaTracking.setStatusFilter('RUNNING')">
+            <small>RUNNING</small>
+            <strong id="etNRunning">0</strong>
+        </div>
+
+        <div class="card c-reporting"
+             onclick="window.EktaTracking.setStatusFilter('REPORTING')">
+            <small>REPORTING</small>
+            <strong id="etNReporting">0</strong>
+        </div>
+
+        <div class="card c-nodriver"
+             onclick="window.EktaTracking.setStatusFilter('NO_DRIVER')">
+            <small>NO DRIVER</small>
+            <strong id="etNNoDriver">0</strong>
+        </div>
+
+        <div class="card c-delay"
+             onclick="window.EktaTracking.setStatusFilter('DELAY')">
+            <small>DELAYED TRIPS</small>
+            <strong id="etNDelay">0</strong>
+        </div>
+
+        <div class="card c-alert"
+             onclick="window.EktaTracking.setStatusFilter('ALERT')">
+            <small>LIVE ALERTS</small>
+            <strong id="etNAlerts">0</strong>
+        </div>
+
+        <div class="card c-history"
+             onclick="window.EktaTracking.openHistoryRecords()">
+            <small>COMPLETED / CANCELLED</small>
+            <div class="history-split">
+                <b id="etNCompleted">0</b><span>Done</span>
+                <b>/</b>
+                <b id="etNCancelled">0</b><span>Cancel</span>
+            </div>
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         SECTION 4 — MAIN WORKING AREA
+         Full-width Tracking table; Live Alerts below
+         Dedicated LIVE MAP / FASTag pages remain unchanged
+    ====================================================== -->
+    <div class="grid et-tracking-fullwidth">
+
+        <section class="panel">
+
+            <div class="ph">
+                <b id="etListTitle">Tracking — All Trucks</b>
+                <div class="et-notify-actions"><span class="mini" id="etCountText"></span><button type="button" id="etStatusNotifyBtn" class="btn primary" style="display:none" onclick="window.EktaTracking.sendStatusNotification()">🔔 Send Notification</button></div>
+            </div>
+
+            <div class="tablewrap">
+
+                <!-- 10 headers below exactly match tracking.js row renderer -->
+                <table class="et-table">
+
+                    <thead id="etTrackingHead">
+                        <tr>
+                            <th>Zone</th>
+                            <th>Truck</th>
+                            <th>Trip</th>
+                            <th>Party</th>
+                            <th>Party Status</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Status</th>
+                            <th>Current Location</th>
+                            <th>GPS</th>
+                            <th>Last Update</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="etRows">
+                        <tr>
+                            <td colspan="11" class="empty">
+                                Loading Tracking data...
+                            </td>
+                        </tr>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SECTION 5 — NEW PROGRAM
+========================================================= -->
+
+<!-- Compact From → To step for an EMPTY truck; final save uses existing New Program workflow. -->
+<div class="modal" id="etQuickProgramModal" role="dialog" aria-modal="true" aria-labelledby="etQuickProgramTitle">
+ <div class="box">
+  <div class="mh"><b id="etQuickProgramTitle">Add Program · <span id="etQuickProgramTruck"></span></b><button type="button" class="x" onclick="window.EktaTracking.closeQuickProgram()" aria-label="Close">×</button></div>
+  <form class="mb" onsubmit="return window.EktaTracking.continueQuickProgram(event)">
+   <div class="et-quick-route">
+    <div><label for="etQuickFrom">From *</label><input id="etQuickFrom" placeholder="Loading point" maxlength="160" required autocomplete="off"></div>
+    <div class="et-quick-arrow">→</div>
+    <div><label for="etQuickTo">To *</label><input id="etQuickTo" placeholder="Destination" maxlength="160" required autocomplete="off"></div>
+   </div>
+   <div class="et-quick-actions"><button type="button" onclick="window.EktaTracking.closeQuickProgram()">Cancel</button><button type="submit" class="save">Continue →</button></div>
+  </form>
+ </div>
+</div>
+
+<div class="modal et-modal" id="etProgramModal">
+
+    <div class="box">
+
+        <div class="mh">
+            <b>NEW PROGRAM</b>
+            <button class="x"
+                    onclick="window.EktaTracking.closeModal('etProgramModal')">
+                ×
+            </button>
+        </div>
+
+        <form class="mb"
+              onsubmit="return window.EktaTracking.saveProgram(event)">
+
+            <div id="etProgramRequestContext"></div>
+
+            <div class="flow">
+                <span class="step active">1 PROGRAM</span>
+                <span class="step">2 LOADING</span>
+                <span class="step">3 RUNNING</span>
+                <span class="step">4 REPORTING</span>
+                <span class="step">5 EMPTY</span>
+            </div>
+
+            <div class="formgrid">
+
+                <div class="field typeahead">
+                    <label>Truck Number *</label>
+                    <input id="etPTruck"
+                           autocomplete="off"
+                           required
+                           placeholder="Type truck number">
+                    <div class="suggestions"
+                         id="etTruckSuggestions"></div>
+                </div>
+
+                <div class="field">
+                    <label>Program Date *</label>
+                    <input id="etPDate"
+                           type="date"
+                           required>
+                </div>
+
+                <div class="field typeahead">
+                    <div class="party-label-row">
+                        <label>Party (can complete later)</label>
+                        <button type="button" class="party-add-btn" onclick="window.EktaTracking.openQuickParty()">＋ Add Party</button>
+                    </div>
+                    <input id="etPParty"
+                           autocomplete="off"
+                           placeholder="Type Party Code / Name">
+                    <div class="suggestions"
+                         id="etPartySuggestions"></div>
+                </div>
+
+                <div class="field">
+                    <label>Party Type</label>
+                    <input id="etPPartyType"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Loading Point / From (optional)</label>
+                    <input id="etPLoad" autocomplete="off"
+                           placeholder="e.g. NOIDA">
+                </div>
+
+                <div class="field">
+                    <label>Destination / To (optional)</label>
+                    <input id="etPTo" autocomplete="off"
+                           placeholder="e.g. PUNE">
+                </div>
+
+                <div class="field" id="etProgramCategoryWrap" style="display:none"><label>Rate List Category (optional)</label><select id="etProgramCategory"><option value="">Select later</option></select><div id="etProgramVehicleHint" style="font-size:11px;color:#176a55;margin-top:5px"></div></div>
+                <div class="field" id="etProgramHaierWrap" style="display:none"><label>Haier Billing (optional)</label><select id="etProgramHaier"><option value="">Select later</option><option value="HAIER_TO_HAIER">Haier to Haier</option><option value="HAIER_TO_OTHER">Haier to Other</option></select></div>
+                <div class="field" id="etProgramWeightWrap" style="display:none"><label>Weight (Ton) — optional</label><input id="etProgramWeight" type="number" min="0" step="0.01" placeholder="Enter weight in Ton"></div>
+                <div class="field">
+                    <label>Trip Freight / Revenue (₹) — Optional / Provisional</label>
+                    <input id="etPRevenue"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           placeholder="Optional — confirm after LR"><div id="etProgramRateHint" style="font-size:11px;color:#176a55;margin-top:5px"></div>
+                </div>
+
+                <div class="field full">
+                    <label>Remarks</label>
+                    <textarea id="etPRemark"
+                              placeholder="Route / special instruction"></textarea>
+                </div>
+
+            </div>
+
+            <div class="notice">
+                Expected Arrival Date / Time / Travel Days are not entered in Program.
+                GPS + route history + AI can generate ETA later.
+            </div>
+
+            <div class="et-program-actions" role="group" aria-label="Program actions">
+
+                <button type="button"
+                        class="btn"
+                        onclick="window.EktaTracking.closeModal('etProgramModal')">
+                    Cancel
+                </button>
+
+                <button type="submit" class="btn primary et-program-save">
+                    ✓ Save Program
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SECTION 6 — PROGRAM → LOADING
+     Only Loading Date is required here.
+========================================================= -->
+<div class="modal et-modal" id="etLoadingModal">
+
+    <div class="box">
+
+        <div class="mh">
+            <b>PROGRAM → LOADING</b>
+            <button class="x"
+                    onclick="window.EktaTracking.closeModal('etLoadingModal')">
+                ×
+            </button>
+        </div>
+
+        <form class="mb"
+              onsubmit="return window.EktaTracking.confirmLoading(event)">
+
+            <div class="formgrid">
+
+                <div class="field">
+                    <label>Truck</label>
+                    <input id="etLTruck"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Trip</label>
+                    <input id="etLTrip"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Program Date</label>
+                    <input id="etLProgramDate"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Loading Date *</label>
+                    <input id="etLDate"
+                           type="date"
+                           required>
+                </div>
+
+                <div class="field full">
+                    <label>Loading Point / From</label>
+                    <input id="etLPoint"
+                           class="readonly"
+                           readonly>
+                </div>
+
+            </div>
+
+            <div id="etLoadingAttention"></div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+
+                <button type="button"
+                        class="btn"
+                        onclick="window.EktaTracking.closeModal('etLoadingModal')">
+                    Cancel
+                </button>
+
+                <button class="btn primary">
+                    Confirm → LOADING
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SECTION 7 — LOADING → RUNNING
+     LR Date + optional E-Way Number
+========================================================= -->
+<div class="modal et-modal" id="etLRModal">
+
+    <div class="box">
+
+        <div class="mh">
+            <b>LOADING — LR / E-WAY</b>
+            <button class="x"
+                    onclick="window.EktaTracking.closeModal('etLRModal')">
+                ×
+            </button>
+        </div>
+
+        <form class="mb"
+              onsubmit="return window.EktaTracking.confirmLR(event)">
+
+            <div class="formgrid">
+
+                <div class="field">
+                    <label>Truck</label>
+                    <input id="etLRTruck"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Trip</label>
+                    <input id="etLRTrip"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Program Date</label>
+                    <input id="etLRProgram"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Loading Date</label>
+                    <input id="etLRLoadingDate"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>LR Date *</label>
+                    <input id="etLRDate"
+                           type="date"
+                           required>
+                </div>
+
+                <div class="field">
+                    <label>E-Way Bill Number (Optional)</label>
+                    <input id="etLREway"
+                           placeholder="Enter if available">
+                </div>
+
+                <div class="field">
+                    <label>Loading Detention Charge</label>
+                    <input id="etLRDetention"
+                           value="0"
+                           placeholder="₹ amount / 0 / NA">
+                </div>
+
+                <div class="field full">
+                    <label>Remarks</label>
+                    <textarea id="etLRRemark"></textarea>
+                </div>
+
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+
+                <button type="button"
+                        class="btn"
+                        onclick="window.EktaTracking.closeModal('etLRModal')">
+                    Cancel
+                </button>
+
+                <button class="btn green">
+                    Confirm Loading → RUNNING
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SECTION 8 — RUNNING → REPORTING
+========================================================= -->
+<div class="modal et-modal" id="etReportingModal">
+
+    <div class="box">
+
+        <div class="mh">
+            <b>REPORTING — DESTINATION ARRIVAL</b>
+            <button class="x"
+                    onclick="window.EktaTracking.closeModal('etReportingModal')">
+                ×
+            </button>
+        </div>
+
+        <form class="mb"
+              onsubmit="return window.EktaTracking.confirmReporting(event)">
+
+            <div class="formgrid">
+
+                <div class="field">
+                    <label>Truck</label>
+                    <input id="etRTruck"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Trip</label>
+                    <input id="etRTrip"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Reporting Date *</label>
+                    <input id="etRDate"
+                           type="date"
+                           required>
+                </div>
+
+                <div class="field">
+                    <label>Destination</label>
+                    <input id="etRDestination"
+                           class="readonly"
+                           readonly>
+                </div>
+
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+
+                <button type="button"
+                        class="btn"
+                        onclick="window.EktaTracking.closeModal('etReportingModal')">
+                    Cancel
+                </button>
+
+                <button class="btn primary">
+                    Mark REPORTING
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SECTION 9 — REPORTING → EMPTY
+========================================================= -->
+<div class="modal et-modal" id="etUnloadingModal">
+
+    <div class="box">
+
+        <div class="mh">
+            <b>REPORTING → EMPTY</b>
+            <button class="x"
+                    onclick="window.EktaTracking.closeModal('etUnloadingModal')">
+                ×
+            </button>
+        </div>
+
+        <form class="mb"
+              onsubmit="return window.EktaTracking.confirmUnloading(event)">
+
+            <div class="formgrid">
+
+                <div class="field">
+                    <label>Truck</label>
+                    <input id="etUTruck"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Trip</label>
+                    <input id="etUTrip"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Reporting Date</label>
+                    <input id="etUReporting"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Unloading Date *</label>
+                    <input id="etUDate"
+                           type="date"
+                           required>
+                </div>
+
+                <div class="field">
+                    <label>Unloading Detention Charge</label>
+                    <input id="etUDetention"
+                           value="0">
+                </div>
+
+                <div class="field">
+                    <label>Unloading Charge</label>
+                    <input id="etUUnload"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           value="0">
+                </div>
+
+                <div class="field">
+                    <label>Other Charge</label>
+                    <input id="etUOther"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           value="0">
+                </div>
+
+                <div class="field">
+                    <label>NGT</label>
+                    <input id="etUNgt"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           value="0">
+                </div>
+
+                <div class="field full">
+                    <label>Remarks</label>
+                    <textarea id="etURemark"></textarea>
+                </div>
+
+            </div>
+
+            <div id="etUnloadingAttention"></div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+
+                <button type="button"
+                        class="btn"
+                        onclick="window.EktaTracking.closeModal('etUnloadingModal')">
+                    Cancel
+                </button>
+
+                <button class="btn green">
+                    Complete → EMPTY
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SECTION 10 — TRUCK DETAILS
+========================================================= -->
+<div class="modal et-modal" id="etTruckModal">
+
+    <div class="box">
+
+        <div class="mh">
+            <b id="etTruckTitle">Truck Details</b>
+            <button class="x"
+                    onclick="window.EktaTracking.closeModal('etTruckModal')">
+                ×
+            </button>
+        </div>
+
+        <div class="mb"
+             id="etTruckBody"></div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     SECTION 11 — E-WAY BILL RECORDS — SELF-CONTAINED FULL PAGE
+========================================================= -->
+<section class="fullpage" id="etEwayPage">
+    <div class="inner">
+
+        <div class="top">
+            <div class="title">
+                <h1>E-WAY BILL RECORDS</h1>
+                <p>Current trip-wise E-Way Bills • Multiple bills per trip • 8-hour expiry alert</p>
+            </div>
+
+            <div class="actions">
+                <button class="btn" onclick="window.EktaTracking.refreshEwayPage()">↻ Refresh</button>
+                <button class="btn red" onclick="window.EktaTracking.closeEwayPage()">← Back to Tracking</button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <input id="etEwaySearch"
+                   placeholder="Search truck / E-Way number / route..."
+                   oninput="window.EktaTracking.renderEwayPage()">
+
+            <input id="etEwayDate" type="date" style="display:none" aria-hidden="true">
+
+            <select id="etEwayStatusFilter"
+                    onchange="window.EktaTracking.renderEwayPage()">
+                <option value="">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="OK">Valid</option>
+                <option value="WARNING">Within 8 Hours</option>
+                <option value="EXPIRED">Expired</option>
+            </select>
+
+            <!-- Active E-Way records are shown regardless of program date. -->
+        </div>
+        <div class="eway-smartbar"><div><b>Smart E-Way Entry</b><span>Upload PDF / photo or paste bill text. Only verified fields are saved.</span></div><button type="button" class="btn primary" onclick="window.EktaTracking.openEwaySmartEntry()">＋ Scan / Paste E-Way</button><span id="etEwayCount" class="eway-total">0 trips</span></div>
+        <div class="eway-stats" id="etEwayStats" aria-live="polite"></div>
+        <section class="panel">
+            <div class="ph">
+                <b>Trip-wise E-Way Bill Register</b>
+                <span class="mini">Current visible bill set</span>
+            </div>
+
+            <div class="tablewrap">
+                <table class="eway-table">
+                    <thead>
+                        <tr>
+                            <th>Truck / Trip</th>
+                            <th>E-Way Bill Number(s)</th>
+                            <th>E-Way Date</th>
+                            <th>Valid Until</th>
+                            <th>Countdown</th>
+                            <th>Status</th>
+                            <th>Manage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="etEwayRows">
+                        <tr>
+                            <td colspan="7" class="empty">Loading E-Way records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        
+        <!-- Driver App requests are rendered here by tracking.js.
+             Existing Live Alerts remain unchanged. -->
+        <div id="etDriverRequestNotifications" style="display:none;"></div>
+</section>
+
+    </div>
+</section>
+
+
+<!-- E-Way-only Trip Details -->
+<div class="modal et-modal" id="etEwayDetailModal">
+    <div class="box">
+        <div class="mh">
+            <b id="etEwayDetailTitle">E-Way Trip Details</b>
+            <button class="x" onclick="window.EktaTracking.closeModal('etEwayDetailModal')">×</button>
+        </div>
+        <div class="mb" id="etEwayDetailBody"></div>
+    </div>
+</div>
+
+
+<!-- E-Way Add / Update -->
+<div class="modal et-modal" id="etEwayEditModal">
+    <div class="box">
+        <div class="mh">
+            <b id="etEwayEditTitle">ADD / UPDATE E-WAY BILL</b>
+            <button class="x" onclick="window.EktaTracking.closeModal('etEwayEditModal')">×</button>
+        </div>
+
+        <form class="mb" onsubmit="return window.EktaTracking.saveEwayRecord(event)">
+            <input type="hidden" id="etEWTripId">
+            <input type="hidden" id="etEWRecordId">
+
+            <div class="eway-edit-summary"><span>Vehicle <b id="etEWTruckLabel">—</b></span><span>Trip <b id="etEWTripLabel">—</b></span></div>
+            <div class="eway-scan-area" id="etEWOcrSection"><div class="eway-scan-title">OCR Scan / Paste <small>Preview only — original file and OCR text are not stored</small></div><div class="eway-scan-controls"><input id="etEWFile" type="file" accept="image/*,application/pdf"><button type="button" class="btn" onclick="window.EktaTracking.tryEwayAIRead()">⌕ Read with OCR (Local)</button></div><textarea id="etEWPaste" rows="2" placeholder="Or paste E-Way Bill text here (number, vehicle, valid upto)"></textarea><button type="button" class="eway-text-read" onclick="window.EktaTracking.readEwayPastedText()">Extract pasted text</button><div class="eway-doc-note" id="etEWFileNote">Review extracted fields before saving. No document upload.</div></div>
+            <div id="etEWOcrTruckChoice" class="field" style="display:none;margin:8px 0 12px"><label>Select Vehicle / Active Trip *</label><select id="etEWOcrTruckSelect" class="et-input"><option value="">Choose vehicle after OCR</option></select></div><input type="hidden" id="etEWTruck" readonly><input type="hidden" id="etEWDateTime">
+            <div class="eway-multi-head"><b>E-Way Bills</b><button type="button" class="btn eway-plus" onclick="window.EktaTracking.addEwayBillRow()">＋ Add Bill</button><span>Enter each 12-digit number and Valid Upto</span></div>
+            <div id="etEWBillRows" class="eway-bill-rows"></div>
+            <input type="hidden" id="etEWProgramDate"><input type="hidden" id="etEWLoadingDate"><input type="hidden" id="etEWDocument"><input type="hidden" id="etEWNote">
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                <button type="button" class="btn" onclick="window.EktaTracking.closeModal('etEwayEditModal')">
+                    Cancel
+                </button>
+                <button class="btn primary">Save E-Way Bills</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     BATCH 01 — COMPLETED / CANCELLED HISTORY
+========================================================= -->
+<div class="modal et-modal" id="etHistoryModal">
+    <div class="box">
+        <div class="mh">
+            <b>COMPLETED / CANCELLED TRIPS</b>
+            <button class="x" onclick="window.EktaTracking.closeModal('etHistoryModal')">×</button>
+        </div>
+        <div class="mb">
+            <div class="history-toolbar">
+                <b id="etHistoryDateText">Selected Date</b>
+                <select id="etHistoryFilter" onchange="window.EktaTracking.renderHistoryRecords()">
+                    <option value="ALL">All</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+                <span class="muted" id="etHistoryCount"></span>
+            </div>
+            <div class="tablewrap">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Truck</th><th>Trip No.</th><th>Party</th>
+                            <th>Program Date</th><th>Loading Date</th><th>Status</th>
+                            <th>Completed / Cancelled Date</th><th>Cancellation Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="etHistoryRows"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     CORRECTION #10 — MANUAL CURRENT LOCATION
+========================================================= -->
+<div class="modal et-modal" id="etLocationModal">
+    <div class="box">
+        <div class="mh">
+            <b>UPDATE CURRENT LOCATION</b>
+            <button class="x" onclick="window.EktaTracking.closeModal('etLocationModal')">×</button>
+        </div>
+
+        <form class="mb" onsubmit="return window.EktaTracking.saveManualLocation(event)">
+            <input type="hidden" id="etLocTripId">
+            <input type="hidden" id="etLocTruckId">
+
+            <div class="field full location-suggest-wrap">
+                <label>Current Location</label>
+                <input id="etLocInput"
+                       placeholder="Type city / area / location..."
+                       autocomplete="off"
+                       oninput="window.EktaTracking.showLocationSuggestions(this.value)"
+                       onfocus="window.EktaTracking.showLocationSuggestions(this.value)">
+                <div class="location-suggestions" id="etLocSuggestions"></div>
+            </div>
+
+            <div class="et-notice" style="margin-top:9px">
+                Manual location will be saved to the active trip and recorded as MANUAL source.
+                GPS can continue to override/display separately when available.
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                <button type="button" class="btn" onclick="window.EktaTracking.closeModal('etLocationModal')">Cancel</button>
+                <button class="btn primary">Save Location</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     SECTION 12 — FINAL REPORT FULL PAGE
+========================================================= -->
+<div class="fullpage"
+     id="etFinalPage">
+
+    <div class="inner">
+
+        <div class="top">
+
+            <div class="title">
+                <h1>FINAL REPORT</h1>
+                <p>
+                    All completed trips • date-range search • one-time POD hand-off
+                </p>
+            </div>
+
+            <div class="actions">
+
+                <button class="btn"
+                        onclick="window.EktaTracking.exportFinal()">
+                    Export Excel
+                </button>
+
+                <button class="btn red"
+                        onclick="window.EktaTracking.closeFinal()">
+                    Close
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="toolbar et-final-filterbar">
+            <button id="etFinalAllBtn" class="btn primary" type="button" onclick="window.EktaTracking.finalAll()">ALL</button>
+            <label class="et-final-filter-label">From <input id="etFinalFrom" type="date" onchange="window.EktaTracking.finalDateChanged()"></label>
+            <label class="et-final-filter-label">To <input id="etFinalTo" type="date" onchange="window.EktaTracking.finalDateChanged()"></label>
+            <input id="etFinalSearch" type="search" placeholder="Search Truck Number / Trip ID / Party" aria-label="Search completed trips by truck number or trip ID" oninput="window.EktaTracking.renderFinal()" style="min-width:250px;flex:1;max-width:470px">
+            <button class="btn" type="button" onclick="window.EktaTracking.finalAll()">Clear Filters</button>
+        </div>
+
+        <div class="sendbar">
+
+            <div>
+                <b id="etSendDateText">Selected Date</b>
+                <div class="mini">
+                    Send completed trips to POD using the same Trip IDs.
+                </div>
+            </div>
+
+            <button id="etFinalSendPODBtn" class="btn primary"
+                    onclick="window.EktaTracking.sendSelectedDateToPOD()">
+                SEND NEW COMPLETED TRIPS TO POD
+            </button>
+
+        </div>
+
+
+        <div class="panel">
+
+            <div class="ph">
+                <b>Completed Trips</b>
+                <span class="mini"
+                      id="etFinalCount"></span>
+            </div>
+
+            <div class="tablewrap">
+
+                <table style="min-width:1580px">
+
+                    <thead>
+                        <tr>
+                            <th>Completed Date</th>
+                            <th>Trip No.</th>
+                            <th>Truck</th>
+                            <th>Program Date</th>
+                            <th>Loading Date</th>
+                            <th>Party</th>
+                            <th>Party Type</th>
+                            <th>Party Zone</th>
+                            <th>Truck Zone</th>
+                            <th>Reporting Date</th>
+                            <th>Unloading Date</th>
+                            <th>Loading Detention</th>
+                            <th>Loading Det. Charge</th>
+                            <th>Unloading Detention</th>
+                            <th>Unloading Det. Charge</th>
+                            <th>Unloading</th>
+                            <th>Other</th>
+                            <th>NGT</th>
+                            <th>POD</th>
+                            <th>ACTION</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="etFinalRows"></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</section>
+
+
+<!-- =========================================================
+     CORRECTION #11 — FINAL REPORT VIEW / EDIT
+========================================================= -->
+<div class="modal et-modal" id="etFinalViewModal">
+    <div class="box">
+        <div class="mh">
+            <b id="etFinalViewTitle">FINAL REPORT DETAILS</b>
+            <button class="x" onclick="window.EktaTracking.closeModal('etFinalViewModal')">×</button>
+        </div>
+        <div class="mb" id="etFinalViewBody"></div>
+    </div>
+</div>
+
+<div class="modal et-modal" id="etFinalEditModal">
+    <div class="box">
+        <div class="mh">
+            <b id="etFinalEditTitle">EDIT FINAL REPORT</b>
+            <button class="x" onclick="window.EktaTracking.closeModal('etFinalEditModal')">×</button>
+        </div>
+
+        <form class="mb" onsubmit="return window.EktaTracking.saveFinalEdit(event)">
+            <input type="hidden" id="etFETripId">
+
+            <div class="formgrid">
+                <div class="field">
+                    <label>Trip No.</label>
+                    <input id="etFETripNo">
+                </div>
+
+                <div class="field">
+                    <label>Truck</label>
+                    <select id="etFETruck"></select>
+                </div>
+
+                <div class="field">
+                    <label>Party / Client</label>
+                    <select id="etFEParty"></select>
+                </div>
+
+                <div class="field">
+                    <label>Freight / Revenue (₹)</label>
+                    <input id="etFEFreight" type="number" min="0" step="0.01">
+                </div>
+
+                <div class="field">
+                    <label>Loading Point / From</label>
+                    <input id="etFEFrom">
+                </div>
+
+                <div class="field">
+                    <label>Destination / To</label>
+                    <input id="etFETo">
+                </div>
+
+                <div class="field">
+                    <label>Current Location</label>
+                    <input id="etFECurrentLocation">
+                </div>
+
+                <div class="field">
+                    <label>Program Date</label>
+                    <input id="etFEProgramDate" type="date">
+                </div>
+
+                <div class="field">
+                    <label>Loading Date</label>
+                    <input id="etFELoadingDate" type="date">
+                </div>
+
+                <div class="field">
+                    <label>LR Date</label>
+                    <input id="etFELRDate" type="date">
+                </div>
+
+                <div class="field">
+                    <label>Reporting Date</label>
+                    <input id="etFEReportingDate" type="date">
+                </div>
+
+                <div class="field">
+                    <label>Unloading Date</label>
+                    <input id="etFEUnloadingDate" type="date">
+                </div>
+
+                <div class="field">
+                    <label>Loading Detention Charge (₹)</label>
+                    <input id="etFELoadDet" type="number" min="0" step="1">
+                </div>
+
+                <div class="field">
+                    <label>Unloading Detention Charge (₹)</label>
+                    <input id="etFEUnloadDet" type="number" min="0" step="1">
+                </div>
+
+                <div class="field">
+                    <label>Unloading Charge (₹)</label>
+                    <input id="etFEUnloadingCharge" type="number" min="0" step="0.01">
+                </div>
+
+                <div class="field">
+                    <label>Other Charge (₹)</label>
+                    <input id="etFEOther" type="number" min="0" step="0.01">
+                </div>
+
+                <div class="field">
+                    <label>NGT (₹)</label>
+                    <input id="etFENGT" type="number" min="0" step="0.01">
+                </div>
+
+                <div class="field full">
+                    <label>Remarks / Notes</label>
+                    <textarea id="etFERemarks" rows="3"></textarea>
+                </div>
+            </div>
+
+            <div class="et-notice" style="margin-top:10px">
+                This edits the same completed Trip ID. No duplicate trip will be created.
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                <button type="button" class="btn" onclick="window.EktaTracking.closeModal('etFinalEditModal')">Cancel</button>
+                <button class="btn primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     FINALIZATION #14 — FULL PARTY FORM FROM NEW PROGRAM
+     Mirrors the main Parties module fields.
+========================================================= -->
+<div class="modal et-modal" id="etQuickPartyModal">
+    <div class="box">
+        <div class="mh">
+            <div>
+                <b>ADD NEW PARTY</b>
+                <div class="mini">Same Party Master fields • Saves directly to Supabase</div>
+            </div>
+            <button class="x" onclick="window.EktaTracking.closeModal('etQuickPartyModal')">×</button>
+        </div>
+
+        <form class="mb" onsubmit="return window.EktaTracking.saveQuickParty(event)">
+            <div class="formgrid">
+
+                <div class="field">
+                    <label>Party Code *</label>
+                    <input id="etQPCode" required autocomplete="off" placeholder="Enter Party Code">
+                </div>
+
+                <div class="field">
+                    <label>Party Name *</label>
+                    <input id="etQPName" required placeholder="Enter party name">
+                </div>
+
+                <div class="field">
+                    <label>Party Type *</label>
+                    <select id="etQPType" required>
+                        <option value="Billing Client">Billing Client</option>
+                        <option value="Transporter">Transporter</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Contact Person</label>
+                    <input id="etQPContactPerson" placeholder="Enter contact person">
+                </div>
+
+                <div class="field">
+                    <label>Mobile</label>
+                    <input id="etQPMobile" inputmode="numeric" placeholder="10 digit mobile">
+                </div>
+
+                <div class="field">
+                    <label>Email</label>
+                    <input id="etQPEmail" type="email" placeholder="Email address">
+                </div>
+
+                <div class="field">
+                    <label>GST Number</label>
+                    <input id="etQPGst" placeholder="GSTIN">
+                </div>
+
+                <div class="field">
+                    <label>PAN Number</label>
+                    <input id="etQPPan" placeholder="PAN">
+                </div>
+
+                <div class="field">
+                    <label>City *</label>
+                    <input id="etQPCity" required placeholder="e.g. Delhi, Noida, Mumbai"
+                           oninput="window.EktaTracking.quickPartyAutoZone()">
+                </div>
+
+                <div class="field">
+                    <label>Zone *</label>
+                    <select id="etQPZone" required>
+                        <option value="North">North</option>
+                        <option value="South">South</option>
+                        <option value="East">East</option>
+                        <option value="West">West</option>
+                    </select>
+                    <div id="etQPZoneHint" class="mini" style="margin-top:4px">Zone can be auto-detected from city.</div>
+                </div>
+
+                <div class="field">
+                    <label>State</label>
+                    <input id="etQPState" placeholder="State">
+                </div>
+
+                <div class="field">
+                    <label>Credit Days</label>
+                    <input id="etQPCreditDays" type="number" min="0" step="1" value="0">
+                </div>
+
+                <div class="field">
+                    <label>Credit Limit (₹)</label>
+                    <input id="etQPCreditLimit" type="number" min="0" step="0.01" value="0">
+                </div>
+
+                <div class="field">
+                    <label>Payment Terms</label>
+                    <select id="etQPPaymentTerms">
+                        <option value="">Not Set</option>
+                        <option value="Immediate">Immediate</option>
+                        <option value="7 Days">7 Days</option>
+                        <option value="15 Days">15 Days</option>
+                        <option value="30 Days">30 Days</option>
+                        <option value="45 Days">45 Days</option>
+                        <option value="60 Days">60 Days</option>
+                        <option value="Custom">Custom</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Status</label>
+                    <select id="etQPStatus">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+
+                <div class="field full">
+                    <label>Address</label>
+                    <textarea id="etQPAddress" rows="2" placeholder="Full address"></textarea>
+                </div>
+
+                <div class="field full">
+                    <label>Notes</label>
+                    <textarea id="etQPNotes" rows="2" placeholder="Optional notes"></textarea>
+                </div>
+            </div>
+
+            <div class="et-notice" style="margin-top:9px">
+                Save creates this record in the same <b>parties</b> master used by Parties Management,
+                then selects the new party immediately in New Program.
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+                <button type="button" class="btn" onclick="window.EktaTracking.closeModal('etQuickPartyModal')">Cancel</button>
+                <button class="btn primary">Save Party</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     LIVE MAP — FULL SCREEN FLEET VIEW
+     Google Maps JavaScript API key is read from
+     window.EKTA_GOOGLE_MAPS_API_KEY (set in owner-dashboard).
+========================================================= -->
+<section class="et-map-fullpage" id="etFleetMapPage" aria-hidden="true">
+    <div class="et-map-full-head">
+        <div class="et-map-full-title">
+            <b>EKTA TRANSPORT — LIVE FLEET MAP</b>
+            <span>Latest GPS location • click a truck to view road history</span>
+        </div>
+        <div class="et-map-full-actions">
+            <button class="btn" onclick="window.EktaTracking.refreshFleetMap()">↻ Refresh</button>
+            <button class="btn red" onclick="window.EktaTracking.closeFleetMap()">✕ Close</button>
+        </div>
+    </div>
+    <div class="et-fleet-shell">
+        <div class="et-fleet-map-wrap">
+            <div class="et-fleet-historybar">
+                <button class="all" onclick="window.EktaTracking.showAllFleetVehicles()">All Vehicles</button>
+                <div class="et-fleet-view-switch">
+                    <button onclick="window.EktaTracking.fleetViewRoad()">🛣 Road Map</button>
+                    <button onclick="window.EktaTracking.fleetViewStreet()">📍 Street View</button>
+                    <button onclick="window.EktaTracking.fleetViewSatellite()">🛰 Satellite</button>
+                </div>
+                <button onclick="window.EktaTracking.setFleetHistoryRange('TODAY')">Today</button>
+                <button onclick="window.EktaTracking.setFleetHistoryRange('YESTERDAY')">Yesterday</button>
+                <button onclick="window.EktaTracking.setFleetHistoryRange('7H')">Last 7 Hours</button>
+                <button onclick="window.EktaTracking.setFleetHistoryRange('24H')">Last 24 Hours</button>
+                <button onclick="window.EktaTracking.setFleetHistoryRange('7D')">Last 7 Days</button>
+                <button onclick="window.EktaTracking.setFleetHistoryRange('CUSTOM')">Custom</button>
+                <div class="et-fleet-custom" id="etFleetCustomRange"><input type="datetime-local" id="etFleetCustomFrom"><span>→</span><input type="datetime-local" id="etFleetCustomTo"><button onclick="window.EktaTracking.applyFleetCustomHistory()">Apply</button></div>
+                <span class="et-fleet-history-window" id="etFleetHistoryWindowText">Last 24 Hours</span>
+            </div>
+            <div class="et-map-full-canvas" id="etFleetMapCanvas"></div>
+            <div class="et-fleet-history-meta" id="etFleetHistoryMeta">Select a vehicle to view its road history</div>
+            <div class="et-fleet-map-card" id="etFleetMapCard"></div>
+            <div class="et-fleet-legend"><b>Navigation History:</b> Start → Road-following Route → Current Truck &nbsp; | &nbsp; <b>Views:</b> Road Map • Street View • Satellite</div>
+        </div>
+        <aside class="et-fleet-side">
+            <div class="et-fleet-side-head">
+                <div class="et-fleet-side-title"><b>Vehicles</b><span class="et-fleet-count" id="etFleetCount">0 vehicles</span></div>
+                <div class="et-fleet-tabs" id="etFleetTabs"></div>
+                <input class="et-fleet-search" id="etFleetSearch" placeholder="Search vehicle or location..." oninput="window.EktaTracking.renderFleetVehicleList()">
+            </div>
+            <div class="et-fleet-cols"><div>Vehicle No.</div><div>Status</div><div>Old Location</div><div>Current Location</div></div>
+            <div class="et-fleet-list" id="etFleetVehicleList"></div>
+        </aside>
+    </div>
+</section>
+
+<!-- FASTag location-only map. Financial FASTag fields are intentionally not shown. -->
+<section class="et-map-fullpage" id="etFastagMapPage" aria-hidden="true">
+    <div class="et-map-full-head">
+        <div class="et-map-full-title">
+            <b>EKTA TRANSPORT — LIVE MAP BY FASTag</b>
+            <span>Latest FASTag location • vehicle & assigned-driver details from Tracking</span>
+        </div>
+        <div class="et-map-full-actions">
+            <button class="btn" id="etFastagShowAll" style="display:none" onclick="window.EktaTracking.showAllFastagVehicles()">← Show All Vehicles</button>
+            <button class="btn" onclick="window.EktaTracking.refreshFastagMap()">↻ Refresh</button>
+            <button class="btn red" onclick="window.EktaTracking.closeFastagMap()">✕ Close</button>
+        </div>
+    </div>
+    <div class="et-fleet-shell">
+        <div class="et-fleet-map-wrap">
+            <div class="et-fastag-historybar" id="etFastagHistoryBar">
+                <button data-fastag-range="TODAY" onclick="window.EktaTracking.setFastagHistoryRange('TODAY')">Today</button>
+                <button data-fastag-range="YESTERDAY" onclick="window.EktaTracking.setFastagHistoryRange('YESTERDAY')">Yesterday</button>
+                <button data-fastag-range="7H" onclick="window.EktaTracking.setFastagHistoryRange('7H')">Last 7 Hours</button>
+                <button data-fastag-range="24H" onclick="window.EktaTracking.setFastagHistoryRange('24H')">Last 24 Hours</button>
+                <button data-fastag-range="7D" onclick="window.EktaTracking.setFastagHistoryRange('7D')">Last 7 Days</button>
+                <button data-fastag-range="CUSTOM" onclick="window.EktaTracking.setFastagHistoryRange('CUSTOM')">Custom</button>
+                <div class="et-fastag-custom" id="etFastagCustomRange"><input type="datetime-local" id="etFastagFrom" aria-label="From date"><span>→</span><input type="datetime-local" id="etFastagTo" aria-label="To date"><button onclick="window.EktaTracking.applyFastagCustomHistory()">Apply</button></div>
+            </div>
+            <div class="et-fastag-history-meta" id="etFastagHistoryMeta">Select a truck to view its FASTag toll history</div>
+            <div class="et-map-full-canvas" id="etFastagMapCanvas" style="top:0"></div>
+            <div class="et-fleet-map-card" id="etFastagMapCard" style="top:18px"></div>
+            <div class="et-fleet-legend"><b>FASTag Location:</b> latest readable place/district/state + time. Select a vehicle to view chronological FASTag toll crossings. Road route is estimated, not recorded GPS. No financial data is displayed.</div>
+        </div>
+        <aside class="et-fleet-side">
+            <div class="et-fleet-side-head">
+                <div class="et-fleet-side-title"><b>FASTag Vehicles</b><span class="et-fleet-count" id="etFastagCount">0 vehicles</span></div>
+                <div class="et-fleet-tabs" id="etFastagTabs" aria-label="FASTag vehicle filters"></div>
+                <input class="et-fleet-search" id="etFastagSearch" placeholder="Search vehicle or driver..." oninput="window.EktaTracking.renderFastagVehicleList()">
+            </div>
+            <div class="et-fleet-cols" style="grid-template-columns:.90fr .62fr .76fr .80fr 1.35fr 1.25fr"><div>Vehicle No.</div><div>Status</div><div>Driver</div><div>Phone</div><div>FASTag Last Location</div><div>Active Trip<br><span style="font-weight:600">From → To</span></div></div>
+            <div class="et-fleet-list" id="etFastagVehicleList"></div>
+        </aside>
+    </div>
+</section>
+
+<!-- Existing right-side selected truck map, enlarged without changing its source -->
+<section class="et-map-fullpage" id="etSelectedMapPage" aria-hidden="true">
+    <div class="et-map-full-head">
+        <div class="et-map-full-title">
+            <b id="etSelectedMapFullTitle">Selected Truck — Live Location</b>
+            <span id="etSelectedMapFullMeta">Google Maps • GPS / manual feed</span>
+        </div>
+        <div class="et-map-full-actions">
+            <button class="btn" onclick="window.EktaTracking.openSelectedInGoogleMaps()">Open in Maps ↗</button>
+            <button class="btn red" onclick="window.EktaTracking.closeSelectedMapFullScreen()">✕ Close</button>
+        </div>
+    </div>
+    <iframe class="et-map-full-canvas" id="etSelectedMapFullFrame" title="Ekta Transport Selected Truck Full Screen Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border:0"></iframe>
+</section>
+
+<script>
+  window.EKTA_GOOGLE_MAPS_API_KEY = "AIzaSyD915ecFgXCIhUHV0G8F_NJ__fQqHYG9WI";
+  // Paste the dedicated Roads API key here. Leave blank to keep raw GPS fallback.
+  window.EKTA_GOOGLE_ROADS_API_KEY = "AIzaSyDRmBFRFA18JboLSKr3oTjY18mL_mpPxxk";
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="tracking.js"></script>
+
+
+<!-- Trip Billing: user confirms billing type/party and final freight after LR -->
+<div class="modal" id="etBillingModal">
+ <div class="box">
+  <div class="mh"><b>Trip Billing & Freight Confirmation</b><button class="x" type="button" onclick="window.EktaTracking.closeModal('etBillingModal')">×</button></div>
+  <form class="mb" onsubmit="return window.EktaTracking.saveTripBilling(event)">
+   <div class="notice" id="etBillingContext"></div>
+   <div class="formgrid">
+    <div class="field"><label>Billing Type</label><select id="etBillingType" onchange="window.EktaTracking.suggestBillingParty()"><option value="">Pending — Select later</option></select></div>
+    <div class="field"><label>Billing Party (Party Master)</label><select id="etBillingParty"><option value="">Pending / Not selected</option></select></div>
+    <div class="field"><label>Freight Amount (₹) — Optional</label><input id="etBillingFreight" type="number" min="0" step="0.01" placeholder="Pending — fill after LR"><div id="etBillingRateHint" style="font-size:11px;color:#176a55;margin-top:5px"></div></div>
+    <div class="field"><label>Confirmation</label><select id="etBillingConfirm"><option value="PENDING">Keep Pending</option><option value="CONFIRMED">Confirm Final Billing & Freight</option></select></div>
+   </div>
+   <div class="notice">LR के बाद Billing Type, Party और Freight जाँचकर Confirm करें। Pending रखने पर लाल Reminder दिखता रहेगा।</div>
+   <div class="et-footer"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etBillingModal')">Cancel</button><button type="submit" class="btn primary">Save Billing</button></div>
+  </form>
+ </div>
+</div>
+
+
+<div class="modal" id="etPendingModal"><div class="box" style="width:min(600px,95vw)">
+<div class="mh"><b>Program Pending — Edit / Assign</b><button class="x" type="button" onclick="window.EktaTracking.closeModal('etPendingModal')">×</button></div>
+<form class="mb" onsubmit="return window.EktaTracking.savePendingProgram(event)">
+<input type="hidden" id="etPendingTripId"><div class="notice" id="etPendingContext"></div>
+<div class="formgrid"><div class="field"><label>Branch / Party Master</label><select id="etPendingParty"></select></div>
+<div class="field"><label>Driver — Assign from Driver Master</label><select id="etPendingDriver"></select></div>
+<div class="field"><label>Freight ₹ (optional / provisional)</label><input id="etPendingFreight" type="number" min="0" step="0.01" placeholder="Freight Pending"></div></div>
+<div class="notice">LR और Final Billing को बाद में Billing / Freight Edit से Confirm करें। Pending Alerts तब तक दिखेंगे।</div>
+<div class="et-footer"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etPendingModal')">Close</button><button type="submit" class="btn primary">Save Changes</button></div>
+</form></div></div>
+
+<!-- Tracking quick assignment uses existing Driver Master tables. -->
+<div class="modal" id="etAssignDriverModal">
+ <div class="box" style="width:min(480px,calc(100vw - 24px))">
+  <div class="mh"><b>Assign Driver</b><button type="button" class="x" onclick="window.EktaTracking.closeModal('etAssignDriverModal')">×</button></div>
+  <form class="mb" onsubmit="return window.EktaTracking.saveQuickDriverAssignment(event)">
+   <input type="hidden" id="etAssignTruckId">
+   <div class="field" style="margin-bottom:10px"><label>Truck Number</label><input id="etAssignTruckNumber" class="readonly" readonly></div>
+   <div class="field" style="margin-bottom:10px"><label>Driver Phone (10 digits)</label><input id="etAssignPhone" type="tel" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile" oninput="window.EktaTracking.quickDriverPhoneChanged()"></div>
+   <div class="field" style="margin-bottom:10px"><label>Driver Name</label><input id="etAssignName" required placeholder="Driver name"></div>
+   <div class="notice" id="etAssignHint">Existing mobile number will reuse the Driver Master record. New drivers receive the next DRV code.</div>
+   <div class="et-footer"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etAssignDriverModal')">Cancel</button><button type="submit" class="btn green" id="etAssignSaveBtn">Save & Assign</button></div>
+  </form>
+ </div>
+</div>
+</body>
+</html>
+
+
+<style id="et-compact-quick-date-override">
+.et-quick-date-box{width:min(100%,310px);padding:18px 20px;border-radius:14px}
+.et-quick-date-title{font-size:17px;margin-bottom:8px}
+.et-quick-date-sub{display:block;font-size:12px;margin-bottom:8px}
+.et-quick-date-input{font-size:15px;min-height:43px;padding:8px 10px}
+.et-quick-date-error{min-height:14px;margin-top:3px}
+.et-quick-date-actions{margin-top:10px;gap:8px}
+.et-quick-date-actions button{font-size:12px;padding:8px 13px}
+</style>

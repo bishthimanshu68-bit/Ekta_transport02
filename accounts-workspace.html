@@ -1,0 +1,214 @@
+<style>
+/* V14: compact inline fields and slim, keyboard-accessible anchored suggestions */
+#accountsFinance #acBank .ekta-inline-field{gap:2px!important;font-size:10px!important}
+#accountsFinance #acBank .ekta-inline-field input,#accountsFinance #acBank .ekta-inline-field select{height:33px!important;padding:5px 7px!important;font-size:12px!important;font-weight:400!important}
+#accountsFinance #acBank .ekta-inline-fields{gap:5px!important}
+#accountsFinance #acBank .ekta-compact-row td{padding-top:4px!important;padding-bottom:4px!important}
+.ekta-suggestion-list{z-index:2147483000;background:#fff;border:1px solid #d5dfe9;border-radius:7px;box-shadow:0 5px 14px rgba(18,38,64,.11);overflow-y:auto;overflow-x:hidden;padding:3px;font-family:Inter,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:400;color:#34455c}
+.ekta-suggestion-item{font-size:12px;font-weight:400;padding:6px 9px;line-height:1.25;cursor:pointer;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ekta-suggestion-item:hover,.ekta-suggestion-item.is-active{background:#eef3f8}
+</style>
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accounts & Finance | Ekta Transport</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* V13: compact, normal-weight searchable master inputs */
+#accountsFinance #acBank .ekta-inline-field input[list]{font-family:Inter,Segoe UI,Arial,sans-serif!important;font-size:13px!important;font-weight:400!important;letter-spacing:normal!important}
+#accountsFinance #acBank .ekta-inline-field input[list]::placeholder{font-weight:400!important}
+#accountsFinance #acBank .ekta-inline-field input[list] option{font-weight:400!important;font-size:13px!important}
+</style>
+<style>
+html,body{margin:0;min-height:100%;background:#f5f7fa;color:#243247;font-family:Inter,'Segoe UI',Arial,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+.ac-standalone-top{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff;border-bottom:1px solid #e0e6ee}
+.ac-standalone-brand{font-size:14px;font-weight:800;color:#233f60;letter-spacing:.02em}
+.ac-standalone-tag{font-size:11px;color:#718096}
+.ac-standalone-main{max-width:1760px;margin:0 auto;min-height:calc(100vh - 58px)}
+#acountsStandalone{width:100%}
+#acountsStandalone #accountsFinance{min-height:calc(100vh - 58px);padding:20px!important}
+@media(max-width:680px){.ac-standalone-top{padding:0 12px}.ac-standalone-tag{display:none}#acountsStandalone #accountsFinance{padding:10px!important}}
+</style></head><body>
+<header class="ac-standalone-top"><div class="ac-standalone-brand">EKTA TRANSPORT <span style="font-weight:500;color:#8190a1">/ Accounts & Finance</span></div><div class="ac-standalone-tag">Dedicated Accounts Workspace</div></header>
+<main class="ac-standalone-main" id="acountsStandalone">
+<style>
+/* V12: one-row mapping; horizontal scrolling remains available for narrow screens */
+#accountsFinance #acBank table{table-layout:auto;width:100%;min-width:1160px}
+#accountsFinance #acBank .ekta-compact-row td{vertical-align:middle;padding:6px 7px!important}
+#accountsFinance #acBank .ekta-narration{max-width:260px;width:23%;white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+#accountsFinance #acBank .ekta-mapping-cell{width:43%;min-width:470px;white-space:normal}
+#accountsFinance #acBank .ekta-save-cell{width:115px;min-width:115px;white-space:nowrap}
+#accountsFinance #acBank .ekta-inline-fields{display:flex;align-items:flex-end;gap:6px;flex-wrap:nowrap;width:100%}
+#accountsFinance #acBank .ekta-inline-field{display:flex;flex:1 1 0;min-width:0;flex-direction:column;gap:3px;color:#526278;font-size:10px;font-weight:500;white-space:normal}
+#accountsFinance #acBank .ekta-inline-field>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#accountsFinance #acBank .ekta-inline-field input,#accountsFinance #acBank .ekta-inline-field select{height:36px;min-width:0!important;max-width:none!important;width:100%!important;font-size:12px!important;font-weight:400!important}
+#accountsFinance #acBank .ekta-inline-field small{font-size:9px;line-height:1.2;color:#64748b;white-space:normal}
+#accountsFinance #acBank .ekta-inline-fields .ekta-inline-field:first-child{flex:1.3 1 0}
+#accountsFinance #acBank .ekta-save-cell .btn{font-size:11px!important;font-weight:700!important}
+</style>
+<section id="accountsFinance" class="min-h-full bg-slate-50 p-4 md:p-5">
+<style>
+#accountsFinance{font-family:Inter,Segoe UI,Arial,sans-serif;color:#172033}
+#accountsFinance .ac-card{background:#fff;border:1px solid #dfe7f0;border-radius:13px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+#accountsFinance .tab{border:1px solid #dbe5ef;background:#fff;border-radius:10px;padding:10px 12px;font-size:11px;font-weight:800;color:#36516c;cursor:pointer}
+#accountsFinance .tab.active{background:#1769aa;color:#fff;border-color:#1769aa}
+#accountsFinance .btn{border:1px solid #d7e1eb;background:#fff;border-radius:8px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer}
+#accountsFinance .btn.primary{background:#1769aa;color:#fff;border-color:#1769aa}
+#accountsFinance .btn.green{background:#079669;color:#fff;border-color:#079669}
+#accountsFinance .btn.amber{background:#d97706;color:#fff;border-color:#d97706}
+#accountsFinance .btn:disabled{opacity:.5;cursor:not-allowed}
+#accountsFinance table{width:100%;border-collapse:collapse}
+#accountsFinance th,#accountsFinance td{padding:8px 9px;border-bottom:1px solid #edf2f7;text-align:left;font-size:10px;white-space:nowrap}
+#accountsFinance th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:9px}
+#accountsFinance .money{text-align:right;font-variant-numeric:tabular-nums}
+#accountsFinance .drop{border:2px dashed #b9c9da;border-radius:12px;padding:18px;text-align:center;background:#f8fbff}
+#accountsFinance .drop.drag{background:#eff6ff;border-color:#1769aa}
+#accountsFinance .pill{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:900;font-size:9px}
+#accountsFinance .ok{background:#dcfce7;color:#166534}.review{background:#fef3c7;color:#92400e}.susp{background:#fee2e2;color:#991b1b}
+#accountsFinance .spinner{width:15px;height:15px;border:2px solid #dbe7f2;border-top-color:#1769aa;border-radius:50%;display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
+
+<style>
+/* ===== EKTA ACCOUNTS PROPER V2 — reference-style compact UI ===== */
+#accountsFinance{background:linear-gradient(180deg,#f7fbff,#f2f6fb);padding:14px!important}
+#accountsFinance .ac-card{border-radius:14px!important;box-shadow:0 5px 18px rgba(15,23,42,.055)!important}
+#accountsFinance .tab{min-height:54px!important;padding:8px 9px!important;border-radius:10px!important}
+#accountsFinance .tab.active{background:linear-gradient(135deg,#236fc1,#175a9d)!important;box-shadow:0 7px 16px rgba(23,105,170,.2)}
+#accountsFinance #acDashboard>.grid:first-child{gap:7px!important}
+#accountsFinance #acDashboard>.grid:first-child .ac-card{min-height:72px;padding:10px 11px!important}
+#accountsFinance #acDashboard>.grid:first-child .ac-card div:last-child{font-size:17px!important}
+#accountsFinance th,#accountsFinance td{padding:7px 8px!important}
+#accountsFinance .working-wrap{position:relative}
+#accountsFinance .scroll-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:20;width:31px;height:31px;border:0;border-radius:50%;background:#fff;color:#1769aa;box-shadow:0 3px 12px rgba(15,23,42,.18);font-size:19px;font-weight:900;cursor:pointer}
+#accountsFinance .scroll-arrow:hover{background:#1769aa;color:#fff}
+#accountsFinance .scroll-arrow.left{left:5px}.scroll-arrow.right{right:5px}
+#accountsFinance .working-scroll{overflow-x:auto;scroll-behavior:smooth;scrollbar-width:thin;padding:2px 2px 7px}
+#accountsFinance .working-row{display:grid;grid-template-columns:repeat(3,minmax(390px,1fr));gap:12px;min-width:1190px}
+#accountsFinance .bottom-row{display:grid;grid-template-columns:1.35fr 1fr .9fr;gap:12px;min-width:1190px}
+#accountsFinance .section-head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid #e8eef5;font-weight:900}
+#accountsFinance .mini-link{border:1px solid #cfe0ef;background:#fff;border-radius:7px;padding:4px 7px;font-size:9px;font-weight:900;color:#1769aa;cursor:pointer}
+#accountsFinance .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}
+#accountsFinance .quick-grid button{border:1px solid #e0e8f1;border-radius:9px;background:#f8fbff;padding:9px 6px;font-size:9px;font-weight:900;cursor:pointer}
+#accountsFinance .quick-grid button:hover{background:#eef6ff}
+@media(max-width:900px){#accountsFinance .working-row,#accountsFinance .bottom-row{min-width:1080px}}
+</style>
+
+
+<style>
+/* Ekta Accounts — professional workspace, presentation only */
+#accountsFinance{background:#f5f7fa!important;color:#243247!important;padding:18px!important}
+#accountsFinance .ac-card{border:1px solid #e0e6ee!important;border-radius:12px!important;box-shadow:0 2px 10px rgba(22,41,67,.035)!important}
+#accountsFinance .tab{background:#fff!important;color:#344860!important;border:1px solid #dce4ed!important;min-height:45px!important;box-shadow:none!important;font-size:11px!important}
+#accountsFinance .tab.active{background:#1e426b!important;color:white!important;border-color:#1e426b!important;box-shadow:none!important}
+#accountsFinance .btn.primary{background:#214e7d!important;border-color:#214e7d!important}
+#accountsFinance .btn.green{background:#24745e!important;border-color:#24745e!important}
+#accountsFinance .btn.amber{background:#946c33!important;border-color:#946c33!important}
+#accountsFinance .ac-legacy-dashboard{display:none!important}
+#accountsFinance .ac-workspace-intro{background:#fff;border:1px solid #e0e6ee;border-radius:13px;padding:20px 22px}
+#accountsFinance .ac-workspace-intro h2{font-size:18px;font-weight:800;color:#1e344e;margin:0}
+#accountsFinance .ac-workspace-intro p{font-size:11px;color:#718096;margin-top:4px}
+#accountsFinance #acLedgerCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:14px}
+#accountsFinance #acLedgerCards button{border:1px solid #dfe6ef!important;background:#fff!important;border-radius:11px!important;min-height:82px!important;padding:13px 15px!important;transition:border-color .15s,box-shadow .15s;cursor:pointer}
+#accountsFinance #acLedgerCards button:hover{border-color:#90acc8!important;box-shadow:0 4px 12px rgba(22,41,67,.07)}
+#accountsFinance #acLedgerCards button b{font-size:12px;color:#263d56}
+#accountsFinance #acLedgerCards button div{font-size:11px!important;color:#64748b!important}
+#accountsFinance .ac-workspace-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#accountsFinance .ac-workspace-metric{background:white;border:1px solid #e0e6ee;border-radius:11px;padding:16px}
+#accountsFinance .ac-workspace-metric span{font-size:10px;color:#66768a;font-weight:700;text-transform:uppercase}
+#accountsFinance .ac-workspace-metric strong{display:block;font-size:20px;color:#1e344e;margin-top:6px}
+#accountsFinance #acGeneric{min-height:60vh}
+#accountsFinance #acBank .overflow-auto.max-h-\[55vh\]{max-height:70vh}
+@media(max-width:850px){#accountsFinance .ac-workspace-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<div class="max-w-[1850px] mx-auto space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex gap-2"><button class="btn" onclick="EktaAccounts.refresh()">↻ Refresh</button><button class="btn primary" onclick="EktaAccounts.showTab('bank')">+ Import Statement</button></div>
+  </div>
+  <div id="acBackRow" class="hidden"><button type="button" class="btn" onclick="EktaAccounts.showTab('dashboard')">← Back to Dashboard</button></div>
+<div id="acDashboard" class="ac-view space-y-4">
+     <div class="ac-workspace-intro"><h2>Financial Overview</h2><p>Ledger-wise records · Bank transactions require employee confirmation before posting</p></div>
+    <div class="ac-card p-4"><div class="flex flex-wrap items-center justify-between gap-2"><div><b class="text-sm">Ledger Directory</b><div class="text-[10px] text-slate-500">Select any ledger to see saved entries and dates. Amounts are recorded transactions, not final balances.</div></div><span id="acDataStatus" class="text-[10px] text-slate-500">Loading accounts...</span></div><div id="acLedgerCards" class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2 mt-3"></div></div><div class="ac-legacy-dashboard">
+    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-slate-500 uppercase">Bank Balance</div><div id="kBank" class="font-black text-lg mt-1">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-slate-500 uppercase">Cash Balance</div><div id="kCash" class="font-black text-lg mt-1">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-blue-600 uppercase">Receivable</div><div id="kRecv" class="font-black text-lg mt-1 text-blue-700">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-red-500 uppercase">Payable</div><div id="kPay" class="font-black text-lg mt-1 text-red-600">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-amber-600 uppercase">Driver Advance</div><div id="kDriver" class="font-black text-lg mt-1">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-cyan-600 uppercase">FASTag Wallet</div><div id="kFastag" class="font-black text-lg mt-1">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-orange-600 uppercase">Repair & Maint.</div><div id="kRepair" class="font-black text-lg mt-1">₹0</div></div>
+      <div class="ac-card p-3"><div class="text-[9px] font-black text-rose-600 uppercase">Suspense</div><div id="kSuspense" class="font-black text-lg mt-1">₹0</div></div>
+    </div>
+
+    <div class="working-wrap">
+      <button class="scroll-arrow left" onclick="EktaAccounts.scrollWorking(-1)" title="Scroll left">‹</button>
+      <div id="workingScroll" class="working-scroll">
+        <div class="working-row">
+          <div class="ac-card overflow-hidden"><div class="section-head bg-emerald-50"><span>Party Ledger — Debtors</span><button class="mini-link" onclick="EktaAccounts.showTab('party')">View All →</button></div><div class="overflow-auto"><table><thead><tr><th>Party</th><th class="money">Receivable</th><th>Status</th></tr></thead><tbody id="dashParties"></tbody></table></div></div>
+          <div class="ac-card overflow-hidden"><div class="section-head bg-violet-50"><span>Transporter Ledger — Give + Take</span><button class="mini-link" onclick="EktaAccounts.showTab('transporter')">View All →</button></div><div class="overflow-auto"><table><thead><tr><th>Transporter</th><th class="money">Net Balance</th><th>Position</th></tr></thead><tbody id="dashTransporters"></tbody></table></div></div>
+          <div class="ac-card overflow-hidden"><div class="section-head bg-orange-50"><span>Driver Advance</span><button class="mini-link" onclick="EktaAccounts.showTab('driver')">View All →</button></div><div class="overflow-auto"><table><thead><tr><th>Driver</th><th>Truck No.</th><th class="money">Balance</th></tr></thead><tbody id="dashDrivers"></tbody></table></div></div>
+        </div>
+      </div>
+      <button class="scroll-arrow right" onclick="EktaAccounts.scrollWorking(1)" title="Scroll right">›</button>
+    </div>
+
+    <div class="working-wrap">
+      <button class="scroll-arrow left" onclick="EktaAccounts.scrollBottom(-1)" title="Scroll left">‹</button>
+      <div id="bottomScroll" class="working-scroll">
+        <div class="bottom-row">
+          <div class="ac-card overflow-hidden"><div class="section-head"><span>Recent Transactions</span><button class="mini-link" onclick="EktaAccounts.showTab('bank')">View All →</button></div><div class="overflow-auto"><table><thead><tr><th>Date</th><th>Type</th><th>Particulars</th><th class="money">Amount</th><th>Status</th></tr></thead><tbody id="recentTransactions"><tr><td colspan="5" class="text-center text-slate-400">No posted transactions yet.</td></tr></tbody></table></div></div>
+          <div class="ac-card overflow-hidden"><div class="section-head"><span>Expense Summary</span><span class="text-[9px] text-slate-400">Current data</span></div><div class="p-3 space-y-2 text-[10px]"><div class="flex justify-between"><b>FASTag / Toll</b><span id="miniFastag">₹0</span></div><div class="flex justify-between"><b>Diesel</b><span id="miniDiesel">₹0</span></div><div class="flex justify-between"><b>Repair & Maintenance</b><span id="miniRepair">₹0</span></div><div class="flex justify-between"><b>Office Expense</b><span id="miniOffice">₹0</span></div></div></div>
+          <div class="ac-card overflow-hidden"><div class="section-head"><span>Quick Actions</span><span>⚡</span></div><div class="quick-grid"><button onclick="EktaAccounts.showTab('bank')">📄 Import Statement</button><button onclick="EktaAccounts.showTab('party')">👥 Party Ledger</button><button onclick="EktaAccounts.showTab('transporter')">🚚 Transporter</button><button onclick="EktaAccounts.showTab('suspense')">❓ Suspense</button></div></div>
+        </div>
+      </div>
+      <button class="scroll-arrow right" onclick="EktaAccounts.scrollBottom(1)" title="Scroll right">›</button>
+    </div>
+
+    <div class="grid xl:grid-cols-4 gap-3">
+      <div class="ac-card p-3"><div class="font-black text-blue-800">🛣️ FASTag / Toll</div><div id="sumFastag" class="text-2xl font-black mt-3">₹0</div><div class="text-[10px] text-slate-500">Truck-wise toll expense</div></div>
+      <div class="ac-card p-3"><div class="font-black text-red-700">⛽ Diesel Expenses</div><div id="sumDiesel" class="text-2xl font-black mt-3">₹0</div><div class="text-[10px] text-slate-500">Truck-wise diesel expense</div></div>
+      <div class="ac-card p-3"><div class="font-black text-orange-700">🛠️ Repair & Maintenance</div><div id="sumRepair" class="text-2xl font-black mt-3">₹0</div><div class="text-[10px] text-slate-500">Vehicle-wise maintenance</div></div>
+      <div class="ac-card p-3"><div class="font-black text-sky-800">🏢 Office Expenses</div><div id="sumOffice" class="text-2xl font-black mt-3">₹0</div><div class="text-[10px] text-slate-500">Office & administration</div></div>
+    </div>
+  </div><div class="ac-card p-4" id="acMonthlyFlow"><div class="flex flex-wrap items-center justify-between gap-3"><div><div class="font-bold text-[15px]">Monthly Money In / Out</div><div class="text-[11px] text-slate-500">Confirmed bank entries · Transfers and suspense excluded · Cash Book not included</div></div><div class="flex gap-4 text-[11px]"><span style="color:#24527a">■ Money In</span><span style="color:#8a9aac">■ Money Out</span></div></div><div id="acMonthlyGraph" style="margin-top:16px;overflow-x:auto"></div><div id="acMonthlyNote" class="text-[10px] text-slate-500 mt-2"></div></div>
+</div>
+<div id="acBank" class="ac-view hidden space-y-3">
+    <div class="grid xl:grid-cols-[.8fr_1.2fr] gap-3">
+      <div class="ac-card p-4">
+        <div class="flex justify-between"><div><div class="font-black">Bank Statement Upload</div><div class="text-[10px] text-slate-500">PDF / Image / CSV / Excel</div></div><span id="acFileStatus" class="text-[10px] text-slate-400">No file selected</span></div>
+        <label id="acDrop" class="drop block cursor-pointer mt-3"><input id="acFile" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx,.xls,image/*,application/pdf"><div class="text-3xl">📄</div><div class="font-black mt-2">Drop statement here or click to select</div></label>
+        <div id="acFileMeta" class="hidden mt-2 p-2 bg-slate-50 border rounded-lg text-[10px]"></div>
+        <div class="mt-3 text-xs font-bold">Bank Account</div><select id="acBankAccount" onchange="EktaAccounts.bankSelectionChanged()" class="border rounded-lg p-2 w-full text-xs"><option value="">Select account before importing</option><option value="ICICI-0047">ICICI Ekta 0047</option><option value="ICICI-0152">ICICI Ekta 0152</option><option value="HDFC-2332">HDFC Ekta 2332</option><option value="HDFC-1672">HDFC Ashok Sharma 1672</option><option value="HDFC-RUDRA">HDFC Rudra</option></select><div class="flex gap-2 mt-3"><button class="btn" onclick="EktaAccounts.resetStatement()">Clear</button><button id="acAnalyzeBtn" class="btn primary" onclick="EktaAccounts.analyze()" disabled>Read & Validate</button><button class="btn" onclick="EktaAccounts.analyzeAI()">Gemini (Disabled in Test)</button></div>
+        <div id="acBusy" class="hidden text-xs text-blue-700 font-bold mt-3"><span class="spinner"></span> Reading statement...</div>
+      </div>
+      <div class="ac-card p-4"><div class="font-black">Verification Flow</div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px]">
+        <div class="border rounded-lg p-3"><b>1. Read</b><br><span class="text-slate-500">Date, narration, debit/credit, reference</span></div>
+        <div class="border rounded-lg p-3"><b>2. Suggest</b><br><span class="text-slate-500">Party / Transporter / Driver / FASTag / Diesel / Repair / Office</span></div>
+        <div class="border rounded-lg p-3"><b>3. Confirm</b><br><span class="text-slate-500">You approve before final ledger posting</span></div>
+        <div class="border rounded-lg p-3"><b>4. Suspense</b><br><span class="text-slate-500">Unconfirmed / unmatched entries go to Suspense</span></div>
+      </div></div>
+    </div>
+    <div class="ac-card overflow-hidden"><div class="p-3 border-b"><div class="font-black">Bank Statement Review</div><div id="acSummary" class="text-[10px] text-slate-500">V9 SMART MAPPING — review Truck + Driver + Category, then Confirm & Save.</div></div>
+      <div class="overflow-auto max-h-[55vh]"><table class="min-w-[900px]"><thead><tr><th>Date</th><th>Narration</th><th class="money">Debit</th><th class="money">Credit</th><th>Reference</th><th>Detected As</th><th>Action</th></tr></thead><tbody id="acRows"></tbody></table></div>
+    </div>
+  </div>
+
+  <div id="acGeneric" class="ac-view hidden ac-card overflow-hidden">
+    <div class="p-4 border-b flex items-center justify-between"><div><div id="genericTitle" class="font-black text-lg"></div><div id="genericSub" class="text-[10px] text-slate-500"></div></div><input id="genericSearch" oninput="EktaAccounts.renderGeneric()" placeholder="Search..." class="border rounded-lg px-3 py-2 text-xs"></div>
+    <div id="acLedgerSummary" class="px-4 py-2 text-[11px] bg-blue-50 text-blue-900"></div><div class="overflow-auto"><table><thead id="genericHead"></thead><tbody id="genericBody"></tbody></table></div>
+  </div>
+</div>
+
+
+
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script src="bank-statement-parser.js?v=reader_v6_account_guard"></script>
+<script src="smart-mapping.js?v=v9_employee_confirm"></script>
+<script src="vicky-paper.js?v=truckfix19"></script>
+<script src="cash-ledger.js?v=18"></script>
+<script src="accounts.js?v=tripcolumn21"></script>
+</body></html>

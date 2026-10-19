@@ -3,555 +3,2328 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Ekta Transport Company Portal</title>
+
     <!-- Tailwind CSS CDN for modern styling inside dynamic modules -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+
     <style>
+        /* =========================================================
+           PHASE 1 — CLEAN PROFESSIONAL UI
+           ========================================================= */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --navy-950: #07111f;
+            --navy-900: #0b1728;
+            --navy-850: #0f1d31;
+            --navy-800: #13243a;
+
+            --slate-500: #94a3b8;
+            --slate-300: #cbd5e1;
+
+            --white: #ffffff;
+
+            --orange: #f97316;
+            --orange-dark: #ea580c;
+
+            --border: rgba(148, 163, 184, 0.18);
+            --soft-border: rgba(255, 255, 255, 0.08);
+        }
+
+        html,
+        body {
+            width: 100%;
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+
+            background: var(--navy-950);
+            color: var(--white);
+
+            font-family:
+                'Montserrat',
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button,
+        a {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* =========================================================
+           MAIN LAYOUT
+           ========================================================= */
+
         .main-container {
             display: flex;
-            width: 100vw;
+
+            width: 100%;
             height: 100vh;
+            min-height: 620px;
+
             overflow: hidden;
-            box-sizing: border-box;
+
+            background:
+                radial-gradient(
+                    circle at 18% 25%,
+                    rgba(249, 115, 22, 0.06),
+                    transparent 30%
+                ),
+                linear-gradient(
+                    135deg,
+                    var(--navy-950),
+                    var(--navy-900)
+                );
         }
+
+        /* =========================================================
+           LEFT SECTION
+           ========================================================= */
+
         .left-section {
             flex: 1.2;
-            background: #0f172a;
+
+            min-width: 0;
+
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
+
             position: relative;
-            padding: 0;
-            overflow-y: auto;
+
+            overflow: hidden;
+
+            background:
+                radial-gradient(
+                    circle at 20% 55%,
+                    rgba(249, 115, 22, 0.05),
+                    transparent 34%
+                ),
+                linear-gradient(
+                    160deg,
+                    #081321 0%,
+                    #0d1b2e 55%,
+                    #10233a 100%
+                );
         }
+
+        /* =========================================================
+           TOP NAVIGATION
+           ========================================================= */
+
         .top-navbar {
             width: 100%;
-            background: rgba(15, 23, 42, 0.95);
-            padding: 18px 0;
-            border-bottom: 1px solid #1e293b;
+
             flex-shrink: 0;
+
+            padding: 0 28px;
+
+            border-bottom: 1px solid var(--soft-border);
+
+            background: rgba(7, 17, 31, 0.82);
+
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+
+            box-shadow:
+                0 6px 20px rgba(0, 0, 0, 0.10);
+
+            z-index: 20;
         }
+
         .nav-links {
-            display: flex;
-            justify-content: space-evenly;
-            list-style: none;
-            margin: 0;
-            padding: 0 15px;
             width: 100%;
-            box-sizing: border-box;
+
+            min-height: 72px;
+
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+
+            gap: 4px;
+
+            list-style: none;
+
+            margin: 0;
+            padding: 0;
         }
+
+        .nav-links li {
+            margin: 0;
+            padding: 0;
+        }
+
         .nav-links li a {
-            color: #cbd5e1;
+            position: relative;
+
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            min-height: 42px;
+
+            padding: 0 14px;
+
+            border-radius: 9px;
+
+            color: var(--slate-300);
+
             text-decoration: none;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 14px;
+
+            font-size: 12px;
             font-weight: 700;
-            transition: color 0.3s;
+
+            letter-spacing: 0.01em;
+
             white-space: nowrap;
+
+            transition:
+                color 0.2s ease,
+                background 0.2s ease;
         }
-        .nav-links li a:hover, .nav-links li a.active {
-            color: #ff6600;
+
+        /*
+           IMPORTANT:
+           No text-shadow here.
+           This keeps navigation text crisp.
+        */
+
+        .nav-links li a::after {
+            content: "";
+
+            position: absolute;
+
+            left: 14px;
+            right: 14px;
+
+            bottom: 5px;
+
+            height: 2px;
+
+            border-radius: 999px;
+
+            background: var(--orange);
+
+            transform: scaleX(0);
+
+            transition:
+                transform 0.2s ease;
         }
+
+        .nav-links li a:hover {
+            color: var(--white);
+
+            background:
+                rgba(255, 255, 255, 0.045);
+        }
+
+        .nav-links li a:hover::after,
+        .nav-links li a.active::after {
+            transform: scaleX(1);
+        }
+
+        .nav-links li a.active {
+            color: var(--white);
+
+            background:
+                rgba(249, 115, 22, 0.08);
+        }
+
+        /* =========================================================
+           CENTER / BRAND AREA
+           ========================================================= */
+
         .banner-content {
-            flex-grow: 1;
+            flex: 1;
+
+            min-height: 0;
+
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 30px;
+
+            padding: 40px 52px;
+
             text-align: center;
+
+            overflow: auto;
         }
+
+        .brand-box {
+            position: relative;
+
+            width: min(760px, 100%);
+
+            padding: 48px 42px;
+
+            border:
+                1px solid rgba(255, 255, 255, 0.065);
+
+            border-radius: 24px;
+
+            background:
+                rgba(255, 255, 255, 0.022);
+
+            box-shadow:
+                0 20px 55px rgba(0, 0, 0, 0.10);
+        }
+
+        .brand-box::before {
+            content: "";
+
+            display: block;
+
+            width: 54px;
+            height: 4px;
+
+            margin:
+                0 auto 24px;
+
+            border-radius: 999px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    var(--orange-dark),
+                    var(--orange)
+                );
+
+            /*
+               Very subtle shadow only.
+               No blur on text.
+            */
+            box-shadow:
+                0 0 12px rgba(249, 115, 22, 0.14);
+        }
+
         .brand-box .transport-title {
+            margin: 0 0 14px;
+
             font-family: 'Oswald', sans-serif;
-            font-size: 48px;
-            color: #ffffff;
-            margin-bottom: 10px;
-            letter-spacing: 1px;
+
+            font-size:
+                clamp(40px, 5vw, 62px);
+
+            line-height: 1.05;
+
+            color: var(--white);
+
+            letter-spacing: 0.01em;
+
+            /*
+               Removed strong text-shadow.
+               White title stays razor sharp.
+            */
+            text-shadow: none;
         }
+
         .brand-box .tagline {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 16px;
-            color: #94a3b8;
+            margin: 0;
+
+            color: var(--slate-500);
+
+            font-size: 14px;
+
+            line-height: 1.8;
+
+            letter-spacing: 0.02em;
         }
+
+        /* =========================================================
+           RIGHT LOGIN SECTION
+           ========================================================= */
+
         .right-section {
             flex: 0.8;
-            background: #1e293b;
+
+            min-width: 390px;
+
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px;
-            border-left: 1px solid #334155;
+
+            padding: 44px;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    #12243a 0%,
+                    #0d1b2e 100%
+                );
+
+            border-left:
+                1px solid var(--soft-border);
+
+            position: relative;
         }
+
+        .right-section::before {
+            content: "";
+
+            position: absolute;
+
+            width: 220px;
+            height: 220px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(249, 115, 22, 0.035);
+
+            filter: blur(2px);
+
+            top: 8%;
+            right: -100px;
+
+            pointer-events: none;
+        }
+
+        /* =========================================================
+           LOGIN CARD
+           ========================================================= */
+
         .login-card {
-            background: #0f172a;
-            padding: 35px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 380px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            border: 1px solid #334155;
+            position: relative;
+
+            width: min(100%, 410px);
+
+            padding: 32px;
+
+            border-radius: 22px;
+
+            background:
+                rgba(7, 17, 31, 0.94);
+
+            border:
+                1px solid var(--border);
+
+            box-shadow:
+                0 24px 55px rgba(0, 0, 0, 0.24);
+
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+
+            z-index: 1;
         }
+
+        /* =========================================================
+           LOGIN TABS
+           ========================================================= */
+
         .login-tabs {
             display: flex;
-            margin-bottom: 25px;
-            background: #1e293b;
-            border-radius: 6px;
+
+            gap: 4px;
+
+            margin-bottom: 28px;
+
             padding: 4px;
+
+            border-radius: 11px;
+
+            background:
+                rgba(255, 255, 255, 0.045);
+
+            border:
+                1px solid rgba(255, 255, 255, 0.045);
         }
+
         .tab-btn {
             flex: 1;
-            background: none;
-            border: none;
-            padding: 10px;
-            color: #94a3b8;
-            font-weight: bold;
+
+            min-height: 44px;
+
+            border: 0;
+
+            border-radius: 8px;
+
+            background: transparent;
+
+            color: var(--slate-500);
+
+            font-size: 13px;
+            font-weight: 700;
+
             cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s;
+
+            transition:
+                color 0.2s ease,
+                background 0.2s ease;
         }
+
+        .tab-btn:hover {
+            color: var(--white);
+
+            background:
+                rgba(255, 255, 255, 0.045);
+        }
+
+        /*
+           IMPORTANT:
+           No text-shadow.
+           No excessive glow.
+           Text remains sharp.
+        */
+
         .tab-btn.active {
-            background: #ff6600;
-            color: #ffffff;
+            color: var(--white);
+
+            background:
+                linear-gradient(
+                    135deg,
+                    var(--orange),
+                    var(--orange-dark)
+                );
+
+            box-shadow:
+                0 5px 14px rgba(249, 115, 22, 0.12);
         }
+
+        /* =========================================================
+           LOGIN TITLE
+           ========================================================= */
+
         .login-title {
+            margin: 0 0 24px;
+
             font-family: 'Oswald', sans-serif;
-            font-size: 26px;
-            color: #ffffff;
-            margin-bottom: 20px;
+
+            font-size: 28px;
+
+            line-height: 1.15;
+
+            color: var(--white);
+
             text-align: center;
+
+            letter-spacing: 0.02em;
+
+            text-shadow: none;
         }
+
+        /* =========================================================
+           INPUTS
+           ========================================================= */
+
         .input-group {
-            margin-bottom: 16px;
+            margin-bottom: 17px;
+
             text-align: left;
         }
+
         .input-group label {
             display: block;
-            font-size: 13px;
-            color: #cbd5e1;
-            margin-bottom: 6px;
-            font-weight: 600;
+
+            margin-bottom: 7px;
+
+            color: var(--slate-300);
+
+            font-size: 12px;
+
+            font-weight: 700;
         }
+
         .input-group input {
             width: 100%;
-            padding: 12px;
-            box-sizing: border-box;
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: #fff;
-            border-radius: 6px;
-            font-size: 14px;
+
+            min-height: 48px;
+
+            padding: 0 14px;
+
+            border:
+                1px solid rgba(148, 163, 184, 0.20);
+
+            border-radius: 10px;
+
+            background:
+                rgba(255, 255, 255, 0.055);
+
+            color: var(--white);
+
+            font-size: 13px;
+
+            transition:
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                background 0.2s ease;
         }
+
+        .input-group input::placeholder {
+            color: #64748b;
+        }
+
         .input-group input:focus {
-            border-color: #ff6600;
             outline: none;
+
+            border-color:
+                rgba(249, 115, 22, 0.75);
+
+            background:
+                rgba(255, 255, 255, 0.065);
+
+            box-shadow:
+                0 0 0 3px rgba(249, 115, 22, 0.09);
         }
+
+        /* =========================================================
+           FORGOT PASSWORD
+           ========================================================= */
+
         .forgot-pass {
+            margin:
+                -2px 0 20px;
+
             text-align: right;
-            margin-bottom: 20px;
         }
+
         .forgot-pass a {
-            color: #94a3b8;
-            font-size: 12px;
+            color: var(--slate-500);
+
+            font-size: 11px;
+
             text-decoration: none;
+
+            transition: color 0.2s ease;
         }
+
         .forgot-pass a:hover {
-            color: #ff6600;
+            color: var(--orange);
         }
+
+        /* =========================================================
+           LOGIN BUTTON
+           ========================================================= */
+
         .login-btn {
             width: 100%;
-            padding: 12px;
-            background: #ff6600;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .login-btn:hover {
-            background: #e65c00;
-        }
-        .register-link {
-            text-align: center;
-            margin-top: 20px;
+
+            min-height: 48px;
+
+            border: 0;
+
+            border-radius: 10px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    var(--orange),
+                    var(--orange-dark)
+                );
+
+            color: var(--white);
+
             font-size: 13px;
-            color: #94a3b8;
+
+            font-weight: 800;
+
+            letter-spacing: 0.02em;
+
+            cursor: pointer;
+
+            /*
+               Reduced shadow.
+               Keeps button premium without blurry appearance.
+            */
+            box-shadow:
+                0 7px 18px rgba(249, 115, 22, 0.13);
+
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease,
+                filter 0.2s ease;
         }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+
+            filter: brightness(1.03);
+
+            box-shadow:
+                0 10px 22px rgba(249, 115, 22, 0.17);
+        }
+
+        /* =========================================================
+           REGISTER LINK
+           ========================================================= */
+
+        .register-link {
+            margin-top: 20px;
+
+            color: var(--slate-500);
+
+            font-size: 11px;
+
+            line-height: 1.6;
+
+            text-align: center;
+        }
+
         .register-link a {
-            color: #ff6600;
+            color: var(--orange);
+
             text-decoration: none;
-            font-weight: bold;
+
+            font-weight: 800;
+
+            /*
+               No text-shadow.
+               Registration text stays crisp.
+            */
+            text-shadow: none;
+
+            transition:
+                color 0.2s ease;
+        }
+
+        .register-link a:hover {
+            color: #fb923c;
+        }
+
+        /* =========================================================
+           MODALS
+           ========================================================= */
+
+        #lightboxModal,
+        #registerModal,
+        #forgotModal {
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        #registerModal > div,
+        #forgotModal > div {
+            width:
+                min(92vw, 390px) !important;
+
+            border:
+                1px solid #e2e8f0;
+
+            border-radius:
+                18px !important;
+
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        #registerModal input,
+        #forgotModal input {
+            min-height: 44px;
+
+            border-radius:
+                9px !important;
+        }
+
+        #registerModal button,
+        #forgotModal button {
+            border-radius:
+                9px !important;
+        }
+
+        /* =========================================================
+           RESPONSIVE — TABLET
+           ========================================================= */
+
+        @media (max-width: 1050px) {
+
+            .nav-links li a {
+                padding-left: 10px;
+                padding-right: 10px;
+
+                font-size: 11px;
+            }
+
+            .top-navbar {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .right-section {
+                min-width: 350px;
+
+                padding: 28px;
+            }
+
+            .login-card {
+                padding: 26px;
+            }
+        }
+
+        /* =========================================================
+           RESPONSIVE — MOBILE
+           ========================================================= */
+
+        @media (max-width: 820px) {
+
+            body {
+                overflow: auto;
+            }
+
+            .main-container {
+                height: auto;
+
+                min-height: 100vh;
+
+                flex-direction: column;
+
+                overflow: visible;
+            }
+
+            .left-section,
+            .right-section {
+                flex: none;
+
+                width: 100%;
+            }
+
+            .left-section {
+                min-height: 540px;
+
+                overflow: visible;
+            }
+
+            .right-section {
+                min-width: 0;
+
+                min-height: 520px;
+
+                padding:
+                    28px 18px 42px;
+
+                border-left: 0;
+
+                border-top:
+                    1px solid var(--soft-border);
+            }
+
+            .nav-links {
+                min-height: auto;
+
+                padding: 10px 0;
+
+                justify-content: center;
+
+                flex-wrap: wrap;
+            }
+
+            .banner-content {
+                padding:
+                    32px 18px;
+            }
+
+            .brand-box {
+                padding:
+                    36px 24px;
+            }
+        }
+
+        /* =========================================================
+           RESPONSIVE — SMALL MOBILE
+           ========================================================= */
+
+        @media (max-width: 480px) {
+
+            .nav-links {
+                display: grid;
+
+                grid-template-columns:
+                    repeat(3, 1fr);
+
+                gap: 3px;
+            }
+
+            .nav-links li a {
+                width: 100%;
+
+                padding:
+                    0 4px;
+
+                font-size: 10px;
+            }
+
+            .nav-links li a::after {
+                left: 8px;
+                right: 8px;
+            }
+
+            .brand-box .transport-title {
+                font-size: 36px;
+            }
+
+            .brand-box .tagline {
+                font-size: 12px;
+            }
+
+            .login-card {
+                padding: 22px;
+
+                border-radius: 18px;
+            }
         }
     </style>
 </head>
+
 <body>
 
+    <!-- =========================================================
+         MAIN CONTAINER
+         ========================================================= -->
+
     <div class="main-container">
-        
-        <!-- Left Section (Banner, Navigation & Dynamic Content) -->
+
+        <!-- =====================================================
+             LEFT SECTION
+             ===================================================== -->
+
         <div class="left-section">
-            
-            <!-- Navigation Bar Stretched -->
-            <nav class="top-navbar">
+
+            <!-- Navigation -->
+            <nav class="top-navbar" aria-label="Main Navigation">
+
                 <ul class="nav-links">
-                    <li><a href="#" class="active" onclick="showTab('home', event)">Home</a></li>
-                    <li><a href="#" onclick="showTab('about', event)">About Us</a></li>
-                    <li><a href="#" onclick="showTab('services', event)">Services</a></li>
-                    <li><a href="#" onclick="showTab('gallery', event)">Photo Gallery</a></li>
-                    <li><a href="#" onclick="showTab('career', event)">Career</a></li>
-                    <li><a href="#" onclick="showTab('contact', event)">Contact Us</a></li>
+
+                    <li>
+                        <a
+                            href="#"
+                            class="active"
+                            onclick="showTab('home', event)"
+                        >
+                            Home
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            onclick="showTab('about', event)"
+                        >
+                            About Us
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            onclick="showTab('services', event)"
+                        >
+                            Services
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            onclick="showTab('gallery', event)"
+                        >
+                            Photo Gallery
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            onclick="showTab('career', event)"
+                        >
+                            Career
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            onclick="showTab('contact', event)"
+                        >
+                            Contact Us
+                        </a>
+                    </li>
+
                 </ul>
+
             </nav>
 
-            <!-- Dynamic Content Display Area -->
-            <div class="banner-content" id="content-display">
+
+            <!-- Dynamic Content -->
+            <div
+                class="banner-content"
+                id="content-display"
+            >
+
                 <div class="brand-box">
-                    <h1 class="transport-title">Ekta Transport Company</h1>
-                    <p class="tagline">Delivering Trust, On Time. Moving India Forward.</p>
+
+                    <h1 class="transport-title">
+                        Ekta Transport Company
+                    </h1>
+
+                    <p class="tagline">
+                        Delivering Trust, On Time. Moving India Forward.
+                    </p>
+
                 </div>
+
             </div>
 
         </div>
 
-        <!-- Right Section (Login Portal) -->
+
+        <!-- =====================================================
+             RIGHT SECTION — LOGIN PORTAL
+             ===================================================== -->
+
         <div class="right-section">
+
             <div class="login-card">
+
                 <div class="login-tabs">
-                    <button class="tab-btn active" id="ownerTabBtn" onclick="switchLogin('owner')">Owner</button>
-                    <button class="tab-btn" id="staffTabBtn" onclick="switchLogin('staff')">Staff</button>
+
+                    <button
+                        class="tab-btn active"
+                        id="ownerTabBtn"
+                        onclick="switchLogin('owner')"
+                    >
+                        Owner
+                    </button>
+
+                    <button
+                        class="tab-btn"
+                        id="staffTabBtn"
+                        onclick="switchLogin('staff')"
+                    >
+                        Staff
+                    </button>
+
                 </div>
 
-                <h2 class="login-title" id="loginPortalTitle">Owner Login Portal</h2>
 
-                <form id="loginForm" onsubmit="handleLogin(event)">
+                <h2
+                    class="login-title"
+                    id="loginPortalTitle"
+                >
+                    Owner Login Portal
+                </h2>
+
+
+                <form
+                    id="loginForm"
+                    onsubmit="handleLogin(event)"
+                >
+
                     <div class="input-group">
-                        <label id="userIdLabel">Owner User ID / Mobile</label>
-                        <input type="text" id="userId" placeholder="Enter ID or Mobile" required>
+
+                        <label id="userIdLabel">
+                            Owner Mobile Number
+                        </label>
+
+                        <input
+                            type="text"
+                            id="userId"
+                            placeholder="Enter 10-digit mobile" inputmode="numeric" maxlength="10"
+                            required
+                        >
+
                     </div>
 
+
                     <div class="input-group">
-                        <label>Password</label>
-                        <input type="password" id="password" placeholder="Password" required>
+
+                        <label>
+                            Password
+                        </label>
+
+                        <input
+                            type="password"
+                            id="password"
+                            placeholder="Password"
+                            required
+                        >
+
                     </div>
+
 
                     <div class="forgot-pass">
-                        <a href="#" onclick="openForgotModal(event)">Forgot Password?</a>
+
+                        <a
+                            href="#"
+                            onclick="openForgotModal(event)"
+                        >
+                            Forgot Password?
+                        </a>
+
                     </div>
 
-                    <button type="submit" class="login-btn">Secure Login</button>
+
+                    <button
+                        type="submit"
+                        class="login-btn"
+                    >
+                        Secure Login
+                    </button>
+
                 </form>
 
-                <div class="register-link" id="registerLinkSection">
-                    Don't have an account? <a href="#" onclick="openRegisterModal(event)">Register Now</a>
+
+                <div
+                    class="register-link"
+                    id="registerLinkSection"
+                >
+                    Don't have an account?
+
+                    <a
+                        href="#"
+                        onclick="openRegisterModal(event)"
+                    >
+                        Register Now
+                    </a>
+
                 </div>
+
             </div>
+
         </div>
 
     </div>
 
-    <!-- Lightbox Modal for Big Photo View -->
-    <div id="lightboxModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
-        <span onclick="closeLightbox()" style="position: absolute; top: 20px; right: 30px; font-size: 35px; color: white; cursor: pointer; font-weight: bold;">&times;</span>
-        <img id="lightboxImg" src="" style="max-width: 85%; max-height: 80vh; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5);">
-        <p id="lightboxCaption" style="color: #cbd5e1; margin-top: 15px; font-size: 16px; font-weight: 500;"></p>
+
+    <!-- =========================================================
+         LIGHTBOX MODAL
+         ========================================================= -->
+
+    <div
+        id="lightboxModal"
+        style="
+            display:none;
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background:rgba(0,0,0,0.85);
+            z-index:2000;
+            justify-content:center;
+            align-items:center;
+            flex-direction:column;
+        "
+    >
+
+        <span
+            onclick="closeLightbox()"
+            style="
+                position:absolute;
+                top:20px;
+                right:30px;
+                font-size:35px;
+                color:white;
+                cursor:pointer;
+                font-weight:bold;
+            "
+        >
+            &times;
+        </span>
+
+        <img
+            id="lightboxImg"
+            src=""
+            style="
+                max-width:85%;
+                max-height:80vh;
+                border-radius:8px;
+                box-shadow:0 5px 25px rgba(0,0,0,0.5);
+            "
+        >
+
+        <p
+            id="lightboxCaption"
+            style="
+                color:#cbd5e1;
+                margin-top:15px;
+                font-size:16px;
+                font-weight:500;
+            "
+        ></p>
+
     </div>
 
-    <!-- Modals (Register & Forgot) -->
-    <div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: #fff; padding: 25px; border-radius: 8px; width: 340px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: left; position: relative;">
-            <h3 style="margin-top: 0; margin-bottom: 20px; color: #ff6600;">Owner Registration</h3>
-            
+
+    <!-- =========================================================
+         REGISTER MODAL
+         ========================================================= -->
+
+    <div
+        id="registerModal"
+        style="
+            display:none;
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background:rgba(0,0,0,0.6);
+            z-index:1000;
+            justify-content:center;
+            align-items:center;
+        "
+    >
+
+        <div
+            style="
+                background:#fff;
+                padding:25px;
+                border-radius:8px;
+                width:340px;
+                box-shadow:0 4px 15px rgba(0,0,0,0.3);
+                text-align:left;
+                position:relative;
+            "
+        >
+
+            <h3
+                style="
+                    margin-top:0;
+                    margin-bottom:20px;
+                    color:#ff6600;
+                "
+            >
+                Owner Registration
+            </h3>
+
+
             <div id="stepMobile">
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Owner Name</label>
-                    <input type="text" id="regOwnerName" placeholder="Enter full name" style="width: 100%; padding: 9px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+
+                <div style="margin-bottom:12px;">
+
+                    <label
+                        style="
+                            font-size:13px;
+                            color:#555;
+                            display:block;
+                            margin-bottom:5px;
+                        "
+                    >
+                        Owner Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="regOwnerName"
+                        placeholder="Enter full name"
+                        style="
+                            width:100%;
+                            padding:9px;
+                            box-sizing:border-box;
+                            border:1px solid #ccc;
+                            border-radius:4px;
+                        "
+                    >
+
                 </div>
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Mobile Number</label>
-                    <input type="text" id="regMobile" placeholder="Enter 10-digit mobile number" style="width: 100%; padding: 9px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+
+
+                <div style="margin-bottom:12px;">
+
+                    <label
+                        style="
+                            font-size:13px;
+                            color:#555;
+                            display:block;
+                            margin-bottom:5px;
+                        "
+                    >
+                        Mobile Number
+                    </label>
+
+                    <input
+                        type="text"
+                        id="regMobile"
+                        placeholder="Enter 10-digit mobile number"
+                        style="
+                            width:100%;
+                            padding:9px;
+                            box-sizing:border-box;
+                            border:1px solid #ccc;
+                            border-radius:4px;
+                        "
+                    >
+
                 </div>
 
-                <button type="button" onclick="sendOtpToOwner()" style="width: 100%; padding: 10px; background: #ff6600; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send OTP</button>
+
+                <button
+                    type="button"
+                    onclick="sendOtpToOwner()"
+                    style="
+                        width:100%;
+                        padding:10px;
+                        background:#ff6600;
+                        color:white;
+                        border:none;
+                        border-radius:4px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    Send OTP
+                </button>
+
             </div>
 
-            <div id="stepOtp" style="display: none;">
-                <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Enter 4-Digit OTP</label>
-                <input type="text" id="enteredOtp" placeholder="Enter OTP received on SMS" style="width: 100%; padding: 9px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="button" onclick="verifyOtp()" style="width: 100%; padding: 10px; background: #ff6600; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Verify OTP</button>
+
+            <div
+                id="stepOtp"
+                style="display:none;"
+            >
+
+                <label
+                    style="
+                        font-size:13px;
+                        color:#555;
+                        display:block;
+                        margin-bottom:5px;
+                    "
+                >
+                    Enter 6-Digit OTP
+                </label>
+
+                <input
+                    type="text"
+                    id="enteredOtp" inputmode="numeric" maxlength="6"
+                    placeholder="Enter OTP received on SMS"
+                    style="
+                        width:100%;
+                        padding:9px;
+                        margin-bottom:12px;
+                        box-sizing:border-box;
+                        border:1px solid #ccc;
+                        border-radius:4px;
+                    "
+                >
+
+                <button
+                    type="button"
+                    onclick="verifyOtp()"
+                    style="
+                        width:100%;
+                        padding:10px;
+                        background:#ff6600;
+                        color:white;
+                        border:none;
+                        border-radius:4px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    Verify OTP
+                </button>
+
             </div>
 
-            <div id="stepPassword" style="display: none;">
-                <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">New Password</label>
-                <input type="password" id="newPassword" placeholder="Enter new password" style="width: 100%; padding: 9px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
-                
-                <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Confirm Password</label>
-                <input type="password" id="confirmPassword" placeholder="Re-enter password" style="width: 100%; padding: 9px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
-                
-                <button type="button" onclick="saveOwnerPassword()" style="width: 100%; padding: 10px; background: #ff6600; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Password & Register</button>
+
+            <div
+                id="stepPassword"
+                style="display:none;"
+            >
+
+                <label
+                    style="
+                        font-size:13px;
+                        color:#555;
+                        display:block;
+                        margin-bottom:5px;
+                    "
+                >
+                    New Password
+                </label>
+
+                <input
+                    type="password"
+                    id="newPassword"
+                    placeholder="Enter new password"
+                    style="
+                        width:100%;
+                        padding:9px;
+                        margin-bottom:10px;
+                        box-sizing:border-box;
+                        border:1px solid #ccc;
+                        border-radius:4px;
+                    "
+                >
+
+
+                <label
+                    style="
+                        font-size:13px;
+                        color:#555;
+                        display:block;
+                        margin-bottom:5px;
+                    "
+                >
+                    Confirm Password
+                </label>
+
+                <input
+                    type="password"
+                    id="confirmPassword"
+                    placeholder="Re-enter password"
+                    style="
+                        width:100%;
+                        padding:9px;
+                        margin-bottom:12px;
+                        box-sizing:border-box;
+                        border:1px solid #ccc;
+                        border-radius:4px;
+                    "
+                >
+
+
+                <button
+                    type="button"
+                    onclick="saveOwnerPassword()"
+                    style="
+                        width:100%;
+                        padding:10px;
+                        background:#ff6600;
+                        color:white;
+                        border:none;
+                        border-radius:4px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    Save Password & Register
+                </button>
+
             </div>
 
-            <button type="button" onclick="closeRegisterModal()" style="position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer; color: #888;">✕</button>
+
+            <button
+                type="button"
+                onclick="closeRegisterModal()"
+                style="
+                    position:absolute;
+                    top:10px;
+                    right:12px;
+                    background:none;
+                    border:none;
+                    font-size:18px;
+                    cursor:pointer;
+                    color:#888;
+                "
+            >
+                ✕
+            </button>
+
         </div>
+
     </div>
 
-    <!-- Forgot Password Modal -->
-    <div id="forgotModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: #fff; padding: 25px; border-radius: 8px; width: 340px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: left; position: relative;">
-            <h3 style="margin-top: 0; margin-bottom: 20px; color: #ff6600;">Forgot Password</h3>
-            
+
+    <!-- =========================================================
+         FORGOT PASSWORD MODAL
+         ========================================================= -->
+
+    <div
+        id="forgotModal"
+        style="
+            display:none;
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background:rgba(0,0,0,0.6);
+            z-index:1000;
+            justify-content:center;
+            align-items:center;
+        "
+    >
+
+        <div
+            style="
+                background:#fff;
+                padding:25px;
+                border-radius:8px;
+                width:340px;
+                box-shadow:0 4px 15px rgba(0,0,0,0.3);
+                text-align:left;
+                position:relative;
+            "
+        >
+
+            <h3
+                style="
+                    margin-top:0;
+                    margin-bottom:20px;
+                    color:#ff6600;
+                "
+            >
+                Forgot Password
+            </h3>
+
+
             <div id="forgotStep1">
-                <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Registered Mobile Number</label>
-                <input type="text" id="forgotMobile" placeholder="Enter 10-digit mobile number" style="width: 100%; padding: 9px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="button" onclick="sendForgotOtp()" style="width: 100%; padding: 10px; background: #ff6600; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send OTP</button>
+
+                <label
+                    style="
+                        font-size:13px;
+                        color:#555;
+                        display:block;
+                        margin-bottom:5px;
+                    "
+                >
+                    Registered Mobile Number
+                </label>
+
+                <input
+                    type="text"
+                    id="forgotMobile"
+                    placeholder="Enter 10-digit mobile number"
+                    style="
+                        width:100%;
+                        padding:9px;
+                        margin-bottom:12px;
+                        box-sizing:border-box;
+                        border:1px solid #ccc;
+                        border-radius:4px;
+                    "
+                >
+
+                <button
+                    type="button"
+                    onclick="sendForgotOtp()"
+                    style="
+                        width:100%;
+                        padding:10px;
+                        background:#ff6600;
+                        color:white;
+                        border:none;
+                        border-radius:4px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    Send OTP
+                </button>
+
             </div>
 
-            <div id="forgotStep2" style="display: none;">
-                <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Enter New Password</label>
-                <input type="password" id="newForgotPass" placeholder="Enter new password" style="width: 100%; padding: 9px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="button" onclick="resetPasswordFinal()" style="width: 100%; padding: 10px; background: #ff6600; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Reset Password</button>
+
+            <div
+                id="forgotStep2"
+                style="display:none;"
+            >
+
+                <label style="font-size:13px;color:#555;display:block;margin-bottom:5px;">SMS OTP (6 digits)</label>
+                <input type="text" id="forgotOtpInput" inputmode="numeric" maxlength="6" placeholder="Enter SMS OTP" style="width:100%;padding:9px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;">
+                <label
+                    style="
+                        font-size:13px;
+                        color:#555;
+                        display:block;
+                        margin-bottom:5px;
+                    "
+                >
+                    Enter New Password
+                </label>
+
+                <input
+                    type="password"
+                    id="newForgotPass"
+                    placeholder="Enter new password"
+                    style="
+                        width:100%;
+                        padding:9px;
+                        margin-bottom:12px;
+                        box-sizing:border-box;
+                        border:1px solid #ccc;
+                        border-radius:4px;
+                    "
+                >
+
+                <button
+                    type="button"
+                    onclick="resetPasswordFinal()"
+                    style="
+                        width:100%;
+                        padding:10px;
+                        background:#ff6600;
+                        color:white;
+                        border:none;
+                        border-radius:4px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    Reset Password
+                </button>
+
             </div>
 
-            <button type="button" onclick="closeForgotModal()" style="position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer; color: #888;">✕</button>
+
+            <button
+                type="button"
+                onclick="closeForgotModal()"
+                style="
+                    position:absolute;
+                    top:10px;
+                    right:12px;
+                    background:none;
+                    border:none;
+                    font-size:18px;
+                    cursor:pointer;
+                    color:#888;
+                "
+            >
+                ✕
+            </button>
+
         </div>
+
     </div>
 
-    <!-- Scripts -->
+
+    <!-- =========================================================
+         EXISTING SCRIPTS
+         ========================================================= -->
+
     <script src="db.js"></script>
     <script src="auth.js"></script>
+
     <script>
-        const FAST2SMS_API_KEY = "ec0PmqH9a3fVg7URyOX6G36L8RqvRR4zsRzn2viob2JwsHLu5VUqiqUeMdne";
+
+        /* =========================================================
+           EXISTING NAVIGATION LOGIC
+           ========================================================= */
 
         function showTab(tabName, event) {
-            if(event) event.preventDefault();
-            
-            document.querySelectorAll('.nav-links a').forEach(el => el.classList.remove('active'));
-            if(event && event.target) event.target.classList.add('active');
 
-            const displayArea = document.getElementById('content-display');
+            if (event) {
+                event.preventDefault();
+            }
+
+            document
+                .querySelectorAll('.nav-links a')
+                .forEach(el => el.classList.remove('active'));
+
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+
+            const displayArea =
+                document.getElementById('content-display');
+
 
             if (tabName === 'home') {
+
                 displayArea.innerHTML = `
+
                     <div class="brand-box">
-                        <h1 class="transport-title">Ekta Transport Company</h1>
-                        <p class="tagline">Delivering Trust, On Time. Moving India Forward.</p>
-                    </div>`;
-            } else if (tabName === 'about') {
+
+                        <h1 class="transport-title">
+                            Ekta Transport Company
+                        </h1>
+
+                        <p class="tagline">
+                            Delivering Trust, On Time. Moving India Forward.
+                        </p>
+
+                    </div>
+
+                `;
+
+            }
+
+
+            else if (tabName === 'about') {
+
                 displayArea.innerHTML = `
-                    <div style="text-align: left; max-width: 650px; padding: 10px;">
-                        <h2 style="font-family: 'Oswald', sans-serif; font-size: 36px; color: #ff6600; margin-bottom: 15px;">About Ekta Transport Company</h2>
-                        <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 12px;">Ekta Transport Company provides robust, secure, and pan-India logistics and freight forwarding solutions. We bridge distances with unmatched efficiency and transparent digital tracking.</p>
-                        <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">Our dedicated platform empowers fleet owners and staff to manage transport operations seamlessly in real-time.</p>
-                    </div>`;
-            } else if (tabName === 'services') {
+
+                    <div
+                        style="
+                            text-align:left;
+                            max-width:650px;
+                            padding:10px;
+                        "
+                    >
+
+                        <h2
+                            style="
+                                font-family:'Oswald',sans-serif;
+                                font-size:36px;
+                                color:#ff6600;
+                                margin-bottom:15px;
+                                text-shadow:none;
+                            "
+                        >
+                            About Ekta Transport Company
+                        </h2>
+
+                        <p
+                            style="
+                                font-size:15px;
+                                line-height:1.6;
+                                color:#cbd5e1;
+                                margin-bottom:12px;
+                            "
+                        >
+                            Ekta Transport Company provides robust,
+                            secure, and pan-India logistics and freight
+                            forwarding solutions. We bridge distances
+                            with unmatched efficiency and transparent
+                            digital tracking.
+                        </p>
+
+                        <p
+                            style="
+                                font-size:15px;
+                                line-height:1.6;
+                                color:#cbd5e1;
+                            "
+                        >
+                            Our dedicated platform empowers fleet owners
+                            and staff to manage transport operations
+                            seamlessly in real-time.
+                        </p>
+
+                    </div>
+
+                `;
+
+            }
+
+
+            else if (tabName === 'services') {
+
                 displayArea.innerHTML = `
-                    <div style="text-align: left; max-width: 650px; padding: 10px;">
-                        <h2 style="font-family: 'Oswald', sans-serif; font-size: 36px; color: #ff6600; margin-bottom: 15px;">Our Services</h2>
-                        <ul style="font-size: 15px; line-height: 1.8; color: #cbd5e1; padding-left: 20px;">
-                            <li>Heavy Cargo Fleet Management & Operations</li>
-                            <li>Pan-India Express Logistics & Freight Delivery</li>
-                            <li>Real-Time GPS Tracking & Consignment Monitoring</li>
-                            <li>Secure Owner & Staff Portal Integration</li>
+
+                    <div
+                        style="
+                            text-align:left;
+                            max-width:650px;
+                            padding:10px;
+                        "
+                    >
+
+                        <h2
+                            style="
+                                font-family:'Oswald',sans-serif;
+                                font-size:36px;
+                                color:#ff6600;
+                                margin-bottom:15px;
+                                text-shadow:none;
+                            "
+                        >
+                            Our Services
+                        </h2>
+
+                        <ul
+                            style="
+                                font-size:15px;
+                                line-height:1.8;
+                                color:#cbd5e1;
+                                padding-left:20px;
+                            "
+                        >
+
+                            <li>
+                                Heavy Cargo Fleet Management & Operations
+                            </li>
+
+                            <li>
+                                Pan-India Express Logistics & Freight Delivery
+                            </li>
+
+                            <li>
+                                Real-Time GPS Tracking & Consignment Monitoring
+                            </li>
+
+                            <li>
+                                Secure Owner & Staff Portal Integration
+                            </li>
+
                         </ul>
-                    </div>`;
-            } else if (tabName === 'gallery') {
+
+                    </div>
+
+                `;
+
+            }
+
+
+            else if (tabName === 'gallery') {
+
                 const galleryPhotos = [
-                    { url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80', title: 'Heavy Fleet Truck 1' },
-                    { url: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=600&q=80', title: 'Transport Carrier Operations' },
-                    { url: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80', title: 'Central Warehouse Hub' },
-                    { url: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=600&q=80', title: 'Long Haul Logistics' },
-                    { url: 'https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&w=600&q=80', title: 'Express Freight Truck' },
-                    { url: 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?auto=format&fit=crop&w=600&q=80', title: 'Fleet Maintenance Bay' }
+
+                    {
+                        url:
+                        'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
+
+                        title:
+                        'Heavy Fleet Truck 1'
+                    },
+
+                    {
+                        url:
+                        'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=600&q=80',
+
+                        title:
+                        'Transport Carrier Operations'
+                    },
+
+                    {
+                        url:
+                        'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80',
+
+                        title:
+                        'Central Warehouse Hub'
+                    },
+
+                    {
+                        url:
+                        'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=600&q=80',
+
+                        title:
+                        'Long Haul Logistics'
+                    },
+
+                    {
+                        url:
+                        'https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&w=600&q=80',
+
+                        title:
+                        'Express Freight Truck'
+                    },
+
+                    {
+                        url:
+                        'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?auto=format&fit=crop&w=600&q=80',
+
+                        title:
+                        'Fleet Maintenance Bay'
+                    }
+
                 ];
 
+
                 let photosHtml = '';
+
+
                 galleryPhotos.forEach(photo => {
+
                     photosHtml += `
-                        <div onclick="openLightbox('${photo.url}', '${photo.title}')" style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                            <img src="${photo.url}" alt="${photo.title}" style="width: 100%; height: 110px; object-fit: cover; display: block;">
-                            <div style="padding: 8px; text-align: center; color: #e2e8f0; font-size: 13px; font-weight: 500;">${photo.title}</div>
-                        </div>`;
+
+                        <div
+                            onclick="openLightbox('${photo.url}', '${photo.title}')"
+
+                            style="
+                                background:#1e293b;
+                                border:1px solid #334155;
+                                border-radius:8px;
+                                overflow:hidden;
+                                cursor:pointer;
+                                transition:
+                                    transform 0.3s,
+                                    box-shadow 0.3s;
+                            "
+
+                            onmouseover="
+                                this.style.transform='translateY(-4px)';
+                                this.style.boxShadow='0 6px 15px rgba(0,0,0,0.4)';
+                            "
+
+                            onmouseout="
+                                this.style.transform='translateY(0)';
+                                this.style.boxShadow='none';
+                            "
+                        >
+
+                            <img
+                                src="${photo.url}"
+                                alt="${photo.title}"
+
+                                style="
+                                    width:100%;
+                                    height:110px;
+                                    object-fit:cover;
+                                    display:block;
+                                "
+                            >
+
+                            <div
+                                style="
+                                    padding:8px;
+                                    text-align:center;
+                                    color:#e2e8f0;
+                                    font-size:13px;
+                                    font-weight:500;
+                                "
+                            >
+                                ${photo.title}
+                            </div>
+
+                        </div>
+
+                    `;
+
                 });
 
+
                 displayArea.innerHTML = `
-                    <div style="text-align: left; width: 100%; max-width: 720px; padding: 10px; max-height: 80vh; overflow-y: auto;">
-                        <h2 style="font-family: 'Oswald', sans-serif; font-size: 32px; color: #ff6600; margin-bottom: 10px;">Photo Gallery</h2>
-                        <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 15px;">Click on any image to view it in full screen:</p>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%;">
+
+                    <div
+                        style="
+                            text-align:left;
+                            width:100%;
+                            max-width:720px;
+                            padding:10px;
+                            max-height:80vh;
+                            overflow-y:auto;
+                        "
+                    >
+
+                        <h2
+                            style="
+                                font-family:'Oswald',sans-serif;
+                                font-size:32px;
+                                color:#ff6600;
+                                margin-bottom:10px;
+                                text-shadow:none;
+                            "
+                        >
+                            Photo Gallery
+                        </h2>
+
+                        <p
+                            style="
+                                font-size:13px;
+                                color:#cbd5e1;
+                                margin-bottom:15px;
+                            "
+                        >
+                            Click on any image to view it in full screen:
+                        </p>
+
+                        <div
+                            style="
+                                display:grid;
+                                grid-template-columns:
+                                    repeat(3, 1fr);
+                                gap:12px;
+                                width:100%;
+                            "
+                        >
+
                             ${photosHtml}
+
                         </div>
-                    </div>`;
-            } else if (tabName === 'career') {
-                displayArea.innerHTML = `
-                    <div style="text-align: left; max-width: 650px; padding: 10px;">
-                        <h2 style="font-family: 'Oswald', sans-serif; font-size: 36px; color: #ff6600; margin-bottom: 15px;">Career Opportunities</h2>
-                        <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 12px;">Grow your career in the transport and logistics industry with Ekta Transport Company. We welcome skilled professionals, transport managers, and technology experts.</p>
-                        <p style="font-size: 15px; color: #ff6600; font-weight: bold;">Drop your inquiries through official management channels.</p>
-                    </div>`;
-            } else if (tabName === 'contact') {
-                displayArea.innerHTML = `
-                    <div style="text-align: left; max-width: 650px; padding: 10px;">
-                        <h2 style="font-family: 'Oswald', sans-serif; font-size: 36px; color: #ff6600; margin-bottom: 15px;">Contact Us</h2>
-                        <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 15px;">Get in touch with the Ekta Transport Company official support desk for business inquiries, fleet attachments, and portal assistance.</p>
-                        <p style="font-size: 15px; color: #cbd5e1; font-style: italic;">Official support channels are active for verified owners and registered staff members.</p>
-                    </div>`;
+
+                    </div>
+
+                `;
+
             }
+
+
+            else if (tabName === 'career') {
+
+                displayArea.innerHTML = `
+
+                    <div
+                        style="
+                            text-align:left;
+                            max-width:650px;
+                            padding:10px;
+                        "
+                    >
+
+                        <h2
+                            style="
+                                font-family:'Oswald',sans-serif;
+                                font-size:36px;
+                                color:#ff6600;
+                                margin-bottom:15px;
+                                text-shadow:none;
+                            "
+                        >
+                            Career Opportunities
+                        </h2>
+
+                        <p
+                            style="
+                                font-size:15px;
+                                line-height:1.6;
+                                color:#cbd5e1;
+                                margin-bottom:12px;
+                            "
+                        >
+                            Grow your career in the transport and
+                            logistics industry with Ekta Transport
+                            Company. We welcome skilled professionals,
+                            transport managers, and technology experts.
+                        </p>
+
+                        <p
+                            style="
+                                font-size:15px;
+                                color:#ff6600;
+                                font-weight:bold;
+                                text-shadow:none;
+                            "
+                        >
+                            Drop your inquiries through official
+                            management channels.
+                        </p>
+
+                    </div>
+
+                `;
+
+            }
+
+
+            else if (tabName === 'contact') {
+
+                displayArea.innerHTML = `
+
+                    <div
+                        style="
+                            text-align:left;
+                            max-width:650px;
+                            padding:10px;
+                        "
+                    >
+
+                        <h2
+                            style="
+                                font-family:'Oswald',sans-serif;
+                                font-size:36px;
+                                color:#ff6600;
+                                margin-bottom:15px;
+                                text-shadow:none;
+                            "
+                        >
+                            Contact Us
+                        </h2>
+
+                        <p
+                            style="
+                                font-size:15px;
+                                line-height:1.6;
+                                color:#cbd5e1;
+                                margin-bottom:15px;
+                            "
+                        >
+                            Get in touch with the Ekta Transport Company
+                            official support desk for business inquiries,
+                            fleet attachments, and portal assistance.
+                        </p>
+
+                        <p
+                            style="
+                                font-size:15px;
+                                color:#cbd5e1;
+                                font-style:italic;
+                            "
+                        >
+                            Official support channels are active for
+                            verified owners and registered staff members.
+                        </p>
+
+                    </div>
+
+                `;
+
+            }
+
         }
+
+
+        /* =========================================================
+           LIGHTBOX
+           ========================================================= */
 
         function openLightbox(imgUrl, captionText) {
-            document.getElementById('lightboxImg').src = imgUrl;
-            document.getElementById('lightboxCaption').innerText = captionText;
-            document.getElementById('lightboxModal').style.display = 'flex';
+
+            document.getElementById('lightboxImg').src =
+                imgUrl;
+
+            document.getElementById('lightboxCaption').innerText =
+                captionText;
+
+            document.getElementById('lightboxModal').style.display =
+                'flex';
+
         }
+
 
         function closeLightbox() {
-            document.getElementById('lightboxModal').style.display = 'none';
+
+            document.getElementById('lightboxModal').style.display =
+                'none';
+
         }
+
+
+        /* =========================================================
+           LOGIN SWITCH
+           ========================================================= */
 
         function switchLogin(type) {
-            const ownerBtn = document.getElementById('ownerTabBtn');
-            const staffBtn = document.getElementById('staffTabBtn');
-            const portalTitle = document.getElementById('loginPortalTitle');
-            const userIdLabel = document.getElementById('userIdLabel');
-            const registerLinkSec = document.getElementById('registerLinkSection');
+
+            const ownerBtn =
+                document.getElementById('ownerTabBtn');
+
+            const staffBtn =
+                document.getElementById('staffTabBtn');
+
+            const portalTitle =
+                document.getElementById('loginPortalTitle');
+
+            const userIdLabel =
+                document.getElementById('userIdLabel');
+
+            const registerLinkSec =
+                document.getElementById('registerLinkSection');
+
 
             if (type === 'owner') {
+
                 ownerBtn.classList.add('active');
+
                 staffBtn.classList.remove('active');
-                portalTitle.innerText = "Owner Login Portal";
-                userIdLabel.innerText = "Owner User ID / Mobile";
-                registerLinkSec.style.display = 'block';
-            } else {
-                staffBtn.classList.add('active');
-                ownerBtn.classList.remove('active');
-                portalTitle.innerText = "Staff Login Portal";
-                userIdLabel.innerText = "Staff Employee ID";
-                registerLinkSec.style.display = 'none';
+
+                portalTitle.innerText =
+                    "Owner Login Portal";
+
+                userIdLabel.innerText =
+                    "Owner Mobile Number";
+
+                registerLinkSec.style.display =
+                    'block';
+
             }
+
+            else {
+
+                staffBtn.classList.add('active');
+
+                ownerBtn.classList.remove('active');
+
+                portalTitle.innerText =
+                    "Staff Login Portal";
+
+                userIdLabel.innerText =
+                    "Staff Employee ID";
+
+                registerLinkSec.style.display =
+                    'none';
+
+            }
+
         }
+
+
+        /* =========================================================
+           REGISTER MODAL
+           ========================================================= */
 
         function openRegisterModal(event) {
-            if(event) event.preventDefault();
-            document.getElementById('registerModal').style.display = 'flex';
+
+            if (event) {
+                event.preventDefault();
+            }
+
+            document.getElementById('registerModal').style.display =
+                'flex';
+
         }
+
 
         function closeRegisterModal() {
-            document.getElementById('registerModal').style.display = 'none';
+
+            document.getElementById('registerModal').style.display =
+                'none';
+
         }
+
+
+        /* =========================================================
+           FORGOT PASSWORD MODAL
+           ========================================================= */
 
         function openForgotModal(event) {
-            if(event) event.preventDefault();
-            document.getElementById('forgotModal').style.display = 'flex';
+
+            if (event) {
+                event.preventDefault();
+            }
+
+            document.getElementById('forgotModal').style.display =
+                'flex';
+
         }
+
 
         function closeForgotModal() {
-            document.getElementById('forgotModal').style.display = 'none';
+
+            document.getElementById('forgotModal').style.display =
+                'none';
+
         }
 
-        let generatedOtp = '';
-        let savedMobile = '', savedOwnerName = '';
 
-        // Real Fast2SMS Integration Function
-        async function sendFast2SmsOtp(mobile, otp) {
-            try {
-                const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${FAST2SMS_API_KEY}&route=q&message=Your%20Ekta%20Transport%20OTP%20is%20${otp}&language=english&flash=0&numbers=${mobile}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.return) {
-                    console.log('SMS sent successfully via Fast2SMS');
-                } else {
-                    console.warn('Fast2SMS returned error, falling back to alert');
-                    alert(`[Fallback] OTP: ${otp}`);
-                }
-            } catch (err) {
-                console.error('Network error while triggering Fast2SMS:', err);
-                alert(`[Offline Mode] OTP: ${otp}`);
-            }
+        /* =========================================================
+           EKTA OWNER AUTH - REAL SUPABASE SESSION
+           ========================================================= */
+        let savedMobile = '';
+        let ownerSession = null;
+        let ownerFlow = 'register';
+        const EKTA_AUTH_URL = 'https://hsrtysxybppsochlekjm.supabase.co/functions/v1/ekta-owner-auth';
+        const normalizeMobile = value => String(value || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+        const ownerEmail = mobile => `owner-${mobile}@auth.ektatransport.com`;
+
+        function ektaClient() {
+            const client = window.supabaseClient;
+            if (!client || !client.auth) throw new Error('Supabase client not loaded. Check db.js.');
+            return client;
+        }
+
+        function validMobile(mobile) {
+            return /^[6-9]\d{9}$/.test(mobile);
+        }
+
+        async function authRequest(action, phone, extra = {}, token = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            const response = await fetch(EKTA_AUTH_URL, {
+                method: 'POST', headers,
+                body: JSON.stringify({ action, phone, ...extra })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.error || 'Authentication request failed');
+            return data;
+        }
+
+        async function exchangeVerifiedOtp(data) {
+            const { data: verified, error } = await ektaClient().auth.verifyOtp({
+                token_hash: data.token_hash,
+                type: 'magiclink'
+            });
+            if (error || !verified?.session) throw new Error(error?.message || 'Could not start secure session');
+            ownerSession = verified.session;
+            return verified.session;
         }
 
         async function sendOtpToOwner() {
-            const ownerName = document.getElementById('regOwnerName').value.trim();
-            const mobile = document.getElementById('regMobile').value.trim();
-            if(!ownerName || mobile.length !== 10) { alert('Please enter valid name and 10-digit mobile number!'); return; }
-            
-            savedOwnerName = ownerName;
-            savedMobile = mobile;
-            generatedOtp = Math.floor(1000 + Math.random() * 9000);
-            
-            await sendFast2SmsOtp(mobile, generatedOtp);
-            alert(`OTP has been sent to your mobile number: ${mobile}`);
-            
-            document.getElementById('stepMobile').style.display = 'none';
-            document.getElementById('stepOtp').style.display = 'block';
+            const mobile = normalizeMobile(document.getElementById('regMobile').value);
+            if (!validMobile(mobile)) return alert('Enter a valid 10-digit Owner mobile number.');
+            try {
+                await authRequest('send_otp', mobile);
+                savedMobile = mobile;
+                ownerFlow = 'register';
+                document.getElementById('stepMobile').style.display = 'none';
+                document.getElementById('stepOtp').style.display = 'block';
+                alert('OTP sent to your registered Owner mobile. Valid for 5 minutes.');
+            } catch (e) { alert(e.message); }
         }
 
-        function verifyOtp() {
-            const userOtp = document.getElementById('enteredOtp').value.trim();
-            if(userOtp === generatedOtp.toString()) {
-                alert('OTP Verified Successfully!');
+        async function verifyOtp() {
+            const otp = document.getElementById('enteredOtp').value.trim();
+            if (!/^\d{6}$/.test(otp)) return alert('Enter the 6-digit SMS OTP.');
+            try {
+                const response = await authRequest('verify_otp', savedMobile, { otp });
+                await exchangeVerifiedOtp(response);
                 document.getElementById('stepOtp').style.display = 'none';
                 document.getElementById('stepPassword').style.display = 'block';
-            } else {
-                alert('Invalid OTP!');
-            }
+                alert('Mobile verified. Set your Owner password.');
+            } catch (e) { alert(e.message); }
         }
 
         async function saveOwnerPassword() {
-            const pass1 = document.getElementById('newPassword').value;
-            const pass2 = document.getElementById('confirmPassword').value;
-            if(pass1.length < 6 || pass1 !== pass2) { alert('Passwords must match and be at least 6 characters!'); return; }
-
-            const ownerData = { name: savedOwnerName, mobile: savedMobile, password: pass1 };
-            
-            if(typeof postData === 'function') {
-                const result = await postData('/register-owner.php', ownerData);
-                alert('Owner Registered Successfully on Cloud!');
-            } else {
-                alert('Owner Registered Successfully (Local Test)!');
-            }
-            closeRegisterModal();
+            const password = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            if (password.length < 12 || password !== confirm)
+                return alert('Password must be at least 12 characters and both passwords must match.');
+            try {
+                const { data: sessionData } = await ektaClient().auth.getSession();
+                const token = sessionData?.session?.access_token;
+                if (!token) throw new Error('Verify your mobile OTP again.');
+                await authRequest('set_password', savedMobile, { password }, token);
+                document.getElementById('password').value = '';
+                document.getElementById('userId').value = savedMobile;
+                closeRegisterModal();
+                alert('Owner password saved. You can now log in using mobile number and password.');
+                await ektaClient().auth.signOut();
+            } catch (e) { alert(e.message); }
         }
 
         async function sendForgotOtp() {
-            const mobile = document.getElementById('forgotMobile').value.trim();
-            if(mobile.length !== 10) { alert('Enter valid 10-digit mobile number!'); return; }
-            
-            const forgotOtp = Math.floor(1000 + Math.random() * 9000);
-            await sendFast2SmsOtp(mobile, forgotOtp);
-            alert('Password reset OTP sent to mobile!');
-            
-            document.getElementById('forgotStep1').style.display = 'none';
-            document.getElementById('forgotStep2').style.display = 'block';
+            const mobile = normalizeMobile(document.getElementById('forgotMobile').value);
+            if (!validMobile(mobile)) return alert('Enter a valid 10-digit mobile.');
+            try {
+                await authRequest('send_otp', mobile);
+                savedMobile = mobile;
+                document.getElementById('forgotStep1').style.display = 'none';
+                document.getElementById('forgotStep2').style.display = 'block';
+                alert('Password reset OTP sent. Valid for 5 minutes.');
+            } catch (e) { alert(e.message); }
         }
 
-        function resetPasswordFinal() {
-            alert('Password Reset Successfully!');
-            closeForgotModal();
+        async function resetPasswordFinal() {
+            const otp = document.getElementById('forgotOtpInput').value.trim();
+            const password = document.getElementById('newForgotPass').value;
+            if (!/^\d{6}$/.test(otp)) return alert('Enter your 6-digit SMS OTP.');
+            if (password.length < 12) return alert('New password must have at least 12 characters.');
+            try {
+                const response = await authRequest('verify_otp', savedMobile, { otp });
+                const session = await exchangeVerifiedOtp(response);
+                await authRequest('set_password', savedMobile, { password }, session.access_token);
+                await ektaClient().auth.signOut();
+                closeForgotModal();
+                alert('Password changed. Log in using your new password.');
+            } catch (e) { alert(e.message); }
         }
 
-        // Connected Login with auth.js & Direct Redirection to owner-dashboard.html
         async function handleLogin(event) {
             event.preventDefault();
-            const userId = document.getElementById('userId').value.trim();
-            const pass = document.getElementById('password').value.trim();
-            
-            // Determine role based on active tab
-            const activeRole = document.getElementById('ownerTabBtn').classList.contains('active') ? 'owner' : 'staff';
-
-            // Call auth.js validation function safely
-            if (window.EktaAuth && typeof window.EktaAuth.validateAndLoginUser === 'function') {
-                const isAuthenticated = window.EktaAuth.validateAndLoginUser(userId, pass, activeRole);
-                if (!isAuthenticated) return;
-            }
-
-            const targetPage = (activeRole === 'owner') ? 'owner-dashboard.html' : 'employees.html';
-
-            alert('Login successful! Redirecting to Dashboard...');
-            
-            // सीधा असली डैशबोर्ड फाइल खोलें ताकि सारे क्लिक, साइडबार और मॉड्यूल्स 100% सही लोड हों!
-            window.location.href = targetPage;
+            const role = document.getElementById('ownerTabBtn').classList.contains('active') ? 'owner' : 'staff';
+            if (role !== 'owner') return alert('Staff login will be enabled separately.');
+            const mobile = normalizeMobile(document.getElementById('userId').value);
+            const password = document.getElementById('password').value;
+            if (!validMobile(mobile) || !password) return alert('Enter mobile number and password.');
+            try {
+                const client = ektaClient();
+                const { data, error } = await client.auth.signInWithPassword({
+                    email: ownerEmail(mobile), password
+                });
+                if (error || !data?.user) throw new Error('Invalid mobile number or password.');
+                if (data.user.user_metadata?.ekta_role !== 'owner' ||
+                    data.user.user_metadata?.owner_phone !== mobile) {
+                    await client.auth.signOut();
+                    throw new Error('Owner authorization failed.');
+                }
+                window.location.href = 'owner-dashboard.html';
+            } catch (e) { alert(e.message); }
         }
+
     </script>
+
 </body>
 </html>
