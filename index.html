@@ -730,11 +730,17 @@
 
         #registerModal input,
         #forgotModal input {
+            color: #172033 !important;
+            background-color: #ffffff;
+            -webkit-text-fill-color: #172033;
             min-height: 44px;
 
             border-radius:
                 9px !important;
         }
+
+        #registerModal input::placeholder,
+        #forgotModal input::placeholder { color: #64748b; }
 
         #registerModal button,
         #forgotModal button {
@@ -1605,6 +1611,7 @@
          EXISTING SCRIPTS
          ========================================================= -->
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="db.js"></script>
     <script src="auth.js"></script>
 
