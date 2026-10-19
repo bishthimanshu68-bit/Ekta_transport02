@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accounts & Finance | Ekta Transport</title>
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
 /* V14: compact inline fields and slim, keyboard-accessible anchored suggestions */
 #accountsFinance #acBank .ekta-inline-field{gap:2px!important;font-size:10px!important}
@@ -14,6 +18,19 @@
 #accountsFinance #acBank .ekta-inline-field input[list]::placeholder{font-weight:400!important}
 #accountsFinance #acBank .ekta-inline-field input[list] option{font-weight:400!important;font-size:13px!important}
 </style>
+<style>
+html,body{margin:0;min-height:100%;background:#f5f7fa;color:#243247;font-family:Inter,'Segoe UI',Arial,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+.ac-standalone-top{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff;border-bottom:1px solid #e0e6ee}
+.ac-standalone-brand{font-size:14px;font-weight:800;color:#233f60;letter-spacing:.02em}
+.ac-standalone-tag{font-size:11px;color:#718096}
+.ac-standalone-main{max-width:1760px;margin:0 auto;min-height:calc(100vh - 58px)}
+#acountsStandalone{width:100%}
+#acountsStandalone #accountsFinance{min-height:calc(100vh - 58px);padding:20px!important}
+@media(max-width:680px){.ac-standalone-top{padding:0 12px}.ac-standalone-tag{display:none}#acountsStandalone #accountsFinance{padding:10px!important}}
+</style></head><body>
+<header class="ac-standalone-top"><div class="ac-standalone-brand">EKTA TRANSPORT <span style="font-weight:500;color:#8190a1">/ Accounts & Finance</span></div><div class="ac-standalone-tag">Dedicated Accounts Workspace</div></header>
+<main class="ac-standalone-main" id="acountsStandalone">
 <style>
 /* V12: one-row mapping; horizontal scrolling remains available for narrow screens */
 #accountsFinance #acBank table{table-layout:auto;width:100%;min-width:1160px}
@@ -182,9 +199,16 @@
     <div id="acLedgerSummary" class="px-4 py-2 text-[11px] bg-blue-50 text-blue-900"></div><div class="overflow-auto"><table><thead id="genericHead"></thead><tbody id="genericBody"></tbody></table></div>
   </div>
 </div>
+
+
+
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
 <script src="bank-statement-parser.js?v=reader_v6_account_guard"></script>
 <script src="smart-mapping.js?v=v9_employee_confirm"></script>
 <script src="vicky-paper.js?v=truckfix19"></script>
 <script src="cash-ledger.js?v=18"></script>
 <script src="accounts.js?v=tripcolumn21"></script>
-</section>
+</body></html>

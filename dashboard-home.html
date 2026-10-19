@@ -361,12 +361,19 @@
        RECENT TRIPS
        ========================================================= */
 
+    /* Recent Trips: preserve readable columns inside narrow dashboard cards. */
     .ekta-trips-wrap {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
     }
 
     .ekta-trips-table {
         width: 100%;
+        min-width: 590px;
         border-collapse: collapse;
         table-layout: fixed;
     }
@@ -377,7 +384,7 @@
         font-size: 9px;
         font-weight: 750;
         text-align: left;
-        padding: 10px 10px;
+        padding: 10px;
         white-space: nowrap;
     }
 
@@ -387,27 +394,20 @@
         font-size: 10px;
         color: #52657d;
         vertical-align: middle;
+        overflow-wrap: anywhere;
     }
 
     .ekta-trips-table th:nth-child(1),
-    .ekta-trips-table td:nth-child(1) {
-        width: 22%;
-    }
+    .ekta-trips-table td:nth-child(1) { width: 100px; }
 
     .ekta-trips-table th:nth-child(2),
-    .ekta-trips-table td:nth-child(2) {
-        width: 23%;
-    }
+    .ekta-trips-table td:nth-child(2) { width: 125px; }
 
     .ekta-trips-table th:nth-child(3),
-    .ekta-trips-table td:nth-child(3) {
-        width: 34%;
-    }
+    .ekta-trips-table td:nth-child(3) { width: 230px; }
 
     .ekta-trips-table th:nth-child(4),
-    .ekta-trips-table td:nth-child(4) {
-        width: 21%;
-    }
+    .ekta-trips-table td:nth-child(4) { width: 135px; }
 
     .ekta-truck-number {
         font-weight: 750;

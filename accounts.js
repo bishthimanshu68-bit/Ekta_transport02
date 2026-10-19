@@ -1,6 +1,7 @@
 (function(){
 "use strict";
-const $=id=>document.getElementById(id), S=window.supabaseClient;
+const $=id=>document.getElementById(id);
+let S=window.supabaseClient;
 const state={reviewSelections:{},file:null,rows:[],trucks:[],drivers:[],assignments:[],parties:[],vendors:[],trips:[],accountTransactions:[],accountLoadError:null,busy:false,tab:"dashboard"};
 const clean=v=>String(v??"").trim();
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
