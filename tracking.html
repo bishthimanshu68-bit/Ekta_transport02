@@ -728,6 +728,8 @@
 /* Driver status notification action — scoped to Tracking header */
 #trackingModule .et-notify-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #trackingModule #etStatusNotifyBtn{white-space:nowrap;padding:7px 12px;min-height:32px}
+#etPartySuggestions .suggestion.et-key-active{background:#e3efff!important;outline:1px solid #87bafa;outline-offset:-1px}
+#etProgramModal .flow .step{cursor:pointer}
 </style>
 </head>
 
@@ -1049,11 +1051,11 @@
             <div id="etProgramRequestContext"></div>
 
             <div class="flow">
-                <span class="step active">1 PROGRAM</span>
-                <span class="step">2 LOADING</span>
-                <span class="step">3 RUNNING</span>
-                <span class="step">4 REPORTING</span>
-                <span class="step">5 EMPTY</span>
+                <span class="step active" onclick="window.EktaTracking.editProgramStageDate('PROGRAM')">1 PROGRAM</span>
+                <span class="step" onclick="window.EktaTracking.editProgramStageDate('LOADING')">2 LOADING</span>
+                <span class="step" onclick="window.EktaTracking.editProgramStageDate('RUNNING')">3 RUNNING</span>
+                <span class="step" onclick="window.EktaTracking.editProgramStageDate('REPORTING')">4 REPORTING</span>
+                <span class="step" onclick="window.EktaTracking.editProgramStageDate('EMPTY')">5 EMPTY</span>
             </div>
 
             <div class="formgrid">

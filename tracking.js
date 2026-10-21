@@ -1335,7 +1335,7 @@ async function confirmUnloading(e){
 }
 
 /* Compact date-only lifecycle: date picker is the only action input. */
-function quickDateForTrip(t,label,existing){
+function quickDateForTrip(t,label,existing,useExisting=false){
  // Office entry is normally completed the following day: default to yesterday,
  // including correct month/year rollover. The user can edit the full date.
  const now=new Date();
@@ -1345,7 +1345,7 @@ function quickDateForTrip(t,label,existing){
  return new Promise(resolve=>{
   const overlay=document.createElement("div");
   overlay.className="et-quick-date-overlay";
-  overlay.innerHTML=`<div class="et-quick-date-box" role="dialog" aria-modal="true" aria-label="${esc(label)}"><div class="et-quick-date-title">${esc(label)}</div><label class="et-quick-date-sub" for="etQuickDateInput">Date (default: previous day)</label><input id="etQuickDateInput" class="et-quick-date-input" type="date" aria-label="${esc(label)}" value="${base}"><div class="et-quick-date-error" aria-live="polite"></div><div class="et-quick-date-actions"><button type="button" class="et-quick-date-cancel">Cancel</button><button type="button" class="et-quick-date-confirm">Confirm</button></div></div>`;
+  overlay.innerHTML=`<div class="et-quick-date-box" role="dialog" aria-modal="true" aria-label="${esc(label)}"><div class="et-quick-date-title">${esc(label)}</div><label class="et-quick-date-sub" for="etQuickDateInput">Date (default: previous day)</label><input id="etQuickDateInput" class="et-quick-date-input" type="date" aria-label="${esc(label)}" value="${useExisting&&existing?dateOnly(existing):base}"><div class="et-quick-date-error" aria-live="polite"></div><div class="et-quick-date-actions"><button type="button" class="et-quick-date-cancel">Cancel</button><button type="button" class="et-quick-date-confirm">Confirm</button></div></div>`;
   document.body.appendChild(overlay);
   const input=overlay.querySelector(".et-quick-date-input"),error=overlay.querySelector(".et-quick-date-error");
   const finish=value=>{document.removeEventListener("keydown",onKey,true);overlay.remove();resolve(value);};
@@ -3244,6 +3244,7 @@ function setupTypeaheads(){
    syncFleetProgramCategory();tb.classList.remove("show");suggestProgramFreight();
   });
  });
+ pi?.addEventListener("keydown",programPartyKeydown);
  pi?.addEventListener("input",()=>{
   selectedParty=null;
   const q=clean(pi.value);
@@ -3253,15 +3254,66 @@ function setupTypeaheads(){
    .slice(0,30);
   pb.innerHTML=m.map(p=>`<div class="suggestion" data-id="${esc(p.id)}"><b>${esc(p.party_code||"—")} — ${esc(p.name||"")}</b><span>${esc(p.party_type||"")} • ${esc(p.zone||"—")} • ${esc(p.city||"")}</span></div>`).join("");
   pb.classList.toggle("show",m.length>0);
-  pb.querySelectorAll(".suggestion").forEach(x=>x.onclick=()=>{
-   selectedParty=party(x.dataset.id);
-   pi.value=`${selectedParty.party_code||""} — ${selectedParty.name||""}`;
-   $("etPPartyType").value=selectedParty.party_type||"";
-   if(isBillingClient(selectedParty)&&clean(selectedParty.city))$("etPLoad").value=clean(selectedParty.city).toUpperCase();
-   pb.classList.remove("show");
-   loadProgramPartyRates();
-  });
+  pb.dataset.activeIndex="-1";
+  pb.querySelectorAll(".suggestion").forEach(x=>x.onclick=()=>selectProgramPartySuggestion(x));
  });
+}
+
+/* Program party autocomplete: keyboard selection without changing existing mouse behavior. */
+function selectProgramPartySuggestion(item){
+ const pi=$("etPParty"),pb=$("etPartySuggestions");
+ selectedParty=party(item.dataset.id);
+ if(!selectedParty)return;
+ pi.value=`${selectedParty.party_code||""} — ${selectedParty.name||""}`;
+ $("etPPartyType").value=selectedParty.party_type||"";
+ if(isBillingClient(selectedParty)&&clean(selectedParty.city))$("etPLoad").value=clean(selectedParty.city).toUpperCase();
+ pb.classList.remove("show");pb.dataset.activeIndex="-1";
+ loadProgramPartyRates();
+}
+function programPartyKeydown(e){
+ const pb=$("etPartySuggestions");
+ if(!pb?.classList.contains("show"))return;
+ const items=[...pb.querySelectorAll(".suggestion")];
+ if(e.key==="Escape"){e.preventDefault();pb.classList.remove("show");return;}
+ if(!items.length||!["ArrowDown","ArrowUp","Enter"].includes(e.key))return;
+ e.preventDefault();e.stopPropagation();
+ let index=Number(pb.dataset.activeIndex??-1);
+ if(e.key==="Enter"){selectProgramPartySuggestion(items[index<0?0:index]);return;}
+ index=e.key==="ArrowDown"?Math.min(index+1,items.length-1):index<0?items.length-1:Math.max(index-1,0);
+ pb.dataset.activeIndex=String(index);
+ items.forEach((item,i)=>{item.classList.toggle("et-key-active",i===index);item.setAttribute("aria-selected",String(i===index));});
+ items[index].scrollIntoView({block:"nearest"});
+}
+
+/* Edit a lifecycle date on the existing trip; never move its stage backwards. */
+async function editProgramStageDate(stage){
+ if(!programEditTripId)return alertUser("पहले existing trip को Edit में खोलें। New Program में stage बदलना उपलब्ध नहीं है।");
+ const t=trips.find(x=>String(x.id)===String(programEditTripId));
+ if(!t)return alertUser("Trip not found.");
+ const fields={LOADING:["loading_date","Loading Date"],RUNNING:["lr_date","LR / Running Date"],REPORTING:["reporting_date","Reporting Date"],EMPTY:["unloading_date","Unloading Date"]};
+ if(stage==="PROGRAM")return $("etPDate")?.focus();
+ const entry=fields[stage];if(!entry)return;
+ const [field,label]=entry;
+ const existing=dateOnly(t[field]||(field==="lr_date"?t.loading_date:field==="unloading_date"?t.end_date:null));
+ if(!existing)return alertUser(label+" अभी दर्ज नहीं है। पहले normal stage action से दर्ज करें।");
+ const d=await quickDateForTrip(t,"Correct "+label,existing,true);if(!d||d===existing)return;
+ const lr=dateOnly(field==="lr_date"?d:(t.lr_date||t.loading_date));
+ const reporting=dateOnly(field==="reporting_date"?d:t.reporting_date);
+ const unloading=dateOnly(field==="unloading_date"?d:(t.unloading_date||t.end_date));
+ if(lr&&reporting&&reporting<lr)return alertUser("Reporting Date cannot be before LR Date.");
+ if(reporting&&unloading&&unloading<reporting)return alertUser("Unloading Date cannot be before Reporting Date.");
+ const payload={notes:putNote(t.notes,field==="lr_date"?"LR_DATE":field.toUpperCase(),d)};
+ payload[field]=d;
+ if(field==="lr_date"){payload.loading_date=d;payload.start_date=d;payload.notes=putNote(payload.notes,"LOADING_DATE",d);}
+ if(field==="loading_date"&&dateOnly(t.lr_date)===existing){payload.lr_date=d;payload.start_date=d;payload.notes=putNote(payload.notes,"LR_DATE",d);}
+ if(field==="unloading_date")payload.end_date=d;
+ if(!window.confirm(`${t.trip_number||"Trip"}\n${label}: ${fmt(existing)} → ${fmt(d)}\nSave correction?`))return;
+ try{
+  const r=await S.from(T.trips).update(payload).eq("id",t.id);
+  if(r.error)throw r.error;
+  await loadAll();
+  alertUser(label+" corrected successfully. Trip status unchanged.");
+ }catch(err){console.error("[EKTA] Date correction failed",err);alertUser("Date correction failed: "+(err.message||err));}
 }
 
 /* ========================= 20. FULL SCREEN ================== */
@@ -3341,7 +3393,7 @@ async function saveQuickDriverAssignment(e){
 }
 
 /* ========================= 21. PUBLIC API =================== */
-window.EktaTracking={sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Always open Tracking in ALL mode; do not carry an old status filter into a new visit. */filterStatus="";selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();loadAll();
