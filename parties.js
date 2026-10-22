@@ -24,6 +24,7 @@
     let aiPartySourceHasCodeColumn = false;
     let activePartySection = "";
     let addingUnitFor = null;
+    let codeLookupTimer = null;
 
     const $ = (id) => document.getElementById(id);
     const norm = (v) => String(v || "").trim().toLowerCase();
@@ -188,7 +189,7 @@
 
     function visiblePartyCode(party) {
         // Display the stored code: never fabricate a different code from the city.
-        return party?.party_type === "Billing Client" ? baseBillingCode(party.party_code) : (party?.party_code || "-");
+        return party?.party_code || "-";
     }
 
     function baseBillingCode(value) {
@@ -388,6 +389,25 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
         setTimeout(() => $("partyName")?.focus(), 50);
     }
 
+    function checkExistingPartyCode() {
+        clearTimeout(codeLookupTimer);
+        if ($("partyId")?.value || addingUnitFor) return;
+        const code = baseBillingCode($("partyCode")?.value);
+        const panel = $("partyExistingCodePanel");
+        if (!panel) return;
+        panel.classList.add("hidden");
+        if (!code) return;
+        codeLookupTimer = setTimeout(() => {
+            if ($("partyId")?.value || addingUnitFor || baseBillingCode($("partyCode")?.value) !== code) return;
+            const existing = parties.find(p => norm(p.party_type) === "billing client" && baseBillingCode(p.party_code) === code);
+            if (!existing || $("partyType")?.value !== "Billing Client") return;
+            $("partyExistingCompanyName").textContent = existing.name || "Existing Billing Party";
+            $("partyExistingUnitNames").textContent = parties.filter(p => norm(p.party_type) === "billing client" && baseBillingCode(p.party_code) === code).map(p => billingUnitForParty(p.id)?.unit_name || p.city).filter(Boolean).join(", ");
+            panel.classList.remove("hidden");
+            $("partyAddBranchButton").onclick = () => addUnit(existing.id);
+        }, 180);
+    }
+
     async function addUnit(partyId) {
         const parent = parties.find(p => String(p.id) === String(partyId));
         if (!parent || norm(parent.party_type) !== "billing client") return;
@@ -403,6 +423,7 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
         $("partyAddress").value = "";
         $("partyState").value = "";
         $("partyFormTitle").textContent = "Add Billing Unit — " + baseBillingCode(parent.party_code);
+        $("partyExistingCodePanel")?.classList.add("hidden");
         $("partyCity").focus();
     }
 
@@ -706,8 +727,7 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
                                 class="w-7 h-7 rounded-md border border-slate-200 text-blue-600 hover:bg-blue-50">
                                 <i class="fa-solid fa-eye text-[10px]"></i>
                             </button>
-                            ${norm(party.party_type)==="billing client" ? `<button type="button" onclick="window.EktaParties.addUnit('${esc(party.id)}')" title="Add Unit" class="px-2 h-7 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold whitespace-nowrap">+ Add Unit</button>` : ""}
-                            <button type="button"
+                                            <button type="button"
                                 onclick="window.EktaParties.openForm('${esc(party.id)}')"
                                 title="Edit"
                                 class="w-7 h-7 rounded-md border border-slate-200 text-blue-600 hover:bg-blue-50">
@@ -1887,6 +1907,7 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
         closeForm,
         saveParty,
         addUnit,
+        checkExistingPartyCode,
         openView,
         closeView,
         renderTable,
