@@ -745,6 +745,8 @@ function scrollActivePage(direction){
   activeModal.scrollBy({top:step,behavior:"smooth"});
   return;
  }
+ const worksheet=$("etRows")?.closest(".tablewrap");
+ if(worksheet){worksheet.scrollBy({top:step,behavior:"smooth"});return;}
  window.scrollBy({top:step,behavior:"smooth"});
 }
 
@@ -1027,8 +1029,10 @@ async function sendStatusNotification(){
 
 /* ========================= 6. MAIN TABLE ==================== */
 function render(){
+ requestAnimationFrame(resizeTrackingWorksheet);
  const alertView=filterStatus==="ALERT";
  const emptyView=filterStatus==="EMPTY";
+ $("etTrackingHead")?.closest("table")?.classList.toggle("et-empty-view",emptyView);
  const head=$("etTrackingHead");
  if(head){
   const standard=`<tr><th>Zone</th><th>Truck</th><th>Trip</th><th>Party</th><th>Party Status</th><th>From</th><th>To</th><th>Status</th><th>Current Location</th><th>GPS</th><th>Last Update</th></tr>`;
@@ -1123,6 +1127,7 @@ function updateSelectedStatusCard(){
   const active=!!filterStatus && card.dataset.trackingFilter===filterStatus;
   card.classList.toggle('et-status-selected',active);
   card.setAttribute('aria-pressed',String(active));
+  card.setAttribute('tabindex','0');
  });
 }
 function cards(){
@@ -1184,7 +1189,7 @@ function viewAllTracking(){
  if($("etDriverFilter"))$("etDriverFilter").value="";
  if($("etDate"))$("etDate").value=today();
  selectedMap=null;render();
- document.querySelector(".et-table")?.scrollIntoView({behavior:"smooth",block:"start"});
+ $("etRows")?.closest(".tablewrap")?.scrollTo({top:0,left:0,behavior:"smooth"});
 }
 
 /* ========================= 8. PROGRAM ======================= */
@@ -1194,7 +1199,7 @@ function openQuickProgram(id){
  if(activeTrip(id))return alertUser("This truck already has an active trip.");
  quickProgramTruckId=id;
  $("etQuickProgramTruck").textContent=t.truck_number||"Truck";
- $("etQuickFrom").value="";$("etQuickTo").value="";
+ $("etQuickFrom").value=defaultProgramLoadingPoint(id);$("etQuickTo").value="";
  $("etQuickProgramModal").classList.add("show");
  setTimeout(()=>$('etQuickFrom')?.focus(),50);
 }
@@ -1210,8 +1215,18 @@ function continueQuickProgram(e){
  $("etPLoad").value=from;$("etPTo").value=to;
  return false;
 }
+// Pre-fill From with this vehicle's last completed unloading destination.
+// This is a form default only; office staff may edit it before saving.
+function defaultProgramLoadingPoint(truckId){
+ const point=lastUnloadingPoint(truckId);
+ return point && point!=="—" ? point : "";
+}
+function fillProgramLoadingPoint(truckId){
+ const field=$("etPLoad");
+ if(field)field.value=defaultProgramLoadingPoint(truckId);
+}
 function openProgram(){setProgramRequestContext(null);resetProgram();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPTruck')?.focus(),50)}
-function openProgramForTruck(id){const t=truck(id);if(!t)return;if(activeTrip(id))return alertUser("This truck already has an active trip.");resetProgram();selectedTruck=t;$("etPTruck").value=t.truck_number||"";syncFleetProgramCategory();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPParty')?.focus(),50)}
+function openProgramForTruck(id){const t=truck(id);if(!t)return;if(activeTrip(id))return alertUser("This truck already has an active trip.");resetProgram();selectedTruck=t;$("etPTruck").value=t.truck_number||"";fillProgramLoadingPoint(t.id);syncFleetProgramCategory();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPParty')?.focus(),50)}
 function resetProgram(){programEditTripId=null;selectedTruck=null;selectedParty=null;$("etPTruck").value="";$("etPDate").value=today();$("etPParty").value="";$("etPPartyType").value="";$("etPLoad").value="";$("etPTo").value="";$("etPRevenue").value="";$("etPRemark").value="";["etProgramCategory","etProgramHaier","etProgramWeight"].forEach(id=>{if($(id))$(id).value=""});programRates=[];updateProgramPartyFields();syncFleetProgramCategory();$("etTruckSuggestions").classList.remove("show");$("etPartySuggestions").classList.remove("show")}
 let etProgramSaving=false;
 async function saveProgram(e){
@@ -1271,6 +1286,7 @@ async function saveProgram(e){
 
   setProgramRequestContext(null);
   closeModal("etProgramModal");
+  clearTrackingSearchAfterSave();
   await loadAll();
   alertUser(programEditTripId?"Program updated successfully.":`Program saved to Programming List${getNote(notes,"PROGRAM_DETAILS_PENDING")==="YES"?" — PENDING":""}.\nTrip: ${base.trip_number}${requestWarning}`);
  }catch(err){
@@ -3181,27 +3197,74 @@ function exportFinal(){
 }
 
 /* ========================= 18. KEYBOARD ===================== */
+let etKeyboardZone="worksheet";
+function resizeTrackingWorksheet(){
+ const module=$("trackingModule"),wrap=$("etRows")?.closest(".tablewrap");
+ if(!module||!wrap||getComputedStyle(module).display==="none")return;
+ const available=module.getBoundingClientRect().bottom-wrap.getBoundingClientRect().top-14;
+ wrap.style.setProperty("--et-worksheet-height",Math.max(160,Math.floor(available))+"px");
+}
+function selectedKeyboardCard(){
+ const cards=[...document.querySelectorAll("#trackingModule .cards [data-tracking-filter]")];
+ return cards.find(c=>c.dataset.trackingFilter===filterStatus)||cards[0]||null;
+}
+function focusTrackingCard(){
+ const card=selectedKeyboardCard();
+ if(!card)return false;
+ card.setAttribute("tabindex","0");
+ card.focus({preventScroll:true});
+ etKeyboardZone="cards";
+ return true;
+}
+function focusTrackingWorksheet(){
+ const wrap=$("etRows")?.closest(".tablewrap");
+ const row=$("etRows")?.querySelector('tr[tabindex="0"]');
+ if(!wrap)return false;
+ etKeyboardZone="worksheet";
+ if(row)row.focus({preventScroll:true});
+ else {wrap.setAttribute("tabindex","0");wrap.focus({preventScroll:true});}
+ return true;
+}
 function scrollTrackingByArrow(e){
  if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key))return;
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
- const module=document.getElementById("trackingModule");
+ const module=$("trackingModule");
  if(!module||getComputedStyle(module).display==="none")return;
  if(document.querySelector("#trackingModule .modal.show, #trackingModule .fullpage.show"))return;
- if(e.target.closest("input,textarea,select,button,[contenteditable], [role=combobox]"))return;
- const table=document.getElementById("etRows");
- if(!table)return;
- const wrap=table.closest(".tablewrap");
- if(!wrap)return;
- const vertical=e.key==="ArrowUp"||e.key==="ArrowDown";
- const amount=(e.key==="ArrowDown"||e.key==="ArrowRight")?110:-110;
- if(vertical){
-  // The main tracking page is the vertical scroll container; the table wraps horizontally.
-  const target=wrap.scrollHeight>wrap.clientHeight+2?wrap:module;
-  target.scrollBy({top:amount,behavior:"auto"});
- }else{
-  wrap.scrollBy({left:amount,behavior:"auto"});
+ if(e.target.closest("input,textarea,select,button,[contenteditable],[role=combobox]"))return;
+ const card=e.target.closest("#trackingModule .cards [data-tracking-filter]");
+ if(card||etKeyboardZone==="cards"&&!e.target.closest("#etRows")){
+  if(e.key==="ArrowUp"){
+   const search=$("etSearch");
+   if(search){e.preventDefault();search.focus({preventScroll:true});etKeyboardZone="search";}
+   return;
+  }
+  if(e.key==="ArrowDown"){
+   if(focusTrackingWorksheet())e.preventDefault();
+   return;
+  }
+  const cards=[...module.querySelectorAll(".cards [data-tracking-filter]")];
+  const current=card||selectedKeyboardCard();
+  const index=cards.indexOf(current);
+  if(index<0||!cards.length)return;
+  const next=cards[(index+(e.key==="ArrowLeft"?-1:1)+cards.length)%cards.length];
+  if(next){next.setAttribute("tabindex","0");next.focus({preventScroll:true});etKeyboardZone="cards";next.click();e.preventDefault();}
+  return;
  }
+ const wrap=$("etRows")?.closest(".tablewrap");if(!wrap)return;
+ // First row / top of worksheet goes to selected status card, not straight to Search.
+ if(e.key==="ArrowUp"&&wrap.scrollTop<=2){
+  if(focusTrackingCard())e.preventDefault();
+  return;
+ }
+ const amount=(e.key==="ArrowDown"||e.key==="ArrowRight")?110:-110;
+ if(e.key==="ArrowUp"||e.key==="ArrowDown")wrap.scrollBy({top:amount,behavior:"auto"});
+ else wrap.scrollBy({left:amount,behavior:"auto"});
  e.preventDefault();
+}
+function clearTrackingSearchAfterSave(){
+ const search=$("etSearch");
+ if(search&&search.value){search.value="";render();}
 }
 function rowKey(e,id){
  if(e.key==="Enter"){e.preventDefault();openTruck(id);return}
@@ -3210,6 +3273,17 @@ function rowKey(e,id){
 
 /* ========================= 19. DATE / EVENTS =============== */
 function setupEvents(){
+ // Search -> selected Status Card -> Working Table.
+ $("etSearch")?.addEventListener("keydown",e=>{
+  if(e.key!=="ArrowDown"||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+  if(document.querySelector("#trackingModule .modal.show, #trackingModule .fullpage.show"))return;
+  if(focusTrackingCard())e.preventDefault();
+ });
+ window.addEventListener("resize",resizeTrackingWorksheet);
+ document.addEventListener("pointerdown",e=>{
+  if(e.target.closest("#trackingModule .cards"))etKeyboardZone="cards";
+  else if(e.target.closest("#trackingModule .et-tracking-fullwidth"))etKeyboardZone="worksheet";
+ });
  document.addEventListener("pointerdown",e=>{
   const panel=$("etBellPanel"),ai=$("etAIPanel");
   if(panel?.classList.contains("show")&&!panel.contains(e.target)&&!$("etBellBtn")?.contains(e.target)){
@@ -3254,14 +3328,14 @@ function partySearchRank(p,query){
 function setupTypeaheads(){
  const ti=$("etPTruck"),tb=$("etTruckSuggestions"),pi=$("etPParty"),pb=$("etPartySuggestions");
  ti?.addEventListener("input",()=>{
-  selectedTruck=null;syncFleetProgramCategory();
+  selectedTruck=null;$("etPLoad").value="";syncFleetProgramCategory();
   const q=clean(ti.value).toLowerCase();
   const m=trucks.filter(t=>!activeTrip(t.id)&&activeDriver(t.id)).filter(t=>String(t.truck_number||"").toLowerCase().includes(q)).slice(0,12);
   tb.innerHTML=m.map(t=>`<div class="suggestion" data-id="${esc(t.id)}"><b>${esc(t.truck_number)}</b><span>Driver: ${esc(activeDriver(t.id)?.name||"NO DRIVER")}</span></div>`).join("");
   tb.classList.toggle("show",m.length>0);
   tb.querySelectorAll(".suggestion").forEach(x=>x.onclick=()=>{
    selectedTruck=truck(x.dataset.id);ti.value=selectedTruck.truck_number;
-   syncFleetProgramCategory();tb.classList.remove("show");suggestProgramFreight();
+   fillProgramLoadingPoint(selectedTruck.id);syncFleetProgramCategory();tb.classList.remove("show");suggestProgramFreight();
   });
  });
  pi?.addEventListener("keydown",programPartyKeydown);
@@ -3286,7 +3360,7 @@ function selectProgramPartySuggestion(item){
  if(!selectedParty)return;
  pi.value=`${selectedParty.party_code||""} — ${selectedParty.name||""}`;
  $("etPPartyType").value=selectedParty.party_type||"";
- if(isBillingClient(selectedParty)&&clean(selectedParty.city))$("etPLoad").value=clean(selectedParty.city).toUpperCase();
+ // Keep the truck's last unloading point (or any manual edit); party selection must not overwrite From.
  pb.classList.remove("show");pb.dataset.activeIndex="-1";
  loadProgramPartyRates();
 }

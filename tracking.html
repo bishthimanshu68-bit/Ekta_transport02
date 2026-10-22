@@ -568,7 +568,14 @@
 @media(max-height:780px) and (min-width:651px){#etProgramModal .mh{padding:10px 16px}#etProgramModal .mb{padding:10px 16px}#etProgramModal .flow{margin-bottom:8px}#etProgramModal .formgrid{gap:7px 12px}#etProgramModal .field input,#etProgramModal .field select{min-height:36px;padding:7px 10px}#etProgramModal .field textarea{height:41px;min-height:41px}#etProgramModal .notice{margin:8px 0;padding:7px 10px}}
 @media(max-width:650px){#etProgramModal .box{max-height:95vh;overflow:auto}#etProgramModal .mh{padding:11px 13px}#etProgramModal .mb{padding:11px 13px}}
 
-#trackingModule .et-table thead th:nth-child(3),#trackingModule .et-table tbody td:nth-child(3){display:none!important}
+/* Hide Trip in standard views; EMPTY has an extra Last Unloading column,
+   so its Trip is column 4 and Vehicle No. (column 3) must stay visible. */
+#trackingModule .et-table:not(.et-empty-view) thead th:nth-child(3),
+#trackingModule .et-table:not(.et-empty-view) tbody td:nth-child(3),
+#trackingModule .et-table.et-empty-view thead th:nth-child(4),
+#trackingModule .et-table.et-empty-view tbody td:nth-child(4){display:none!important}
+#trackingModule .et-table.et-empty-view thead th:nth-child(3),
+#trackingModule .et-table.et-empty-view tbody td:nth-child(3){display:table-cell!important;min-width:120px;white-space:nowrap}
 .et-stage-actions{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .et-stage-cancel,.et-stage-next{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:7px;cursor:pointer;font-size:16px;font-weight:900}
 .et-stage-cancel{border:1px solid #ffb8bf;background:#fff0f2;color:#d9293e}
@@ -736,6 +743,14 @@
 #trackingModule .et-table .et-last-unload span{display:block;max-width:155px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #trackingModule .tablewrap{overflow-x:auto}
 
+
+/* TRACKING WORKSHEET: keep toolbar/cards visible; scroll only the worksheet. */
+#trackingModule .et-tracking-fullwidth > .panel{min-height:0;display:flex;flex-direction:column}
+#trackingModule .et-tracking-fullwidth > .panel > .ph{flex:0 0 auto}
+#trackingModule .et-tracking-fullwidth > .panel > .tablewrap{height:var(--et-worksheet-height,420px);min-height:160px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+#trackingModule .et-tracking-fullwidth > .panel > .tablewrap thead{position:sticky;top:0;z-index:4}
+#trackingModule .cards [data-tracking-filter]:focus-visible,
+#trackingModule #etRows tr:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -855,6 +870,12 @@
     <div class="toolbar">
 
         <input id="etSearch"
+               type="search"
+               name="ekta_tracking_lookup_no_history"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false"
                placeholder="Search truck / trip / party / location..."
                oninput="window.EktaTracking.render()">
 
