@@ -2,6 +2,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 let S=window.supabaseClient;
+let ledgerEditId=null;
 const state={reviewSelections:{},file:null,rows:[],trucks:[],drivers:[],assignments:[],parties:[],vendors:[],trips:[],accountTransactions:[],accountLoadError:null,busy:false,tab:"dashboard"};
 const clean=v=>String(v??"").trim();
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
@@ -50,6 +51,9 @@ const ledgerDefinitions=[
  ["unloading","Unloading",["UNLOADING"]],
  ["work","Truck Work",["WORK"]],
  ["vehicleemi","Vehicle Loan EMI",["VEHICLE_LOAN_EMI"]],
+ ["chassisloan","Chassis Loan EMI",["CHASSIS_LOAN_EMI"]],
+ ["bodyloan","Body Loan EMI",["BODY_LOAN_EMI"]],
+ ["personal","Personal Expenses",["PERSONAL_EXPENSE"]],
  ["homeemi","Home Loan EMI",["HOME_LOAN_EMI"]],
  ["emi","EMI / Loan (Old / Unclassified)",["EMI_LOAN"]],
  ["sale","Vehicle Sale",["VEHICLE_SALE"]],
@@ -337,8 +341,8 @@ function getSuggestion(i){
  return {r,d,truck,driver,assignment,category,party,instruction};
 }
 const driverCats=new Set(['DRIVER_ADVANCE','DRIVER_SETTLEMENT']);
-const truckCats=new Set(['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','EMI_LOAN','VEHICLE_LOAN_EMI','VEHICLE_SALE','FASTAG_TOLL']);
-const categories=[['SUSPENSE','Needs Review / Suspense'],['DRIVER_ADVANCE','Driver Advance'],['DRIVER_SETTLEMENT','Driver Hissab / Settlement'],['DIESEL','Diesel'],['UREA_DEF','Urea / DEF'],['REPAIR_MAINTENANCE','Truck Work / Repair'],['UNLOADING','Unloading'],['VEHICLE_LOAN_EMI','Vehicle Loan EMI'],['HOME_LOAN_EMI','Home Loan EMI'],['EMI_LOAN','EMI / Loan (Old / Unclassified)'],['FASTAG_TOLL','FASTag / Toll'],['VEHICLE_SALE','Vehicle Sale'],['BANK_TRANSFER','Internal Bank Transfer'],['REVERSAL_REVIEW','Reversal — Review'],['DRIVER_ADVANCE_REVERSAL','Driver Advance Reversal'],['OFFICE_EXPENSE','Office Expense'],['PARTY_BALANCE','Party Balance Received'],['PARTY_ADVANCE','Party Advance Received'],['SALARY','Staff Salary'],['STAFF_ADVANCE','Staff Advance'],['VEHICLE_PAPER','Vehicle Paper'],['SALES','Sales Ledger'],['OTHER_EXPENSE','Other Expense'],['VENDOR_PAYMENT','Vendor Payment / Repair']];
+const truckCats=new Set(['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','EMI_LOAN','VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI','VEHICLE_SALE','FASTAG_TOLL']);
+const categories=[['SUSPENSE','Needs Review / Suspense'],['DRIVER_ADVANCE','Driver Advance'],['DRIVER_SETTLEMENT','Driver Hissab / Settlement'],['DIESEL','Diesel'],['UREA_DEF','Urea / DEF'],['REPAIR_MAINTENANCE','Truck Work / Repair'],['UNLOADING','Unloading'],['VEHICLE_LOAN_EMI','Vehicle Loan EMI'],['CHASSIS_LOAN_EMI','Chassis Loan EMI'],['BODY_LOAN_EMI','Body Loan EMI'],['PERSONAL_EXPENSE','Personal Expense'],['HOME_LOAN_EMI','Home Loan EMI'],['EMI_LOAN','EMI / Loan (Old / Unclassified)'],['FASTAG_TOLL','FASTag / Toll'],['VEHICLE_SALE','Vehicle Sale'],['BANK_TRANSFER','Internal Bank Transfer'],['REVERSAL_REVIEW','Reversal — Review'],['DRIVER_ADVANCE_REVERSAL','Driver Advance Reversal'],['OFFICE_EXPENSE','Office Expense'],['PARTY_BALANCE','Party Balance Received'],['PARTY_ADVANCE','Party Advance Received'],['SALARY','Staff Salary'],['STAFF_ADVANCE','Staff Advance'],['VEHICLE_PAPER','Vehicle Paper'],['SALES','Sales Ledger'],['OTHER_EXPENSE','Other Expense'],['VENDOR_PAYMENT','Vendor Payment / Repair']];
 function renderRows(){
  const b=$('acRows');if(!b)return;
  if(!state.rows.length){b.innerHTML='<tr><td colspan="7">No statement read yet.</td></tr>';return;}
@@ -354,7 +358,7 @@ function renderInlineForm(i){
  const {r,category,truck,driver,party,instruction,assignment}=getSuggestion(i),sel=state.reviewSelections[i]||{};
  const inputStyle='box-sizing:border-box;padding:7px 8px;border:1px solid #cbd5e1;border-radius:7px;min-width:0;width:100%;background:white;font-size:12px;font-weight:400;color:#334155';
  const disabled=r.status!=='PENDING'?'disabled':'';
- const options=categories.filter(([v])=>r.credit?(!['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','VEHICLE_LOAN_EMI','HOME_LOAN_EMI','VENDOR_PAYMENT'].includes(v)):true).map(([v,n])=>`<option value="${v}" ${category===v?'selected':''}>${esc(n)}</option>`).join('');
+ const options=categories.filter(([v])=>r.credit?(!['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI','HOME_LOAN_EMI','VENDOR_PAYMENT'].includes(v)):true).map(([v,n])=>`<option value="${v}" ${category===v?'selected':''}>${esc(n)}</option>`).join('');
  const field=(label,html)=>`<label class="ekta-inline-field"><span>${label}</span>${html}</label>`;
  const chooseTruck=()=>field('Truck number (type to filter)',`<input ${disabled} data-ekta-suggest="truck" data-ekta-row="${i}" value="${esc(sel.truckText??truck?.truck_number??'')}" placeholder="e.g. 4567" style="${inputStyle}" onchange="EktaAccounts.setTruckText(${i},this.value)">`);
  const chooseDriver=()=>field('Assigned driver (type / select)',`<input ${disabled} data-ekta-suggest="driver" data-ekta-row="${i}" style="${inputStyle};font-weight:400;font-size:13px" placeholder="Type driver name" value="${esc(sel.driverText??(driver?(driver.driver_name||driver.name||driver.full_name||''):''))}" onchange="EktaAccounts.setDriverText(${i},this.value)">`);
@@ -380,7 +384,7 @@ function searchCategory(i,text){
  if(!match&&aliases[q])match=categories.find(([v])=>v===aliases[q]);
  if(!match){const matches=categories.filter(([v,n])=>n.toLowerCase().includes(q)||v.toLowerCase().includes(q));if(matches.length===1)match=matches[0];}
  if(!match){alert('Select an exact category from suggestions or dropdown.');return;}
- if(state.rows[i]?.credit&&['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','VEHICLE_LOAN_EMI','HOME_LOAN_EMI','VENDOR_PAYMENT'].includes(match[0])){alert('This category is for bank DEBIT. Please review the CREDIT entry.');return;}
+ if(state.rows[i]?.credit&&['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI','HOME_LOAN_EMI','VENDOR_PAYMENT'].includes(match[0])){alert('This category is for bank DEBIT. Please review the CREDIT entry.');return;}
  setChoice(i,'category',match[0]);
 }
 function filterTruck(i,input){ /* Custom suggestions filter locally while typing. */ }
@@ -392,7 +396,7 @@ function suggestionValues(input){
  if(kind==='truck')return [...new Set(state.trucks.map(t=>clean(t.truck_number)).filter(Boolean))];
  if(kind==='driver')return [...new Set(state.drivers.map(d=>clean(d.driver_name||d.name||d.full_name)).filter(Boolean))];
  if(kind==='vendor')return [...new Set(state.vendors.map(v=>clean(v.vendor_code)).filter(Boolean))];
- if(kind==='category')return categories.filter(([v])=>!(r?.credit&&['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','VEHICLE_LOAN_EMI','HOME_LOAN_EMI','VENDOR_PAYMENT'].includes(v))).map(([,n])=>n);
+ if(kind==='category')return categories.filter(([v])=>!(r?.credit&&['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI','HOME_LOAN_EMI','VENDOR_PAYMENT'].includes(v))).map(([,n])=>n);
  return [];
 }
 function drawSuggest(input,all=false){
@@ -544,10 +548,48 @@ async function linkTrip(rowId,input){
  finally{state.busy=false}
 }
 
- function renderGeneric(){
+ function editLedgerRow(id){
+ ledgerEditId=String(id);renderGeneric();
+ const el=document.getElementById('ledgerEditCategory');if(el)el.focus();
+}
+function cancelLedgerEdit(){ledgerEditId=null;renderGeneric()}
+function ledgerEditForm(r){
+ const opts=categories.filter(x=>!['REVERSAL_REVIEW','DRIVER_ADVANCE_REVERSAL'].includes(x[0])).map(([v,label])=>`<option value="${esc(v)}" ${v===r.category?'selected':''}>${esc(label)}</option>`).join('');
+ const master=(arr,field,label)=>`<label style="display:flex;flex-direction:column;gap:3px;font-size:10px">${label}<select id="ledgerEdit${field}" class="border rounded p-2 text-xs"><option value="">— None —</option>${arr.map(x=>`<option value="${esc(x.id)}" ${String(r[field]||'')===String(x.id)?'selected':''}>${esc(x.truck_number||x.driver_name||x.name||x.party_name||x.full_name||x.id)}</option>`).join('')}</select></label>`;
+ return `<tr><td colspan="9" style="background:#f8fafc;white-space:normal"><div style="display:flex;gap:9px;flex-wrap:wrap;align-items:end;padding:8px"><label style="font-size:10px">Ledger Category<select id="ledgerEditCategory" class="border rounded p-2 text-xs" style="display:block;min-width:180px">${opts}</select></label>${master(state.trucks,'truck_id','Truck')}${master(state.drivers,'driver_id','Driver')}${master(state.parties,'party_id','Party')}<label style="font-size:10px">Remark<input id="ledgerEditRemark" class="border rounded p-2 text-xs" style="display:block;min-width:200px" value="${esc(r.user_remark||'')}"></label><button type="button" class="btn primary" onclick="EktaAccounts.saveLedgerEdit('${esc(r.id)}')">Save Correction</button><button type="button" class="btn" onclick="EktaAccounts.cancelLedgerEdit()">Cancel</button></div><div style="font-size:10px;color:#64748b;padding:0 8px 8px">Bank date, reference and debit/credit are locked. Category corrections update the same transaction, not a new bank entry.</div></td></tr>`;
+}
+async function saveLedgerEdit(id){
+ if(state.busy||!S?.from)return;
+ const r=state.accountTransactions.find(x=>String(x.id)===String(id));if(!r)return alert('Entry not found. Refresh.');
+ const val=k=>clean(document.getElementById('ledgerEdit'+k)?.value);
+ const category=val('Category'),remark=val('Remark'),truck_id=val('truck_id')||null,driver_id=val('driver_id')||null,party_id=val('party_id')||null;
+ if(!categories.some(x=>x[0]===category)||['REVERSAL_REVIEW','DRIVER_ADVANCE_REVERSAL'].includes(category))return alert('Choose a valid ledger.');
+ if(category==='EMI_LOAN')return alert('Choose a specific loan category, not unclassified EMI.');
+ if(driverCats.has(category)&&(!truck_id||!driver_id))return alert('Select both truck and driver.');
+ if(truckCats.has(category)&&!truck_id)return alert('Select truck for this category.');
+ if(['PARTY_BALANCE','PARTY_ADVANCE'].includes(category)){
+  if(!party_id||!num(r.credit)||num(r.debit))return alert('Party receipts require a selected Party and a bank credit.');
+  const party=state.parties.find(x=>String(x.id)===party_id);if(!partyKind(party))return alert('Party Master type missing.');
+ }
+ if(['VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI','HOME_LOAN_EMI'].includes(category)&&(!num(r.debit)||num(r.credit)))return alert('EMI must be a debit.');
+ if(category==='DIESEL'&&(!truck_id||!num(r.quantity_litres)))return alert('Diesel entry needs a truck and saved litres.');
+ if(category==='VENDOR_PAYMENT')return alert('Vendor payment corrections require vendor verification; this edit cannot safely change vendor linkage.');
+ if(clean(r.user_remark).startsWith('ADVANCE_REVERSAL_OF:')||category==='DRIVER_ADVANCE'&&num(r.credit))return alert('Advance reversal entries need a separate verified correction; not changed.');
+ const changed=category!==r.category||remark!==clean(r.user_remark)||truck_id!== (r.truck_id||null)||driver_id!==(r.driver_id||null)||party_id!==(r.party_id||null);
+ if(!changed)return cancelLedgerEdit();
+ if(!confirm('Correct this saved ledger entry? The original bank amount/date/reference will remain unchanged.'))return;
+ state.busy=true;
+ try{
+  const payload={category,posting_status:category==='SUSPENSE'?'SUSPENSE':'CONFIRMED',user_remark:remark||null,truck_id:truckCats.has(category)?truck_id:null,driver_id:driverCats.has(category)?driver_id:null,party_id:['PARTY_BALANCE','PARTY_ADVANCE'].includes(category)?party_id:null,trip_id:['PARTY_BALANCE','PARTY_ADVANCE'].includes(category)&&r.party_id===party_id?r.trip_id:null};
+  const {data,error}=await S.from('account_transactions').update(payload).eq('id',r.id).eq('category',r.category).eq('posting_status',r.posting_status).select('id').single();
+  if(error)throw error;if(!data)throw Error('Update not verified');
+  ledgerEditId=null;await loadMasters();renderGeneric();alert('Ledger correction saved.');
+ }catch(e){alert('Correction not saved: '+(e.message||e))}finally{state.busy=false}
+}
+function renderGeneric(){
   let [title,sub]=meta[state.tab]||[ledgerDefinitions.find(x=>x[0]===state.tab)?.[1]||"Accounts","Saved accounting transactions"];
   $("genericTitle").textContent=title;$("genericSub").textContent=sub;
-  $("genericHead").innerHTML="<tr><th>Date</th><th>Particulars / Remark</th><th>Reference</th><th>Trip ID</th><th>Truck / Driver / Party</th><th class='money'>Debit</th><th class='money'>Credit</th><th>Status</th></tr>";
+  $("genericHead").innerHTML="<tr><th>Date</th><th>Particulars / Remark</th><th>Reference</th><th>Trip ID</th><th>Truck / Driver / Party</th><th class='money'>Debit</th><th class='money'>Credit</th><th>Status</th><th>Action</th></tr>";
   const q=clean($("genericSearch")?.value).toLowerCase();
   const trucks=new Map(state.trucks.map(x=>[String(x.id),x.truck_number]));
   const drivers=new Map(state.drivers.map(x=>[String(x.id),x.driver_name||x.name||x.full_name]));
@@ -556,7 +598,7 @@ async function linkTrip(rowId,input){
   const rows=all.filter(r=>!q||[r.transaction_date,r.bank_narration,r.user_remark,r.reference_number,trucks.get(String(r.truck_id)),drivers.get(String(r.driver_id)),parties.get(String(r.party_id)),tripLabel(r.trip_id)].some(v=>clean(v).toLowerCase().includes(q)));
   const deb=all.reduce((s,r)=>s+num(r.debit),0),cred=all.reduce((s,r)=>s+num(r.credit),0);
   if($("acLedgerSummary"))$("acLedgerSummary").textContent=state.accountLoadError?`Unable to load saved ledger: ${state.accountLoadError}`:`${all.length} saved entries • Debit ${money(deb)} • Credit ${money(cred)} • Transaction totals, not ledger closing balance`;
-  $("genericBody").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.transaction_date||"—")}</td><td style="white-space:normal;min-width:240px">${esc(r.bank_narration||"—")}${r.user_remark?`<div class="text-slate-500">${esc(r.user_remark)}</div>`:""}</td><td>${esc(r.reference_number||"—")}</td><td>${["party","partyadvance","partybalance"].includes(state.tab)?tripEditor(r):esc(tripLabel(r.trip_id)||"—")}</td><td>${esc([trucks.get(String(r.truck_id)),drivers.get(String(r.driver_id)),parties.get(String(r.party_id))].filter(Boolean).join(" • ")||"—")}</td><td class="money">${r.debit?money(r.debit):"—"}</td><td class="money">${r.credit?money(r.credit):"—"}</td><td>${esc(r.posting_status||"—")}</td></tr>`).join(""):`<tr><td colspan="8" class="text-center text-slate-400 py-10">${state.accountLoadError?"Ledger data unavailable.":"No saved entries for this ledger."}</td></tr>`;
+  $("genericBody").innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.transaction_date||"—")}</td><td style="white-space:normal;min-width:240px">${esc(r.bank_narration||"—")}${r.user_remark?`<div class="text-slate-500">${esc(r.user_remark)}</div>`:""}</td><td>${esc(r.reference_number||"—")}</td><td>${["party","partyadvance","partybalance"].includes(state.tab)?tripEditor(r):esc(tripLabel(r.trip_id)||"—")}</td><td>${esc([trucks.get(String(r.truck_id)),drivers.get(String(r.driver_id)),parties.get(String(r.party_id))].filter(Boolean).join(" • ")||"—")}</td><td class="money">${r.debit?money(r.debit):"—"}</td><td class="money">${r.credit?money(r.credit):"—"}</td><td>${esc(r.posting_status||"—")}</td><td><button type="button" class="btn" onclick="EktaAccounts.editLedgerRow('${esc(r.id)}')">Edit</button></td></tr>${ledgerEditId===String(r.id)?ledgerEditForm(r):""}` ).join(""):`<tr><td colspan="9" class="text-center text-slate-400 py-10">${state.accountLoadError?"Ledger data unavailable.":"No saved entries for this ledger."}</td></tr>`;
  }
 function setBusy(v){state.busy=v;$("acBusy")?.classList.toggle("hidden",!v);if($("acAnalyzeBtn"))$("acAnalyzeBtn").disabled=v||!state.file}
 async function analyze(){
@@ -620,7 +662,7 @@ async function persistMaster(i,forceSuspense=false){
    if(!partyKind(party))return alert('Party Master type missing. Set Billing Party or Transporter before saving.');
    if(partyKind(party)==='BILLING'&&category==='PARTY_ADVANCE')return alert('Billing Party receipt must be saved as Party Balance Received.');
   }
-  if((category==='HOME_LOAN_EMI'||category==='VEHICLE_LOAN_EMI')&&(!r.debit||r.credit))return alert('EMI payment must be a bank DEBIT. Review the transaction.');
+  if((['HOME_LOAN_EMI','VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI'].includes(category))&&(!r.debit||r.credit))return alert('EMI payment must be a bank DEBIT. Review the transaction.');
   if(category==='VENDOR_PAYMENT'&&(!r.debit||r.credit||!selectedVendor))return alert('Vendor payment requires a bank DEBIT and verified Vendor Code.');
   if(category==='DIESEL'){
    const litres=Number(state.reviewSelections[i]?.litres);
@@ -672,6 +714,6 @@ function bind(){let f=$("acFile"),d=$("acDrop");if(!f||!d)return;f.addEventListe
 async function refresh(){await loadMasters();renderRows()}
 function scrollWorking(dir){const e=$("workingScroll");if(e)e.scrollBy({left:dir*430,behavior:"smooth"})}
 function scrollBottom(dir){const e=$("bottomScroll");if(e)e.scrollBy({left:dir*430,behavior:"smooth"})}
-window.EktaAccounts={getVickyTrucks:()=>state.trucks.map(t=>t.truck_number).filter(Boolean),getReviewSnapshot:()=>({bank:state.selectedBank,rows:state.rows.map(r=>({date:r.date,narration:r.narration,reference:r.reference,debit:r.debit,credit:r.credit,bank_transaction_id:r.bank_transaction_id}))}),showTab,analyze,analyzeAI,resetStatement,bankSelectionChanged,confirmRow,suspenseRow,setRemark,setLitres,setOriginalRef,setChoice,setDriverText,setVendorCode,toggleReview,refreshReview,setPartyCode,setTruckText,searchCategory,filterTruck,renderGeneric,tripSuggest,linkTrip,refresh,scrollWorking,scrollBottom};
+window.EktaAccounts={getVickyTrucks:()=>state.trucks.map(t=>t.truck_number).filter(Boolean),getReviewSnapshot:()=>({bank:state.selectedBank,rows:state.rows.map(r=>({date:r.date,narration:r.narration,reference:r.reference,debit:r.debit,credit:r.credit,bank_transaction_id:r.bank_transaction_id}))}),showTab,analyze,analyzeAI,resetStatement,bankSelectionChanged,confirmRow,suspenseRow,setRemark,setLitres,setOriginalRef,setChoice,setDriverText,setVendorCode,toggleReview,refreshReview,setPartyCode,setTruckText,searchCategory,filterTruck,renderGeneric,editLedgerRow,cancelLedgerEdit,saveLedgerEdit,tripSuggest,linkTrip,refresh,scrollWorking,scrollBottom};
 initSuggestions();bind();loadMasters();renderRows();renderDashboard();
 })();
