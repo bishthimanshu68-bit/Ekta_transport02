@@ -731,6 +731,20 @@
 #etPartySuggestions .suggestion.et-key-active{background:#e3efff!important;outline:1px solid #87bafa;outline-offset:-1px}
 #etProgramModal .flow .step{cursor:pointer}
 </style>
+<style>
+/* Operator-selected status: vivid, stable highlight; does not alter card layout. */
+#trackingModule .cards .card[data-tracking-filter]{position:relative;transition:box-shadow .16s ease,border-color .16s ease,transform .16s ease}
+#trackingModule .cards .card.et-status-selected{border:3px solid var(--et-selected-color,#2563eb)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--et-selected-color,#2563eb) 22%,transparent),0 0 19px color-mix(in srgb,var(--et-selected-color,#2563eb) 40%,transparent),0 8px 17px #17365324!important;transform:translateY(-2px);z-index:2;padding:7px 9px}
+#trackingModule .cards .card.et-status-selected::after{content:'✓ SELECTED';position:absolute;right:7px;top:6px;background:var(--et-selected-color,#2563eb);color:white;font-size:8px;font-weight:900;padding:3px 5px;border-radius:5px;letter-spacing:.02em}
+#trackingModule .cards .c-empty{--et-selected-color:#64748b}
+#trackingModule .cards .c-program{--et-selected-color:#2563eb}
+#trackingModule .cards .c-running{--et-selected-color:#059669}
+#trackingModule .cards .c-reporting{--et-selected-color:#7c3aed}
+#trackingModule .cards .c-nodriver{--et-selected-color:#dc2626}
+#trackingModule .cards .c-delay{--et-selected-color:#d97706}
+#trackingModule .cards .c-alert{--et-selected-color:#db2777}
+@media(prefers-reduced-motion:reduce){#trackingModule .cards .card[data-tracking-filter]{transition:none}}
+</style>
 </head>
 
 <body>
@@ -903,44 +917,44 @@
     ====================================================== -->
     <div class="cards">
 
-        <div class="card c-empty"
-             onclick="window.EktaTracking.setStatusFilter('EMPTY')">
+        <div class="card c-empty" data-tracking-filter="EMPTY" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('EMPTY')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('EMPTY')}">
             <small>EMPTY (Available)</small>
             <strong id="etNEmpty">0</strong>
         </div>
 
-        <div class="card c-program"
-             onclick="window.EktaTracking.setStatusFilter('PROGRAM')">
+        <div class="card c-program" data-tracking-filter="PROGRAM" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('PROGRAM')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('PROGRAM')}">
             <small>PROGRAM</small>
             <strong id="etNProgram">0</strong>
         </div>
 
-        <div class="card c-running"
-             onclick="window.EktaTracking.setStatusFilter('RUNNING')">
+        <div class="card c-running" data-tracking-filter="RUNNING" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('RUNNING')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('RUNNING')}">
             <small>RUNNING</small>
             <strong id="etNRunning">0</strong>
         </div>
 
-        <div class="card c-reporting"
-             onclick="window.EktaTracking.setStatusFilter('REPORTING')">
+        <div class="card c-reporting" data-tracking-filter="REPORTING" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('REPORTING')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('REPORTING')}">
             <small>REPORTING</small>
             <strong id="etNReporting">0</strong>
         </div>
 
-        <div class="card c-nodriver"
-             onclick="window.EktaTracking.setStatusFilter('NO_DRIVER')">
+        <div class="card c-nodriver" data-tracking-filter="NO_DRIVER" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('NO_DRIVER')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('NO_DRIVER')}">
             <small>NO DRIVER</small>
             <strong id="etNNoDriver">0</strong>
         </div>
 
-        <div class="card c-delay"
-             onclick="window.EktaTracking.setStatusFilter('DELAY')">
+        <div class="card c-delay" data-tracking-filter="DELAY" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('DELAY')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('DELAY')}">
             <small>DELAYED TRIPS</small>
             <strong id="etNDelay">0</strong>
         </div>
 
-        <div class="card c-alert"
-             onclick="window.EktaTracking.setStatusFilter('ALERT')">
+        <div class="card c-alert" data-tracking-filter="ALERT" role="button" tabindex="0" aria-pressed="false"
+             onclick="window.EktaTracking.setStatusFilter('ALERT')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.EktaTracking.setStatusFilter('ALERT')}">
             <small>LIVE ALERTS</small>
             <strong id="etNAlerts">0</strong>
         </div>
