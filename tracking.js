@@ -191,6 +191,13 @@ function party(id){return parties.find(x=>String(x.id)===String(id))||null}
 function activeAssignment(truckId){return assignments.filter(a=>String(a.truck_id)===String(truckId)).filter(a=>clean(a.status).toLowerCase()==="active").filter(a=>{const d=driver(a.driver_id);return d&&clean(d.status||"Active").toLowerCase()!=="inactive"}).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null}
 function activeDriver(truckId){const a=activeAssignment(truckId);return a?driver(a.driver_id):null}
 function activeTrip(truckId){return trips.filter(t=>String(t.truck_id)===String(truckId)).filter(t=>!['completed','cancelled'].includes(clean(t.trip_status).toLowerCase())).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null}
+// Last completed unloading destination per truck; read-only from loaded trip history.
+function lastUnloadingPoint(truckId){
+ const completed=trips.filter(t=>String(t.truck_id)===String(truckId)&&clean(t.trip_status).toLowerCase()==="completed"&&clean(t.unloading_date||t.end_date));
+ completed.sort((a,b)=>String(dateOnly(b.unloading_date||b.end_date)).localeCompare(String(dateOnly(a.unloading_date||a.end_date)))||new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+ const last=completed[0];
+ return last?clean(last.destination||last.to_location)||"—":"—";
+}
 function latestLocation(truckId){
  const tr=truck(truckId),vehicle=clean(tr?.truck_number).toUpperCase();
  const gps=(gpsLocations||[]).filter(x=>clean(x.vehicle_number).toUpperCase()===vehicle)
@@ -1021,11 +1028,13 @@ async function sendStatusNotification(){
 /* ========================= 6. MAIN TABLE ==================== */
 function render(){
  const alertView=filterStatus==="ALERT";
+ const emptyView=filterStatus==="EMPTY";
  const head=$("etTrackingHead");
  if(head){
   const standard=`<tr><th>Zone</th><th>Truck</th><th>Trip</th><th>Party</th><th>Party Status</th><th>From</th><th>To</th><th>Status</th><th>Current Location</th><th>GPS</th><th>Last Update</th></tr>`;
+  const emptyHeader=standard.replace("<th>Zone</th>","<th>Zone</th><th>Last Unloading Point</th>");
   const breakdown=`<tr><th>Zone</th><th>Truck Number</th><th>Trip</th><th>Party</th><th>Route</th><th>Status</th><th>Breakdown Started</th><th>Live Duration</th><th>Reason</th><th>Action</th></tr>`;
-  const wanted=alertView?breakdown:standard;
+  const wanted=alertView?breakdown:(emptyView?emptyHeader:standard);
   if(head.innerHTML!==wanted)head.innerHTML=wanted;
  }
  const data=displayedRowsModel().filter(matchesFilter).sort((a,b)=>(ZONES.indexOf(a.truckZone)<0?99:ZONES.indexOf(a.truckZone))-(ZONES.indexOf(b.truckZone)<0?99:ZONES.indexOf(b.truckZone))||String(a.t.truck_number||"").localeCompare(String(b.t.truck_number||"")));
@@ -1056,6 +1065,7 @@ function render(){
   const last=useFastag?fmtDT(fastag.time):(gpsTime?fmtDT(gpsTime):"—");
    return `<tr tabindex="0" data-id="${esc(r.t.id)}" onclick="window.EktaTracking.selectTruck('${esc(r.t.id)}')" ondblclick="window.EktaTracking.openTruck('${esc(r.t.id)}')" onkeydown="window.EktaTracking.rowKey(event,'${esc(r.t.id)}')">
    <td><span class="zone">${esc(r.truckZone||"—")}</span></td>
+   ${emptyView?`<td class="et-last-unload" title="${esc(lastUnloadingPoint(r.t.id))}"><span>${esc(lastUnloadingPoint(r.t.id))}</span></td>`:""}
    <td><span class="et-truck" onclick="event.stopPropagation();window.EktaTracking.openTruck('${esc(r.t.id)}')">${esc(r.t.truck_number||"—")}</span></td>
    <td class="et-trip-internal">${esc(r.trip?.trip_number||"—")}</td>
    <td class="et-party-cell">${esc(r.p?.name||"—")}${r.trip?`<div class="et-party-pending"><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.openPendingProgram('${esc(r.trip.id)}')">✎ Edit Pending</button></div>`:""}</td>
@@ -1072,7 +1082,7 @@ function render(){
    <td><span class="et-gps-source">${esc(gps)}</span></td>
    <td>${esc(last)}<div style="margin-top:5px">${action(r)}</div></td>
    </tr>`;
- }).join(""):`<tr><td colspan="11" style="padding:30px;text-align:center" class="muted">No Tracking records found.</td></tr>`;
+ }).join(""):`<tr><td colspan="${emptyView?12:11}" style="padding:30px;text-align:center" class="muted">No Tracking records found.</td></tr>`;
  cards();alerts();if(!selectedMap&&data[0])selectMap(data[0]);
 }
 
