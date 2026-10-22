@@ -23,6 +23,7 @@
     let aiPartyPreviewRows = [];
     let aiPartySourceHasCodeColumn = false;
     let activePartySection = "";
+    let addingUnitFor = null;
 
     const $ = (id) => document.getElementById(id);
     const norm = (v) => String(v || "").trim().toLowerCase();
@@ -187,7 +188,7 @@
 
     function visiblePartyCode(party) {
         // Display the stored code: never fabricate a different code from the city.
-        return party?.party_code || "-";
+        return party?.party_type === "Billing Client" ? baseBillingCode(party.party_code) : (party?.party_code || "-");
     }
 
     function baseBillingCode(value) {
@@ -304,6 +305,7 @@
 
     async function resetForm() {
         $("partyForm")?.reset();
+        addingUnitFor = null;
 
        if ($("partyId")) $("partyId").value = "";
 if ($("partyCode")) { $("partyCode").value = ""; $("partyCode").disabled = false; $("partyCode").readOnly = false; }
@@ -386,7 +388,26 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
         setTimeout(() => $("partyName")?.focus(), 50);
     }
 
+    async function addUnit(partyId) {
+        const parent = parties.find(p => String(p.id) === String(partyId));
+        if (!parent || norm(parent.party_type) !== "billing client") return;
+        await openForm();
+        addingUnitFor = String(parent.id);
+        $("partyCode").value = baseBillingCode(parent.party_code);
+        $("partyName").value = String(parent.name || "").replace(/\s*\([^)]*\)\s*$/, "");
+        $("partyType").value = "Billing Client";
+        $("partyType").disabled = true;
+        $("partyCity").value = "";
+        $("partyGst").value = "";
+        $("partyPan").value = parent.pan_number || "";
+        $("partyAddress").value = "";
+        $("partyState").value = "";
+        $("partyFormTitle").textContent = "Add Billing Unit — " + baseBillingCode(parent.party_code);
+        $("partyCity").focus();
+    }
+
     function closeForm() {
+        if ($("partyType")) $("partyType").disabled = false;
         $("partyFormModal")?.classList.add("hidden");
         $("partyFormModal")?.classList.remove("flex");
     }
@@ -534,11 +555,26 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
                 .eq("id", id)
                 .select("*");
         } else {
-            // Generate from LIVE database immediately before insert.
+            // Respect manually entered codes. A billing unit has a unique internal
+            // code but shares the displayed company code and group mapping.
             const usedCodes = await fetchUsedPartyCodes();
-            partyCode = nextPartyCodeFromUsed(usedCodes);
+            if (addingUnitFor) {
+                const parent = parties.find(p => String(p.id) === addingUnitFor);
+                if (!parent || baseBillingCode(parent.party_code) !== requestedBase) {
+                    alert("Unit company code changed. Reopen Add Unit."); return false;
+                }
+                partyCode = requestedBase + "__UNIT__" + safeUnitKey(city);
+            } else {
+                partyCode = requestedBase;
+                if (partyType === "Billing Client" && usedCodes.has(requestedBase)) {
+                    alert("Company Code " + requestedBase + " already exists. Use + Add Unit beside that Billing Party instead.");
+                    return false;
+                }
+            }
+            const exists = await window.supabaseClient.from(TABLE).select("id").ilike("party_code", partyCode).limit(1);
+            if (exists.error) { alert("Code check failed: " + exists.error.message); return false; }
+            if (exists.data?.length) { alert("This party/unit code already exists. Please check the unit city."); return false; }
             payload.party_code = partyCode;
-            if ($("partyCode")) $("partyCode").value = partyCode;
 
             result = await window.supabaseClient
                 .from(TABLE)
@@ -653,6 +689,7 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
                     </td>
                     <td class="py-2.5 px-3 font-bold text-slate-800">
                         ${esc(party.name || "-")}
+                        ${norm(party.party_type)==="billing client" ? `<div class="text-[10px] font-normal text-slate-500">Unit: ${esc(billingUnitForParty(party.id)?.unit_name || party.city || "—")}</div>` : ""}
                     </td>
                     <td class="py-2.5 px-3">${typeBadge(party.party_type)}</td>
                     <td class="py-2.5 px-3">${esc(party.city || "-")}</td>
@@ -669,6 +706,7 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
                                 class="w-7 h-7 rounded-md border border-slate-200 text-blue-600 hover:bg-blue-50">
                                 <i class="fa-solid fa-eye text-[10px]"></i>
                             </button>
+                            ${norm(party.party_type)==="billing client" ? `<button type="button" onclick="window.EktaParties.addUnit('${esc(party.id)}')" title="Add Unit" class="px-2 h-7 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold whitespace-nowrap">+ Add Unit</button>` : ""}
                             <button type="button"
                                 onclick="window.EktaParties.openForm('${esc(party.id)}')"
                                 title="Edit"
@@ -1848,6 +1886,7 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
         openForm,
         closeForm,
         saveParty,
+        addUnit,
         openView,
         closeView,
         renderTable,
@@ -1882,6 +1921,27 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
         deleteAiRateRow,
         deleteSavedRateRow
     };
+
+    // Arrow keys scroll the active Party worksheet when focus is not editing a field.
+    document.addEventListener("keydown", function(event) {
+        if (!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key)) return;
+        if (!$("partiesModule") || $("partyMasterListArea")?.classList.contains("hidden")) return;
+        if (!$("partyFormModal")?.classList.contains("hidden")) return;
+        const el = event.target;
+        if (el?.closest?.('input, textarea, select, [contenteditable="true"], [role="combobox"]')) return;
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const horizontal = event.key === "ArrowLeft" || event.key === "ArrowRight";
+        const dir = event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 1;
+        const tableScroll = $("partyTableBody")?.closest(".overflow-x-auto");
+        if (horizontal && tableScroll && tableScroll.scrollWidth > tableScroll.clientWidth) {
+            event.preventDefault(); tableScroll.scrollBy({left: dir * 160, behavior:"smooth"});
+        } else if (!horizontal) {
+            event.preventDefault();
+            const panel = $("partiesModule")?.closest('[style*="overflow"], .overflow-y-auto');
+            const scroller = panel && panel.scrollHeight > panel.clientHeight ? panel : window;
+            scroller.scrollBy({top: dir * 100, behavior:"smooth"});
+        }
+    });
 
     init();
 })();
