@@ -6076,11 +6076,10 @@ async function downloadDocument(truckId, docKey) {
         return result.data.text || '';
     }
     function parseOCRFields(text, docKey) {
-        // The selected document type is authoritative. RC never needs an expiry date.
+        // OCR preview only: never infer a precise expiry from a filename or an unrelated date.
         const raw = String(text || '').toUpperCase().replace(/[\u2013\u2014]/g, '-');
         const flat = raw.replace(/\s+/g, ' ');
         const normalizedText = flat.replace(/[^A-Z0-9]/g, '');
-        // First match actual registered fleet numbers, including spaced/label-free RC print.
         const matchedFleet = fleetData.filter(t => {
             const number = normalizeTruckNumber(t.truckNo);
             return number && normalizedText.includes(number);
@@ -6091,34 +6090,41 @@ async function downloadDocument(truckId, docKey) {
             : (detected.find(n => findTruckByNumber(n)) || (matchedFleet.length ? '' : detected[0]) || '');
         if (docKey === 'rc') return {truckNo, expiry: ''};
 
-        // Standard government/insurer variations: Valid Up To, Valid Upto,
-        // Valid Until, Valid Till, Validity To, Expiry/Expiration Date,
-        // Expires On, Date of Expiry, Policy End Date, Permit Valid Upto.
-        const label = /(?:VALID(?:ITY)?\s*(?:UP\s*TO|UPTO|TILL|UNTIL|THROUGH|TO)|VALID\s*(?:UP\s*TO|UPTO|UNTIL|TILL)|EXPIR(?:Y|ATION|ES?)\s*(?:DATE|ON)?|DATE\s*OF\s*EXPIRY|END\s*(?:DATE|OF\s*VALIDITY)|POLICY\s*(?:END|EXPIRY)|PERMIT\s*(?:VALID\s*(?:UPTO|UP\s*TO|TILL)|EXPIRY)|FITNESS\s*(?:VALID\s*(?:UPTO|UP\s*TO|TILL)|EXPIRY))/g;
-        const negative = /(?:DATE\s*OF\s*ISSUE|ISSUE\s*DATE|ISSUED\s*ON|VALID\s*FROM|EFFECTIVE\s*FROM|REGISTRATION\s*DATE|DATE\s*OF\s*REGISTRATION|MANUFACTURE|DATE\s*OF\s*BIRTH|DOB|START\s*DATE)/;
         const months = {JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,SEPT:9,OCT:10,NOV:11,DEC:12};
         const datePattern = /\b(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})\b|\b(\d{1,2})\s*[-\/. ]\s*(\d{1,2})\s*[-\/. ]\s*(\d{4})\b|\b(\d{1,2})\s*[-\/. ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)[A-Z]*\s*[-\/. ,]*\s*(\d{4})\b/g;
-        const candidates = [];
+        const dates = [];
         for (const m of flat.matchAll(datePattern)) {
             const year = Number(m[1] || m[6] || m[9]);
             const month = Number(m[2] || m[5] || months[m[8]]);
             const day = Number(m[3] || m[4] || m[7]);
             const d = new Date(Date.UTC(year, month - 1, day));
-            if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) continue;
-            const before = flat.slice(Math.max(0,m.index-100),m.index);
-            const after = flat.slice(m.index+m[0].length,m.index+m[0].length+45);
-            const labels = [...before.matchAll(label)];
-            const last = labels[labels.length-1];
-            const distance = last ? before.length - (last.index + last[0].length) : 999;
+            if (year < 2000 || year > 2100 || d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) continue;
+            dates.push({index:m.index, end:m.index+m[0].length, date:`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`});
+        }
+        const label = /(?:VALID(?:ITY)?\s*(?:UP\s*TO|UPTO|TILL|UNTIL|THROUGH|TO)|EXPIR(?:Y|ATION|ES?)\s*(?:DATE|ON)?|DATE\s*OF\s*EXPIRY|POLICY\s*(?:END|EXPIRY)|PERIOD\s*OF\s*INSURANCE|INSURANCE\s*PERIOD|COVERAGE\s*PERIOD|END\s*(?:DATE|OF\s*VALIDITY)|PERMIT\s*(?:VALID\s*(?:UPTO|UP\s*TO|TILL)|EXPIRY)|FITNESS\s*(?:VALID\s*(?:UPTO|UP\s*TO|TILL)|EXPIRY))/g;
+        const negative = /(?:DATE\s*OF\s*ISSUE|ISSUE\s*DATE|ISSUED\s*ON|VALID\s*FROM|EFFECTIVE\s*FROM|REGISTRATION\s*DATE|DATE\s*OF\s*REGISTRATION|MANUFACTURE|DATE\s*OF\s*BIRTH|DOB|START\s*DATE)/;
+        const candidates = [];
+        for (const d of dates) {
+            const before = flat.slice(Math.max(0,d.index-125),d.index);
+            const after = flat.slice(d.end,d.end+60);
+            const matches = [...before.matchAll(label)];
+            const last = matches[matches.length-1];
+            const distance = last ? before.length-(last.index+last[0].length) : 999;
             const bad = negative.test(before.slice(-55));
-            const isLabelAfter = /^(?:\s*[:\-]?\s*)(?:VALID\s*(?:UPTO|UP\s*TO)|EXPIRY\s*DATE)/.test(after);
-            const score = (distance <= 50 ? 110 - distance : 0) + (isLabelAfter ? 50 : 0) - (bad ? 180 : 0);
-            candidates.push({date:`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`,score});
+            let score = (distance <= 65 ? 120-distance : 0) - (bad ? 180 : 0);
+            if (/^(?:\s*[:\-]?\s*)(?:VALID\s*(?:UPTO|UP\s*TO)|EXPIRY\s*DATE)/.test(after)) score += 30;
+            // Common policy layout: Period of Insurance: From DD/MM/YYYY To DD/MM/YYYY.
+            // The second date is the end date, not the start date.
+            const previous = dates.filter(x => x.end <= d.index).at(-1);
+            if (previous && d.index-previous.end <= 55 && /\b(?:TO|TILL|UNTIL|UPTO|UP\s*TO)\b/.test(flat.slice(previous.end,d.index))) {
+                const context = flat.slice(Math.max(0,previous.index-95),previous.index);
+                if (/(?:PERIOD\s*OF\s*INSURANCE|INSURANCE\s*PERIOD|POLICY\s*PERIOD|COVERAGE\s*PERIOD|VALID(?:ITY)?\s*FROM)/.test(context)) score += 125;
+            }
+            candidates.push({...d,score});
         }
         candidates.sort((a,b)=>b.score-a.score);
         const top = candidates[0];
-        // Never guess from unrelated dates (issue date, registration date, etc.).
-        const confident = top && top.score >= 60 && (!candidates[1] || top.date === candidates[1].date || top.score - candidates[1].score >= 10);
+        const confident = top && top.score >= 65 && (!candidates[1] || top.date === candidates[1].date || top.score-candidates[1].score >= 12);
         return {truckNo, expiry: confident ? top.date : ''};
     }
     async function processOCRDocuments(event) {
