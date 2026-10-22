@@ -33,7 +33,6 @@ const $=id=>document.getElementById(id);
 const ZONES=["NORTH","SOUTH","EAST","WEST"];
 let trucks=[],drivers=[],assignments=[],parties=[],trips=[],locations=[],gpsLocations=[],ewayBills=[],driverRequests=[],programRequests=[];
 let filterStatus="",trackingInitialized=false,selectedTruck=null,selectedParty=null,selectedTrip=null,selectedMap=null;
-let etLoadInProgress=false,etLoadAgain=false;
 let currentProgramRequestId=null;
 const gpsPlaceCache=new Map();
 
@@ -113,7 +112,7 @@ function locationSuggestions(q){
 
 function showLocationSuggestions(q){
  const box=$("etLocSuggestions");if(!box)return;
- const list=locationSuggestions(q);
+ const list=ektaOfflinePlaceMatches(q);
  box.innerHTML=list.map(x=>`<button type="button" onclick="window.EktaTracking.chooseLocationSuggestion('${esc(x)}')">${esc(x)}</button>`).join("");
  box.classList.toggle("show",list.length>0);
 }
@@ -395,8 +394,6 @@ if(typeof window!=="undefined")window.setInterval(updateBreakdownTimers,60000);
 
 /* ========================= 4. DATA LOAD ===================== */
 async function loadAll(){
- if(etLoadInProgress){etLoadAgain=true;return;}
- etLoadInProgress=true;
  if(!dbOK()){renderError("Supabase client not available. Make sure db.js loads before Tracking.");return}
  try{
   const core=await Promise.all([
@@ -424,10 +421,6 @@ async function loadAll(){
    // FASTag toll-crossing locations for the main Tracking table (non-blocking).
    loadLatestFastagLocations().then(()=>render()).catch(e=>console.warn("[EKTA] FASTag table locations unavailable",e));
  }catch(e){console.error("[EKTA TRACKING] Load error:",e);renderError("Tracking data could not be loaded: "+(e.message||"Database error"))}
- finally{
-  etLoadInProgress=false;
-  if(etLoadAgain){etLoadAgain=false;loadAll();}
- }
 }
 
 async function mergeTrueLatestGpsRows(){
@@ -870,6 +863,20 @@ async function suggestProgramFreight(){
   info.textContent=`✓ Rate List matched: ${rate.vehicle_category||"Standard"} • ₹${Number(rate.rate).toLocaleString("en-IN")} (provisional)`;
  }else{if(input.dataset.autoRate==="yes"){input.value="";input.dataset.autoRate="no"}info.textContent="Rate pending — enter freight manually if known."}
 }
+const EKTA_OFFLINE_PLACES = [
+"Meerut","Mehsana","Medinipur","Merta City","Meeranpur","Delhi","New Delhi","Noida","Greater Noida","Ghaziabad","Dadri","Hapur","Modinagar","Muzaffarnagar","Saharanpur","Bulandshahr","Aligarh","Agra","Mathura","Faridabad","Gurugram","Manesar","Bhiwadi","Dharuhera","Rewari","Sonipat","Panipat","Karnal","Ambala","Chandigarh","Ludhiana","Jalandhar","Amritsar","Patiala","Bathinda","Jaipur","Ajmer","Alwar","Neemrana","Bharatpur","Kota","Udaipur","Jodhpur","Bikaner","Sikar","Pilani","Ahmedabad","Gandhinagar","Surat","Vadodara","Bharuch","Ankleshwar","Rajkot","Jamnagar","Vapi","Valsad","Mehsana","Palanpur","Mumbai","Navi Mumbai","Thane","Bhiwandi","Pune","Chakan","Talegaon","Nashik","Nagpur","Aurangabad","Kolhapur","Satara","Solapur","Indore","Bhopal","Gwalior","Ujjain","Jabalpur","Raipur","Bilaspur","Lucknow","Kanpur","Varanasi","Prayagraj","Gorakhpur","Bareilly","Moradabad","Rudrapur","Haridwar","Dehradun","Roorkee","Patna","Gaya","Muzaffarpur","Ranchi","Jamshedpur","Dhanbad","Bokaro","Kolkata","Howrah","Durgapur","Siliguri","Asansol","Bhubaneswar","Cuttack","Rourkela","Hyderabad","Secunderabad","Warangal","Vijayawada","Guntur","Visakhapatnam","Tirupati","Bengaluru","Mysuru","Hubballi","Belagavi","Mangaluru","Chennai","Coimbatore","Salem","Madurai","Hosur","Tiruppur","Kochi","Thrissur","Kozhikode","Thiruvananthapuram","Goa","Panaji","Guwahati","Shillong","Imphal","Agartala","Jammu","Srinagar","Shimla"
+];
+function ektaOfflinePlaceMatches(query,extra=[]){
+ const q=clean(query).toLocaleLowerCase("en-IN");
+ if(!q)return [];
+ const stored=(trips||[]).flatMap(t=>[t.from_location,t.to_location,t.loading_point,t.destination,t.current_location]);
+ const ratePlaces=(typeof programRates!=="undefined"&&Array.isArray(programRates))?programRates.flatMap(r=>[r.from_location,r.destination]):[];
+ const all=[...ratePlaces,...stored,...extra,...EKTA_OFFLINE_PLACES,...INDIA_LOCATION_SUGGESTIONS];
+ const seen=new Set();
+ return all.map(clean).filter(v=>{const key=v.toLocaleLowerCase("en-IN");if(!key||seen.has(key))return false;seen.add(key);return true;})
+  .filter(v=>v.toLocaleLowerCase("en-IN").startsWith(q))
+  .sort((a,b)=>a.length-b.length||a.localeCompare(b)).slice(0,10);
+}
 function setupProgramLocationAutocomplete(){
  ["etPLoad","etPTo"].forEach(id=>{
   const input=$(id);if(!input||input.dataset.ektaAutocomplete)return;
@@ -887,9 +894,7 @@ function setupProgramLocationAutocomplete(){
   const choose=()=>{if(!options.length)return;input.value=options[index].toUpperCase();hide();suggestProgramFreight()};
   const draw=()=>{
    const q=clean(input.value).toUpperCase();
-   const values=programRates.flatMap(r=>id==="etPLoad"?[r.from_location]:[r.destination]);
-   options=[...new Map(values.filter(Boolean).map(v=>[normalizeRateLocation(v),clean(v).toUpperCase()])).values()]
-    .filter(v=>q&&normalizeRateLocation(v).startsWith(normalizeRateLocation(q))).slice(0,8);
+   options=ektaOfflinePlaceMatches(q).map(v=>v.toUpperCase());
    index=0;
    menu.innerHTML=options.map((v,i)=>`<div data-index="${i}" style="padding:9px 12px;cursor:pointer;${i===0?'background:#eaf3ff':''}">${esc(v)}</div>`).join("");
    menu.style.display=options.length?"block":"none";
@@ -906,6 +911,37 @@ function setupProgramLocationAutocomplete(){
     e.preventDefault();index=(index+(e.key==="ArrowDown"?1:-1)+options.length)%options.length;
     menu.querySelectorAll("[data-index]").forEach((el,i)=>el.style.background=i===index?"#eaf3ff":"white");
    }else if(e.key==="Escape")hide();
+  });
+  input.addEventListener("blur",()=>setTimeout(hide,120));
+ });
+}
+
+
+function setupOtherOfflinePlaceInputs(){
+ ["etLPoint","etRDestination"].forEach(id=>{
+  const input=$(id);if(!input||input.dataset.ektaOfflinePlace)return;
+  input.dataset.ektaOfflinePlace="1";
+  const host=input.parentElement;host.style.position="relative";
+  const menu=document.createElement("div");
+  menu.className="ekta-rate-location-menu";
+  menu.style.cssText="position:absolute;top:calc(100% + 3px);left:0;right:0;background:white;z-index:1100;box-shadow:0 8px 22px #17365330;max-height:180px;overflow-y:auto;border:1px solid #d7e2ef;border-radius:8px;display:none";
+  host.appendChild(menu);
+  let matches=[],index=0;
+  const hide=()=>{menu.style.display="none";matches=[]};
+  const choose=()=>{if(!matches.length)return;input.value=matches[index];input.dispatchEvent(new Event("change",{bubbles:true}));hide()};
+  const draw=()=>{
+   matches=ektaOfflinePlaceMatches(input.value);index=0;
+   menu.innerHTML=matches.map((v,i)=>`<div data-index="${i}" style="padding:9px 12px;cursor:pointer;${i===0?'background:#eaf3ff':''}">${esc(v)}</div>`).join("");
+   menu.style.display=matches.length?"block":"none";
+   menu.querySelectorAll("[data-index]").forEach(el=>el.addEventListener("mousedown",e=>{e.preventDefault();index=Number(el.dataset.index);choose()}));
+  };
+  input.addEventListener("input",draw);
+  input.addEventListener("focus",draw);
+  input.addEventListener("keydown",e=>{
+   if(!matches.length)return;
+   if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();index=(index+(e.key==="ArrowDown"?1:-1)+matches.length)%matches.length;menu.querySelectorAll("[data-index]").forEach((el,i)=>el.style.background=i===index?"#eaf3ff":"white")}
+   else if(e.key==="Enter"){e.preventDefault();choose()}
+   else if(e.key==="Escape")hide();
   });
   input.addEventListener("blur",()=>setTimeout(hide,120));
  });
@@ -1054,15 +1090,12 @@ function render(){
  if($("etCountText"))$("etCountText").textContent=`${data.length} truck(s) shown`;
  if($("etStatusFilter"))$("etStatusFilter").value=filterStatus;
  const body=$("etRows");if(!body)return;
- const worksheet=body.closest(".tablewrap");
- const previousTop=worksheet?.scrollTop||0,previousLeft=worksheet?.scrollLeft||0;
- const restoreWorksheet=()=>{if(worksheet){worksheet.scrollTop=previousTop;worksheet.scrollLeft=previousLeft;}};
  if(alertView){
   body.innerHTML=data.length?data.map(r=>{
    const event=activeBreakdown(r.trip);
    return `<tr><td><span class="zone">${esc(r.truckZone||"—")}</span></td><td><span class="et-truck">${esc(r.t.truck_number||"—")}</span></td><td>${esc(r.trip?.trip_number||"—")}</td><td>${esc(r.p?.name||"—")}</td><td>${esc(r.trip?.from_location||"—")} → ${esc(r.trip?.to_location||r.trip?.destination||"—")}</td><td>${badge(r.status,false,true)}</td><td>${esc(fmtDT(event.started_at))}</td><td><strong data-breakdown-start="${esc(event.started_at)}">${esc(breakdownDuration(event.started_at))}</strong></td><td>${esc(event.reason||"—")}</td><td><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.resolveBreakdown('${esc(r.trip.id)}')">✓ Mark Repaired</button></td></tr>`;
   }).join(""):'<tr><td colspan="10" class="empty">No active vehicle breakdowns.</td></tr>';
-  cards();alerts();updateBreakdownTimers();restoreWorksheet();return;
+  cards();alerts();updateBreakdownTimers();return;
  }
  body.innerHTML=data.length?data.map((r,i)=>{
    const fastag=(etFastagRows||[]).find(x=>String(x.t?.id)===String(r.t.id));
@@ -1097,7 +1130,7 @@ function render(){
    <td>${esc(last)}<div style="margin-top:5px">${action(r)}</div></td>
    </tr>`;
  }).join(""):`<tr><td colspan="${emptyView?12:11}" style="padding:30px;text-align:center" class="muted">No Tracking records found.</td></tr>`;
- cards();alerts();restoreWorksheet();if(!selectedMap&&data[0])selectMap(data[0]);
+ cards();alerts();if(!selectedMap&&data[0])selectMap(data[0]);
 }
 
 const expandedEwayTrips=new Set();
@@ -3435,7 +3468,7 @@ async function closeTracking(){
   if($("trackingModule"))$("trackingModule").style.display="none";
  }
 }
-function refresh(){loadAll()}
+function refresh(){selectedMap=null;loadAll()}
 
 
 /* =============== QUICK DRIVER ASSIGNMENT (Driver Master compatible) =============== */
@@ -3500,7 +3533,7 @@ async function saveQuickDriverAssignment(e){
 window.EktaTracking={sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
-function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=filterStatus||"";selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();loadAll();
+function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus="";selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
  let lastToday=today();setInterval(()=>{const now=today();if(now!==lastToday){if($("etDate")?.value===lastToday)$("etDate").value=now;lastToday=now;}if($("trackingModule")?.style.display!=="none")render();},60000);
 }
 init();
