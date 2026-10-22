@@ -42,7 +42,7 @@ function daysBetween(a,b){
  return Math.max(0,Math.ceil((y-x)/86400000));
 }
 function loadingDetentionDays(t){return Math.max(0,daysBetween(t.program_date,t.loading_date)-1)}
-function unloadingDetentionDays(t){return daysBetween(t.reporting_date,t.unloading_date||t.end_date)}
+function unloadingDetentionDays(t){return Math.max(0,daysBetween(t.reporting_date,t.unloading_date||t.end_date)-1)}
 function loadingDetentionCharge(t){return num(t.detention_charge||getNote(t.notes,"LOADING_DETENTION_CHARGE"))}
 function unloadingDetentionCharge(t){return num(getNote(t.notes,"UNLOADING_DETENTION_CHARGE"))}
 function courierName(t){return clean(t.courier_name||"")}
@@ -344,7 +344,7 @@ async function saveInlineEdit(tripId){
  }
  notes=putNote(notes,"LOADING_DETENTION_CHARGE",num($("podEditLoadDet").value));
  notes=putNote(notes,"UNLOADING_DETENTION_CHARGE",num($("podEditUnloadDet").value));
- notes=putNote(notes,"UNLOADING_DETENTION_DAYS",daysBetween(reporting,unloading));
+ notes=putNote(notes,"UNLOADING_DETENTION_DAYS",Math.max(0,daysBetween(reporting,unloading)-1));
  notes=putNote(notes,"POD_RECEIVED_DATE",podReceived);
 
  const payload={
