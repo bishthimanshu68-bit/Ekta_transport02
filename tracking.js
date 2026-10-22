@@ -68,7 +68,9 @@ function loadingDetentionDays(t){
  const loaded=t?.loading_date||getNote(t?.notes,"LOADING_DATE");
  return program&&loaded?Math.max(0,daysBetween(program,loaded)-1):0;
 }
-function unloadingDetentionDays(t){return daysBetween(t?.reporting_date,t?.unloading_date||t?.end_date)}
+function unloadingDetentionDays(t){return unloadingGraceDays(t?.reporting_date,t?.unloading_date||t?.end_date)}
+// One free calendar day after reporting; detention begins on day two.
+function unloadingGraceDays(reporting,unloading){return Math.max(0,daysBetween(reporting,unloading)-1)}
 function loadingDetentionCharge(t){
  const days=loadingDetentionDays(t);
  const stored=num(t?.detention_charge||getNote(t?.notes,"LOADING_DETENTION_CHARGE"));
@@ -1302,7 +1304,7 @@ function openUnloading(t){
 }
 function updateUnloadingAttention(){
  if(!selectedTrip)return;
- const r=selectedTrip.reporting_date||getNote(selectedTrip.notes,"REPORTING_DATE"),d=$("etUDate").value,gap=daysBetween(r,d);
+ const r=selectedTrip.reporting_date||getNote(selectedTrip.notes,"REPORTING_DATE"),d=$("etUDate").value,gap=unloadingGraceDays(r,d);
  if(gap>0&&parseAmount($("etUDetention").value)<=0)$("etUDetention").value=1000;
  $("etUnloadingAttention").innerHTML=`<div class="et-notice">Reporting Date: <b>${esc(fmt(r))}</b> • Unloading Date: <b>${esc(fmt(d))}</b> • Unloading Detention: <b>${gap} day(s)</b> • Default charge if blank: <b>₹1,000</b></div>`;
 }
@@ -1312,7 +1314,7 @@ async function confirmUnloading(e){
  const d=$("etUDate").value;
  if(!d)return alertUser("Unloading Date is required.");
  const reporting=selectedTrip.reporting_date||getNote(selectedTrip.notes,"REPORTING_DATE");
- const unloadDays=daysBetween(reporting,d);
+ const unloadDays=unloadingGraceDays(reporting,d);
  let unloadDetCharge=parseAmount($("etUDetention").value);
  if(unloadDays>0&&unloadDetCharge<=0)unloadDetCharge=1000;
  let notes=clean($("etURemark").value)||selectedTrip.notes||"";
@@ -1391,7 +1393,7 @@ async function quickNextStage(id){
   label="Unloading Date";
   const d=await quickDateForTrip(t,label,t.unloading_date||t.reporting_date||today());if(!d)return;
   const rep=dateOnly(t.reporting_date);if(rep&&d<rep)return alertUser("Unloading Date cannot be before Reporting Date.");
-  notes=putNote(putNote(notes,"UNLOADING_DETENTION_DAYS",daysBetween(rep,d)),"STAGE","EMPTY");
+  notes=putNote(putNote(notes,"UNLOADING_DETENTION_DAYS",unloadingGraceDays(rep,d)),"STAGE","EMPTY");
   payload={trip_status:"Completed",tracking_status:"EMPTY",unloading_date:d,end_date:d,notes};truckStatus="Available";
  }else return;
  if(!window.confirm(`${truck(t.truck_id)?.truck_number||"Truck"}\n${label}: ${fmt(payload.lr_date||payload.reporting_date||payload.unloading_date)}\nConfirm status change?`))return;
@@ -2799,7 +2801,7 @@ async function saveInlineFinalEdit(tripId){
  notes=putNote(notes,"NGT",num($("etIFNGT").value));
  notes=putNote(notes,"LOADING_DETENTION_CHARGE",num($("etIFLoadDet").value));
  notes=putNote(notes,"UNLOADING_DETENTION_CHARGE",num($("etIFUnloadDet").value));
- notes=putNote(notes,"UNLOADING_DETENTION_DAYS",daysBetween(reportingDate,unloadingDate));
+ notes=putNote(notes,"UNLOADING_DETENTION_DAYS",unloadingGraceDays(reportingDate,unloadingDate));
  const payload={
   trip_number:clean($("etIFTripNo").value),truck_id:$("etIFTruck").value||t.truck_id,party_id:$("etIFParty").value||t.party_id,
   program_date:$("etIFProgramDate").value||null,loading_date:$("etIFLoadingDate").value||null,
