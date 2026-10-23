@@ -2418,7 +2418,8 @@ function toggleEwayMenu(id){
 
 function openEwayRecords(){
  refreshUploadTrips();
- $("etEwayDate").value=$("etDate")?.value||today();
+ $("etEwayDate").value="";
+ $("etEwayPartyFilter").value="";
  $("etEwaySearch").value="";
  $("etEwayStatusFilter").value="";
  renderEwayPage();
@@ -2437,6 +2438,14 @@ async function refreshEwayPage(){
  renderEwayPage();
 }
 
+function clearEwayFilters(){
+ $("etEwaySearch").value="";
+ $("etEwayPartyFilter").value="";
+ $("etEwayDate").value="";
+ $("etEwayStatusFilter").value="";
+ renderEwayPage();
+}
+
 function ewayToday(){
  $("etEwayDate").value=today();
  renderEwayPage();
@@ -2445,19 +2454,30 @@ function ewayToday(){
 function ewayRemaining(v){if(!v)return "—";const ms=new Date(v).getTime()-Date.now();if(!Number.isFinite(ms))return "—";const m=Math.ceil(Math.abs(ms)/60000),d=Math.floor(m/1440),hr=Math.floor(m%1440/60),min=m%60;return `${ms<=0?"Expired ":""}${d?d+"d ":""}${hr}h ${min}m`;}
 function renderEwayPage(){
  const q=clean($("etEwaySearch")?.value).toLowerCase(),sf=$("etEwayStatusFilter")?.value||"";
- const list=ewayTripRecords().filter(t=>{const tr=truck(t.truck_id),b=billsForTrip(t.id);return (!q||[tr?.truck_number,t.trip_number,t.from_location,t.to_location,...b.map(x=>x.eway_bill_number)].join(" ").toLowerCase().includes(q))&&(!sf||ewayTripOverallStatus(t)===sf)}).sort((a,b)=>String(b.program_date||"").localeCompare(String(a.program_date||"")));
+ const pf=$("etEwayPartyFilter")?.value||"",date=$("etEwayDate")?.value||"";
+ const list=ewayTripRecords().filter(t=>{
+  const tr=truck(t.truck_id),p=party(t.party_id),b=billsForTrip(t.id);
+  const kind=p?(isBillingClient(p)?"BILLING":"TRANSPORTER"):"";
+  const searchable=[tr?.truck_number,t.trip_number,p?.name,p?.party_code,p?.city,kind,t.from_location,t.loading_point,t.to_location,t.destination,...b.map(x=>x.eway_bill_number)].join(" ").toLowerCase();
+  return (!q||searchable.includes(q))&&(!pf||kind===pf)&&(!date||dateOnly(t.program_date)===date)&&(!sf||ewayTripOverallStatus(t)===sf);
+ }).sort((a,b)=>String(b.program_date||"").localeCompare(String(a.program_date||"")));
  const all=ewayTripRecords(),counts={PENDING:0,OK:0,WARNING:0,EXPIRED:0};all.forEach(t=>counts[ewayTripOverallStatus(t)]++);
  $("etEwayCount").textContent=`${list.length} trips`;
  const stats=$("etEwayStats");if(stats)stats.innerHTML=`<span class="eway-stat"><b>${all.length}</b>Active Trips</span><span class="eway-stat"><b>${counts.OK}</b>Valid</span><span class="eway-stat"><b>${counts.WARNING}</b>Expiring ≤8h</span><span class="eway-stat"><b>${counts.EXPIRED}</b>Expired</span><span class="eway-stat"><b>${counts.PENDING}</b>Awaiting Details</span>`;
  $("etEwayRows").innerHTML=list.length?list.map(t=>{
  const tr=truck(t.truck_id),bills=billsForTrip(t.id),s=ewayTripOverallStatus(t),latest=bills.slice().sort((a,b)=>new Date(b.created_at||b.eway_bill_date||0)-new Date(a.created_at||a.eway_bill_date||0))[0];
  const nearest=bills.filter(b=>b.valid_until).sort((a,b)=>new Date(a.valid_until)-new Date(b.valid_until))[0];
+ const p=party(t.party_id);
+ const partyKind=p?(isBillingClient(p)?"BILLING":"TRANSPORTER"):"—";
  return `<tr><td class="eway-truck-cell"><strong>${esc(tr?.truck_number||"—")}</strong><small>${esc(t.trip_number||"")} · ${esc(fmt(t.program_date))}</small></td>
+ <td class="et-party-cell">${esc(p?.name||"—")}</td>
+ <td><span class="et-party-kind ${p?(isBillingClient(p)?"billing":"transporter"):""}">${esc(partyKind)}</span></td>
+ <td class="et-route-cell">${esc(t.from_location||t.loading_point||"—")} <span class="et-route-arrow" aria-hidden="true">→</span> ${esc(t.to_location||t.destination||"—")}</td>
  <td><div class="eway-number-list">${bills.length?bills.map(b=>`<button class="eway-number eway-text-read" type="button" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','${esc(b.id)}')">${esc(b.eway_bill_number||"—")}</button>`).join(""):"<span class='eway-empty-cell'>Not entered</span>"}${bills.length>1?`<span class="eway-mini">${bills.length} bills</span>`:""}</div></td>
  <td>${latest?esc(fmtDT(latest.eway_bill_date||latest.valid_from)):"—"}</td><td>${nearest?esc(fmtDT(nearest.valid_until)):"—"}</td>
  <td><span class="eway-countdown ${s==='EXPIRED'?'expired':s==='WARNING'?'warn':''}" ${nearest?`data-eway-expiry="${esc(nearest.valid_until)}"`:""}>${nearest?esc(ewayRemaining(nearest.valid_until)):"—"}</span></td>
  <td>${ewayStatusLabel(s)}</td><td><button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','')">＋ ${bills.length?'Add another':'Enter Bill'}</button></td></tr>`;
- }).join(""):`<tr><td colspan="7" class="empty">No active E-Way trips match this search.</td></tr>`;
+ }).join(""):`<tr><td colspan="10" class="empty">No active E-Way trips match this search.</td></tr>`;
 }
 function updateEwayCountdowns(){document.querySelectorAll('[data-eway-expiry]').forEach(el=>{const expiry=el.getAttribute('data-eway-expiry');el.textContent=ewayRemaining(expiry);const diff=new Date(expiry).getTime()-Date.now();el.classList.toggle('warn',diff>0&&diff<=28800000);el.classList.toggle('expired',diff<=0)});}
 window.setInterval(()=>{updateEwayCountdowns();if($("etEwayPage")?.classList.contains("show"))renderEwayPage();},60000);
@@ -3563,7 +3583,7 @@ async function saveQuickDriverAssignment(e){
 }
 
 /* ========================= 21. PUBLIC API =================== */
-window.EktaTracking={sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus="";selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
