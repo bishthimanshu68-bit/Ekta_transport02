@@ -37,7 +37,7 @@
   }
 
   const A = {
-    section:"party",
+    section:"fixed",
     trips:[],
     trucks:[],
     parties:[],
@@ -246,7 +246,7 @@
     switchSection(name){
       this.section = name;
 
-      ["party","driver","fuel","maintenance"].forEach(x=>{
+      ["fixed","party","driver","fuel","maintenance"].forEach(x=>{
         const cap = x.charAt(0).toUpperCase()+x.slice(1);
         $(`ta${cap}Section`)?.classList.toggle("hidden",x!==name);
         $(`taCard${cap}`)?.classList.toggle("active",x===name);
@@ -373,8 +373,8 @@
       $("taCharges").textContent = money(totalCharges);
       $("taBalanceTop").textContent = money(totalBalance);
 
-      $("taPartyReceivable").textContent = money(totalReceivable);
-      $("taPartyBalance").textContent = money(totalBalance);
+      if($("taPartyReceivable")) $("taPartyReceivable").textContent = money(totalReceivable);
+      if($("taPartyBalance")) $("taPartyBalance").textContent = money(totalBalance);
     },
 
 
@@ -1437,6 +1437,120 @@
       return false;
     }
   };
+
+
+  // Fixed Kharcha master: independent of existing trip/driver ledgers.
+  // Symmetric rates: A→B and B→A share one rate. No destructive DB changes.
+  A.fixedRows=[]; A.fixedPending=[];
+  A.fixedNorm=v=>clean(v).toUpperCase().replace(/\s+/g,' ');
+  A.fixedKey=(a,b)=>[A.fixedNorm(a),A.fixedNorm(b)].sort().join('||');
+  A.fixedMsg=function(msg){const el=$('taFixedMsg');if(el)el.textContent=msg;};
+  A.fixedLoad=async function(){
+    const sb=client();if(!sb){this.fixedMsg('Supabase connection unavailable');return;}
+    const {data,error}=await sb.from('fixed_kharcha_rates').select('id,from_location,to_location,amount').order('from_location');
+    if(error){this.fixedMsg('Rate table unavailable: '+error.message+' — see included SQL setup.');return;}
+    this.fixedRows=data||[];this.fixedMsg(new Set(this.fixedRows.map(r=>this.fixedKey(r.from_location,r.to_location))).size+' route pairs saved');this.fixedRender();
+  };
+  A.fixedRender=function(){
+    const body=$('taFixedBody');if(!body)return;
+    const q=this.fixedNorm($('taFixedSearch')?.value);const grouped=new Map();
+    for(const r of this.fixedRows){const key=this.fixedKey(r.from_location,r.to_location);if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);}
+    const rows=[...grouped.values()].map(group=>({primary:group[0],group,places:[this.fixedNorm(group[0].from_location),this.fixedNorm(group[0].to_location)].sort()}))
+      .filter(r=>r.places.join(' ').includes(q));
+    body.innerHTML=rows.map(({primary,group,places})=>`<tr class="border-t"><td class="p-3 font-semibold">${esc(places[0])}</td><td class="p-3 font-semibold">${esc(places[1])} <span class="text-slate-400">↔</span></td><td class="p-3 text-right font-bold">${money(primary.amount)}${group.some(x=>num(x.amount)!==num(primary.amount))?' <span class="text-amber-600" title="Reverse route rate differs; edit to reconcile">⚠</span>':''}</td><td class="p-3 text-center"><button class="text-blue-700 font-bold" onclick="TripAccounts.fixedEdit('${esc(primary.id)}')">Edit</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-6 text-center text-slate-400">No rates yet</td></tr>';
+  };
+  A.fixedNew=function(){$('taFixedId').value='';$('taFixedFrom').value='';$('taFixedTo').value='';$('taFixedAmount').value='';$('taFixedEditor').classList.remove('hidden');$('taFixedFrom').focus();};
+  A.fixedEdit=function(id){const r=this.fixedRows.find(x=>String(x.id)===String(id));if(!r)return;this.fixedNew();$('taFixedId').value=r.id;$('taFixedFrom').value=r.from_location;$('taFixedTo').value=r.to_location;$('taFixedAmount').value=r.amount;};
+  A.fixedCheck=async function(rows,editingId=''){
+    const existing=this.fixedRows;const changes=[];const seen=new Map();
+    for(const raw of rows){
+      const from_location=this.fixedNorm(raw.from_location),to_location=this.fixedNorm(raw.to_location),amount=Number(raw.amount);
+      if(!from_location||!to_location||!Number.isFinite(amount)||amount<0){
+        const index=rows.indexOf(raw);
+        const reason=(!from_location||!to_location)?'From or To is empty':'Amount is invalid';
+        const tr=$('taFixedReviewBody')?.children[index];
+        if(tr){tr.style.backgroundColor='#fff0f0';tr.scrollIntoView({behavior:'smooth',block:'center'});}
+        throw new Error('Review row '+(index+1)+': '+reason+'. Correct or Remove this row, then Approve again.');
+      }
+      const key=this.fixedKey(from_location,to_location);
+      if(seen.has(key)&&seen.get(key).amount!==amount)throw new Error('Different rates found for '+from_location+' ↔ '+to_location+'. Correct in Review first.');
+      seen.set(key,{from_location,to_location,amount});
+    }
+    for(const [key,row] of seen){
+      const matches=existing.filter(x=>this.fixedKey(x.from_location,x.to_location)===key);
+      const conflicts=matches.filter(x=>num(x.amount)!==row.amount);
+      if(conflicts.length){
+        const detail=conflicts.map(x=>`${x.from_location} → ${x.to_location}: ${money(x.amount)}`).join('\n');
+        if(!confirm(`Existing rate differs for ${row.from_location} ↔ ${row.to_location}:\n${detail}\n\nApply ${money(row.amount)} to BOTH directions?`))return null;
+      }
+      changes.push({row,matches});
+    }
+    if(editingId){const old=existing.find(x=>String(x.id)===String(editingId));if(old&&!seen.has(this.fixedKey(old.from_location,old.to_location))){throw new Error('Changing route names of an existing rate is not supported in this safe update. Add a new route instead.');}}
+    return changes;
+  };
+  A.fixedApply=async function(changes){
+    const sb=client();if(!sb)throw new Error('Supabase connection unavailable');
+    // Update any already-existing directional rows; otherwise insert ONE canonical row.
+    // The reverse lookup uses fixedKey, so no duplicate reverse record is required.
+    for(const {row,matches} of changes){
+      if(matches.length){for(const m of matches){if(num(m.amount)!==row.amount){const {error}=await sb.from('fixed_kharcha_rates').update({amount:row.amount}).eq('id',m.id);if(error)throw error;}}}
+      else{const [from_location,to_location]=[row.from_location,row.to_location].sort();const {error}=await sb.from('fixed_kharcha_rates').insert({from_location,to_location,amount:row.amount});if(error)throw error;}
+    }
+  };
+  A.fixedSave=async function(ev){ev.preventDefault();try{
+    const row={from_location:$('taFixedFrom').value,to_location:$('taFixedTo').value,amount:Number($('taFixedAmount').value)};
+    const changes=await this.fixedCheck([row],$('taFixedId').value);if(!changes)return false;
+    await this.fixedApply(changes);$('taFixedEditor').classList.add('hidden');await this.fixedLoad();this.fixedMsg('Both directions use the same saved rate.');
+  }catch(err){this.fixedMsg('Save failed: '+err.message);}return false;};
+  A.fixedImport=async function(ev){const file=ev.target.files?.[0];ev.target.value='';if(!file)return;
+    try{
+      if(!window.XLSX){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';script.onload=resolve;script.onerror=()=>reject(new Error('Excel reader could not load'));document.head.appendChild(script);});}
+      const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const pending=[];
+      for(const sheet of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:''});const blocks=[];
+        for(let c=0;c<25;c++){if(rows.some(row=>String(row[c]||'').trim().toUpperCase()==='FROM'&&String(row[c+1]||'').trim().toUpperCase()==='TO'&&String(row[c+2]||'').trim().toUpperCase()==='KHARCHA'))blocks.push(c);}
+        if(!blocks.length&&rows.length&&String(rows[0][0]||'').toUpperCase()==='FROM')blocks.push(0);
+        for(const c of blocks){for(const row of rows){const f=this.fixedNorm(row[c]),t=this.fixedNorm(row[c+1]),v=row[c+2],amount=Number(String(v).replace(/[,₹\s]/g,''));if(!f||!t||f==='FROM'||t==='TO'||!Number.isFinite(amount)||amount<0||v==='')continue;pending.push({from_location:f,to_location:t,amount});}}
+      }
+      // Keep conflicts visible in Review instead of silently replacing them.
+      const unique=new Map();for(const r of pending){const key=this.fixedKey(r.from_location,r.to_location);if(!unique.has(key)||unique.get(key).amount===r.amount)unique.set(key,r);else unique.set(key+'|CONFLICT|'+unique.size,r);}
+      this.fixedPending=[...unique.values()];if(!this.fixedPending.length){this.fixedMsg('No route rows found. Expected FROM / TO / KHARCHA columns.');return;}
+      this.fixedReviewRender();$('taFixedReview').classList.remove('hidden');this.fixedMsg('Review '+this.fixedPending.length+' extracted rates before saving. Reverse routes share one rate.');
+    }catch(err){this.fixedMsg('Excel read failed: '+err.message);}
+  };
+  A.fixedReviewRender=function(){ $('taFixedReviewCount').textContent=this.fixedPending.length+' rows (reverse directions share one rate; conflicting amounts must be corrected)';
+    $('taFixedReviewBody').innerHTML=this.fixedPending.map((r,i)=>`<tr class="border-t"><td class="p-1"><input class="border p-1 w-full" value="${esc(r.from_location)}" onchange="TripAccounts.fixedPending[${i}].from_location=this.value.toUpperCase()"></td><td class="p-1"><input class="border p-1 w-full" value="${esc(r.to_location)}" onchange="TripAccounts.fixedPending[${i}].to_location=this.value.toUpperCase()"></td><td class="p-1"><input type="number" min="0" step="0.01" class="border p-1 w-full text-right" value="${r.amount}" onchange="TripAccounts.fixedPending[${i}].amount=Number(this.value)"></td><td class="text-center"><button onclick="TripAccounts.fixedPending.splice(${i},1);TripAccounts.fixedReviewRender()" class="text-rose-600">Remove</button></td></tr>`).join('');
+  };
+  A.fixedReviewCancel=function(){this.fixedPending=[];$('taFixedReview').classList.add('hidden');};
+  A.fixedImportSave=async function(){
+    const btn=$('taFixedApproveBtn'),status=$('taFixedApproveStatus');
+    if(this.fixedSaving)return;
+    this.fixedSaving=true;
+    if(btn){btn.disabled=true;btn.textContent='Checking routes…';btn.style.opacity='0.65';}
+    if(status)status.textContent='Checking Excel routes…';
+    try{
+      if(!Array.isArray(this.fixedPending)||!this.fixedPending.length)throw new Error('No routes to import.');
+      const changes=await this.fixedCheck(this.fixedPending);
+      if(!changes){if(status)status.textContent='Import cancelled — no data changed.';return;}
+      if(btn)btn.textContent='Saving…';
+      if(status)status.textContent='Saving '+changes.length+' route pairs to Supabase…';
+      await this.fixedApply(changes);
+      const count=changes.length;
+      this.fixedReviewCancel();await this.fixedLoad();
+      this.fixedMsg(count+' route pairs saved (both directions).');
+    }catch(err){
+      const message='Import save failed: '+(err?.message||String(err));
+      if(status)status.textContent=message;
+      this.fixedMsg(message);
+      console.error('[Fixed Kharcha import]',err);
+    }finally{
+      this.fixedSaving=false;
+      if(btn){btn.disabled=false;btn.textContent='Approve & Save';btn.style.opacity='';}
+    }
+  };
+  // Load rates only when Fixed card is selected; do not alter other sections.
+  const originalFixedSwitch=A.switchSection.bind(A);
+  A.switchSection=function(name){originalFixedSwitch(name);if(name==='fixed')this.fixedLoad();};
+  if(A.section==='fixed')A.fixedLoad();
 
   window.TripAccounts = A;
   A.refresh();

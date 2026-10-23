@@ -17,27 +17,20 @@
   ========================================================== -->
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
 
-    <button id="taCardParty"
-      onclick="TripAccounts.switchSection('party')"
+    <button id="taCardFixed"
+      onclick="TripAccounts.switchSection('fixed')"
       class="ta-main-card active text-left bg-white border border-blue-200 rounded-xl p-4 shadow-sm transition">
       <div class="flex items-center justify-between">
         <div>
-          <div class="text-[10px] uppercase tracking-wide font-black text-blue-600">Party Account</div>
-          <div class="text-sm font-bold text-slate-800 mt-1">Party Receivable & Balance</div>
+          <div class="text-[10px] uppercase tracking-wide font-black text-blue-600">Fixed Expense</div>
+          <div class="text-sm font-bold text-slate-800 mt-1">Route-wise Fixed Kharcha</div>
         </div>
         <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-          <i class="fa-solid fa-handshake"></i>
+          <i class="fa-solid fa-route"></i>
         </div>
       </div>
-      <div class="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-        <div class="bg-slate-50 rounded-lg p-2">
-          <div class="text-slate-500">Receivable</div>
-          <b id="taPartyReceivable" class="text-slate-800">₹0</b>
-        </div>
-        <div class="bg-slate-50 rounded-lg p-2">
-          <div class="text-slate-500">Balance</div>
-          <b id="taPartyBalance" class="text-amber-700">₹0</b>
-        </div>
+      <div class="mt-3 text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2">
+        Fixed Kharcha Master — setup pending
       </div>
     </button>
 
@@ -97,7 +90,22 @@
   <!-- =========================================================
        PARTY ACCOUNT SECTION
   ========================================================== -->
-  <section id="taPartySection" class="space-y-3">
+  <!-- Fixed Kharcha Master: UI placeholder only; OCR and database setup will follow approval. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<section id="taFixedSection" class="space-y-3">
+ <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-black text-slate-800">Route-wise Fixed Kharcha Master (Both Directions)</h2><p class="text-xs text-slate-500">Manual entry • Excel import with review • Supabase save</p></div>
+   <div class="flex gap-2 flex-wrap"><button type="button" onclick="TripAccounts.fixedNew()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">+ Add Route</button><label class="px-4 py-2 border border-blue-200 rounded-lg text-xs font-bold cursor-pointer">Import Excel <input type="file" accept=".xlsx,.xls" class="hidden" onchange="TripAccounts.fixedImport(event)"></label><button onclick="TripAccounts.fixedLoad()" class="px-3 py-2 border rounded-lg text-xs font-bold">Refresh Rates</button></div>
+  </div>
+  <div id="taFixedMsg" class="text-xs text-slate-600"></div>
+  <div id="taFixedEditor" class="hidden bg-blue-50 border border-blue-100 rounded-xl p-3"><form onsubmit="return TripAccounts.fixedSave(event)" class="flex flex-wrap gap-2 items-end"><input type="hidden" id="taFixedId"><label class="text-xs">From<input id="taFixedFrom" required class="block mt-1 border rounded-lg p-2 bg-white" placeholder="NOIDA"></label><label class="text-xs">To<input id="taFixedTo" required class="block mt-1 border rounded-lg p-2 bg-white" placeholder="PUNE"></label><label class="text-xs">Kharcha ₹<input id="taFixedAmount" type="number" min="0" step="0.01" required class="block mt-1 border rounded-lg p-2 bg-white" placeholder="3500"></label><button class="bg-blue-600 text-white rounded-lg px-4 py-2 text-xs font-bold">Save</button><button type="button" onclick="document.getElementById('taFixedEditor').classList.add('hidden')" class="border rounded-lg px-4 py-2 text-xs">Cancel</button></form></div>
+  <div id="taFixedReview" class="hidden border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2"><div class="font-bold text-sm">Excel Import Review — same rate for both directions</div><div class="text-xs text-slate-600" id="taFixedReviewCount"></div><div class="overflow-auto max-h-72"><table class="w-full text-xs"><thead><tr><th class="p-2 text-left">From</th><th class="p-2 text-left">To</th><th class="p-2 text-right">Kharcha ₹</th><th>Remove</th></tr></thead><tbody id="taFixedReviewBody"></tbody></table></div><div class="flex gap-2"><button type="button" id="taFixedApproveBtn" onclick="event.preventDefault();event.stopPropagation();TripAccounts.fixedImportSave()" class="bg-emerald-600 text-white rounded-lg px-4 py-2 text-xs font-bold">Approve & Save</button><span id="taFixedApproveStatus" role="status" aria-live="polite" class="text-xs font-semibold text-slate-700"></span><button onclick="TripAccounts.fixedReviewCancel()" class="border rounded-lg px-4 py-2 text-xs">Cancel</button></div></div>
+  <input id="taFixedSearch" oninput="TripAccounts.fixedRender()" class="w-full border rounded-lg px-3 py-2 text-xs" placeholder="Search From / To...">
+  <div class="overflow-auto max-h-[60vh]"><table class="w-full text-xs"><thead class="bg-slate-50"><tr><th class="p-3 text-left">From</th><th class="p-3 text-left">To</th><th class="p-3 text-right">Fixed Kharcha ₹</th><th class="p-3 text-center">Action</th></tr></thead><tbody id="taFixedBody"></tbody></table></div>
+ </div>
+</section>
+
+  <section id="taPartySection" class="hidden space-y-3">
 
     <div class="bg-white border border-slate-200 rounded-xl p-3">
       <div class="flex flex-wrap gap-2">
