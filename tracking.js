@@ -417,9 +417,14 @@ async function loadAll(){
   // contain the newest row for every vehicle. Fetch one true latest GPS row per truck
   // so Current Location/Time always uses the same live point as the map marker.
   await mergeTrueLatestGpsRows();
-  populateDrivers();render();hydrateGPSPlaces();
-   // FASTag toll-crossing locations for the main Tracking table (non-blocking).
-   loadLatestFastagLocations().then(()=>render()).catch(e=>console.warn("[EKTA] FASTag table locations unavailable",e));
+  populateDrivers();
+   // Avoid the brief incomplete table: render once after FASTag locations arrive.
+   // On FASTag failure, still show the existing Supabase/GPS data.
+   try{await loadLatestFastagLocations();}
+   catch(e){console.warn("[EKTA] FASTag table locations unavailable",e);}
+   render();
+   // GPS address enrichment is optional and preserves the existing mapping logic.
+   hydrateGPSPlaces();
  }catch(e){console.error("[EKTA TRACKING] Load error:",e);renderError("Tracking data could not be loaded: "+(e.message||"Database error"))}
 }
 
@@ -1093,7 +1098,7 @@ function render(){
  if(alertView){
   body.innerHTML=data.length?data.map(r=>{
    const event=activeBreakdown(r.trip);
-   return `<tr><td><span class="zone">${esc(r.truckZone||"—")}</span></td><td><span class="et-truck">${esc(r.t.truck_number||"—")}</span></td><td>${esc(r.trip?.trip_number||"—")}</td><td>${esc(r.p?.name||"—")}</td><td>${esc(r.trip?.from_location||"—")} → ${esc(r.trip?.to_location||r.trip?.destination||"—")}</td><td>${badge(r.status,false,true)}</td><td>${esc(fmtDT(event.started_at))}</td><td><strong data-breakdown-start="${esc(event.started_at)}">${esc(breakdownDuration(event.started_at))}</strong></td><td>${esc(event.reason||"—")}</td><td><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.resolveBreakdown('${esc(r.trip.id)}')">✓ Mark Repaired</button></td></tr>`;
+   return `<tr><td><span class="zone et-zone-${esc(clean(r.truckZone).toLowerCase())}">${esc(r.truckZone||"—")}</span></td><td><span class="et-truck">${esc(r.t.truck_number||"—")}</span></td><td>${esc(r.trip?.trip_number||"—")}</td><td>${esc(r.p?.name||"—")}</td><td>${esc(r.trip?.from_location||"—")} → ${esc(r.trip?.to_location||r.trip?.destination||"—")}</td><td>${badge(r.status,false,true)}</td><td>${esc(fmtDT(event.started_at))}</td><td><strong data-breakdown-start="${esc(event.started_at)}">${esc(breakdownDuration(event.started_at))}</strong></td><td>${esc(event.reason||"—")}</td><td><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.resolveBreakdown('${esc(r.trip.id)}')">✓ Mark Repaired</button></td></tr>`;
   }).join(""):'<tr><td colspan="10" class="empty">No active vehicle breakdowns.</td></tr>';
   cards();alerts();updateBreakdownTimers();return;
  }
@@ -1111,7 +1116,7 @@ function render(){
   const gps=useFastag?"FASTag":(gpsHasCoords?"GPS":(current!=="—"?"MANUAL":"—"));
   const last=useFastag?fmtDT(fastag.time):(gpsTime?fmtDT(gpsTime):"—");
    return `<tr tabindex="0" data-id="${esc(r.t.id)}" onclick="window.EktaTracking.selectTruck('${esc(r.t.id)}')" ondblclick="window.EktaTracking.openTruck('${esc(r.t.id)}')" onkeydown="window.EktaTracking.rowKey(event,'${esc(r.t.id)}')">
-   <td><span class="zone">${esc(r.truckZone||"—")}</span></td>
+   <td><span class="zone et-zone-${esc(clean(r.truckZone).toLowerCase())}">${esc(r.truckZone||"—")}</span></td>
    ${emptyView?`<td class="et-last-unload" title="${esc(lastUnloadingPoint(r.t.id))}"><span>${esc(lastUnloadingPoint(r.t.id))}</span></td>`:""}
    <td><span class="et-truck" onclick="event.stopPropagation();window.EktaTracking.openTruck('${esc(r.t.id)}')">${esc(r.t.truck_number||"—")}</span></td>
    <td class="et-trip-internal">${esc(r.trip?.trip_number||"—")}</td>

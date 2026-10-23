@@ -537,6 +537,9 @@
 .et-table .et-party-kind.billing{background:#e7f0ff;color:#175cba;border:1px solid #c7dcff}
 .et-table .et-party-kind.transporter{background:#fff0d9;color:#a65c00;border:1px solid #ffdbab}
 .et-table .et-route-arrow{color:#3478bf;font-weight:900;margin-left:8px;font-size:16px;vertical-align:middle}
+/* Keep FROM and its arrow on one line, without changing other table cells. */
+#trackingModule .et-table td.et-route-cell:has(> .et-route-arrow){white-space:nowrap;overflow-wrap:normal}
+
 .et-table .et-party-cell{max-width:330px;white-space:normal;overflow-wrap:anywhere}
 .et-table .et-party-pending{display:inline-block;margin-top:5px;font-size:10px}
 .et-table .et-location-wrap{min-width:0;max-width:265px;align-items:flex-start;flex-wrap:wrap}
@@ -751,6 +754,14 @@
 #trackingModule .et-tracking-fullwidth > .panel > .tablewrap thead{position:sticky;top:0;z-index:4}
 #trackingModule .cards [data-tracking-filter]:focus-visible,
 #trackingModule #etRows tr:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}
+
+/* Zone colors + last unloading emphasis: scoped to Tracking, no table sizing changes. */
+#trackingModule .et-table .zone{display:inline-block;font-weight:900;border-radius:7px;padding:5px 8px;border:1px solid transparent}
+#trackingModule .et-table .et-zone-north{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+#trackingModule .et-table .et-zone-south{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+#trackingModule .et-table .et-zone-east{background:#fffbeb;color:#92400e;border-color:#fde68a}
+#trackingModule .et-table .et-zone-west{background:#faf5ff;color:#7e22ce;border-color:#e9d5ff}
+#trackingModule .et-table .et-last-unload span{font-size:14px;font-weight:800}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
