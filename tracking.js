@@ -2116,6 +2116,34 @@ async function loadFastagHistory(vehicle){
    if(res.error)throw res.error;
    const batch=res.data||[];all.push(...batch);if(batch.length<pageSize)break;from+=pageSize;
   }
+  // Some FASTag feeds store toll_txn_date_time as a timezone-less SQL
+  // timestamp. A server-side ISO/UTC comparison can then return zero rows
+  // even when the vehicle has crossings in the selected local date range.
+  // Only when that happens, retrieve its recent records without a date filter
+  // and apply the selected range in the browser. Never show older crossings
+  // outside the selected range as though they were inside it.
+  if(!all.length){
+   const fallback=[];let offset=0;const limit=750;
+   while(offset<15000){
+    const r=await S.from("fastag_transactions")
+     .select("vehicle_no,latitude,longitude,toll_txn_date_time")
+     .eq("vehicle_no",clean(vehicle).toUpperCase())
+     .not("latitude","is",null).not("longitude","is",null)
+     .order("toll_txn_date_time",{ascending:false})
+     .range(offset,offset+limit-1);
+    if(r.error)throw r.error;
+    const batch=r.data||[];fallback.push(...batch);
+    if(batch.length<limit)break;
+    offset+=limit;
+   }
+   const startMs=start.getTime(),endMs=end.getTime();
+   for(const x of fallback){
+    const timeMs=new Date(x.toll_txn_date_time).getTime();
+    if(Number.isFinite(timeMs)&&timeMs>=startMs&&timeMs<=endMs)all.push(x);
+   }
+   all.sort((a,b)=>new Date(a.toll_txn_date_time)-new Date(b.toll_txn_date_time));
+   if(all.length)console.info("[EKTA FASTag] History recovered using local date filtering for",vehicle);
+  }
   const rows=all.map(x=>({...x,lat:Number(x.latitude),lng:Number(x.longitude)}))
    .filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lng)&&!(x.lat===0&&x.lng===0));
   // Reverse geocode only distinct places, with bounded concurrency to avoid quota bursts.
