@@ -1443,7 +1443,7 @@
   // Symmetric rates: A→B and B→A share one rate. No destructive DB changes.
   A.fixedRows=[]; A.fixedPending=[];
   A.fixedNorm=v=>clean(v).toUpperCase().replace(/\s+/g,' ');
-  A.fixedKey=(a,b)=>[A.fixedNorm(a),A.fixedNorm(b)].sort().join('||');
+  A.fixedKey=(a,b)=>window.EktaLocation?window.EktaLocation.key(a,b):[A.fixedNorm(a),A.fixedNorm(b)].sort().join('||');
   A.fixedMsg=function(msg){const el=$('taFixedMsg');if(el)el.textContent=msg;};
   A.fixedLoad=async function(){
     const sb=client();if(!sb){this.fixedMsg('Supabase connection unavailable');return;}
@@ -1485,7 +1485,7 @@
       }
       changes.push({row,matches});
     }
-    if(editingId){const old=existing.find(x=>String(x.id)===String(editingId));if(old&&!seen.has(this.fixedKey(old.from_location,old.to_location))){throw new Error('Changing route names of an existing rate is not supported in this safe update. Add a new route instead.');}}
+    // Route rename is handled separately in fixedSave, preserving the original record ID.
     return changes;
   };
   A.fixedApply=async function(changes){
@@ -1499,8 +1499,29 @@
   };
   A.fixedSave=async function(ev){ev.preventDefault();try{
     const row={from_location:$('taFixedFrom').value,to_location:$('taFixedTo').value,amount:Number($('taFixedAmount').value)};
-    const changes=await this.fixedCheck([row],$('taFixedId').value);if(!changes)return false;
-    await this.fixedApply(changes);$('taFixedEditor').classList.add('hidden');await this.fixedLoad();this.fixedMsg('Both directions use the same saved rate.');
+    const editingId=$('taFixedId').value;
+    const old=editingId?this.fixedRows.find(r=>String(r.id)===String(editingId)):null;
+    if(editingId&&!old)throw new Error('Edited route no longer exists. Refresh and try again.');
+    const oldKey=old?this.fixedKey(old.from_location,old.to_location):'';
+    const newKey=this.fixedKey(row.from_location,row.to_location);
+    if(old&&oldKey!==newKey){
+      const from_location=this.fixedNorm(row.from_location),to_location=this.fixedNorm(row.to_location),amount=Number(row.amount);
+      if(!from_location||!to_location||!Number.isFinite(amount)||amount<0)throw new Error('Enter valid From, To and non-negative Kharcha.');
+      const oldRows=this.fixedRows.filter(r=>this.fixedKey(r.from_location,r.to_location)===oldKey);
+      const destination=this.fixedRows.filter(r=>this.fixedKey(r.from_location,r.to_location)===newKey);
+      if(destination.length)throw new Error('This route already exists ('+from_location+' ↔ '+to_location+'). Cancel Edit and edit that route instead. No data changed.');
+      if(oldRows.length>2)throw new Error('Multiple old route records found. Please review them before renaming.');
+      // Preserve original row IDs, including any separately stored reverse direction.
+      const db=client();if(!db)throw new Error('Supabase connection unavailable');
+      const updates=oldRows.map((r,i)=>({id:r.id,from_location:i===0?from_location:to_location,to_location:i===0?to_location:from_location,amount}));
+      if(updates.length===2&&from_location===to_location)throw new Error('Two directional records cannot both be renamed to a same-city route. Review duplicate rows first.');
+      // Update first row without deleting any existing data. An update failure is displayed.
+      for(const change of updates){const {error}=await db.from('fixed_kharcha_rates').update({from_location:change.from_location,to_location:change.to_location,amount:change.amount}).eq('id',change.id);if(error)throw error;}
+      $('taFixedEditor').classList.add('hidden');await this.fixedLoad();this.fixedMsg('Route name and both-direction rate updated.');
+    }else{
+      const changes=await this.fixedCheck([row],editingId);if(!changes)return false;
+      await this.fixedApply(changes);$('taFixedEditor').classList.add('hidden');await this.fixedLoad();this.fixedMsg('Both directions use the same saved rate.');
+    }
   }catch(err){this.fixedMsg('Save failed: '+err.message);}return false;};
   A.fixedImport=async function(ev){const file=ev.target.files?.[0];ev.target.value='';if(!file)return;
     try{
