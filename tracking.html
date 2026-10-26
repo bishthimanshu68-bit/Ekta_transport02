@@ -779,6 +779,25 @@
 #etEwayPage .eway-table td:nth-child(2){width:235px;min-width:235px;max-width:235px;white-space:normal;overflow-wrap:anywhere}
 #etEwayPage .eway-table .eway-truck-cell{white-space:nowrap}
 
+/* Local OCR diagnostic — scoped only to E-Way Bill modal */
+#etEWOcrDebugPanel{margin-top:12px;border:1px solid #bcd6ee;border-radius:9px;background:#fff;padding:10px;color:#173653}
+#etEWOcrDebugPanel>summary{cursor:pointer;font-weight:900}
+#etEWOcrDebugPanel .eway-ocr-debug-note{font-size:11px;color:#68758a;margin:8px 0}
+#etEWOcrDebugPanel .eway-ocr-debug-content{max-height:350px;overflow:auto}
+#etEWOcrDebugPanel .eway-ocr-debug-page{border-top:1px solid #e4ebf4;padding:8px 0}
+#etEWOcrDebugPanel .eway-ocr-debug-page details{margin:6px 0}
+#etEWOcrDebugPanel .eway-ocr-debug-page summary{cursor:pointer;font-size:11px}
+#etEWOcrDebugPanel pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f8fc;border:1px solid #e4ebf4;padding:9px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto}
+
+/* Market identification only; preserve existing E-Way table columns and spacing. */
+/* Market identity is highlighted only inside the truck/trip cell; row stays unchanged. */
+#etEwayPage .eway-table tbody tr.et-market-eway-row{background:transparent}
+#etEwayPage .eway-table tbody tr.et-market-eway-row:hover{background:#faf9fd}
+#etEwayPage .eway-table tbody tr.et-market-eway-row td.eway-truck-cell{background:#f0eafe;box-shadow:inset 3px 0 0 #c9b5f0}
+#etEwayPage .eway-table tbody tr.et-market-eway-row:hover td.eway-truck-cell{background:#eae1fc}
+#etEwayPage .et-market-eway-tag{display:inline-block;font-size:8px;font-weight:700;color:#6846a0;background:#e0d3fa;border-radius:4px;padding:1px 4px;vertical-align:middle}
+#etEwayPage .et-market-eway-owner{display:block;font-size:9px;line-height:1.2;color:#675784;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0}
+#etEwayPage .et-market-eway-row .eway-truck-cell{max-width:250px}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -793,6 +812,32 @@
 #trackingModule .cards .c-delay{--et-selected-color:#d97706}
 #trackingModule .cards .c-alert{--et-selected-color:#db2777}
 @media(prefers-reduced-motion:reduce){#trackingModule .cards .card[data-tracking-filter]{transition:none}}
+</style>
+
+<style id="et-market-page-styles">
+#trackingModule .cards{grid-template-columns:repeat(9,minmax(0,1fr))}
+#trackingModule .c-market{border-color:#b8d8f4;background:#f0f8ff}
+#trackingModule .c-market strong{color:#246bb4}
+#etMarketPage{z-index:100600!important}
+#etMarketPage .et-market-intro{padding:12px 14px;background:#eef7ff;border:1px solid #cfe4fb;border-radius:9px;margin:12px 0}
+#etMarketPage .et-market-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+#etMarketPage .et-market-panel[hidden]{display:none}
+#etMarketPage .et-market-panel .mb{min-height:220px}
+/* Compact single-row status cards on desktop */
+@media(min-width:1100px){
+ #trackingModule .cards{grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
+ #trackingModule .cards .card{min-height:55px;height:58px;padding:6px 8px;border-radius:9px}
+ #trackingModule .cards .card small{font-size:9px;line-height:1.1;white-space:normal;overflow-wrap:anywhere}
+ #trackingModule .cards .card strong{font-size:18px;line-height:1.05;margin-top:2px}
+ #trackingModule .cards .card.et-status-selected{padding:6px 5px}
+}
+@media(min-width:651px) and (max-width:1099px){#trackingModule .cards{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:650px){#trackingModule .cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<style>
+/* Final Report keyboard worksheet only; preserves table columns and cell styles. */
+#etFinalPage .tablewrap{max-height:calc(100vh - 280px);min-height:180px;overflow:auto;overscroll-behavior:contain}
+@media(max-width:650px){#etFinalPage .tablewrap{max-height:calc(100vh - 325px)}}
 </style>
 </head>
 
@@ -1024,6 +1069,12 @@
             </div>
         </div>
 
+
+        <div class="card c-market" role="button" tabindex="0" aria-label="Open Market Hired Vehicles"
+             onclick="window.open('market-vehicles.html','_blank','noopener')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.open('market-vehicles.html','_blank','noopener')}">
+            <small>MARKET / HIRED VEHICLES</small>
+            <strong>↗</strong>
+        </div>
     </div>
 
 
@@ -1715,7 +1766,7 @@
             <input type="hidden" id="etEWRecordId">
 
             <div class="eway-edit-summary"><span>Vehicle <b id="etEWTruckLabel">—</b></span><span>Trip <b id="etEWTripLabel">—</b></span></div>
-            <div class="eway-scan-area" id="etEWOcrSection"><div class="eway-scan-title">OCR Scan / Paste <small>Preview only — original file and OCR text are not stored</small></div><div class="eway-scan-controls"><input id="etEWFile" type="file" accept="image/*,application/pdf"><button type="button" class="btn" onclick="window.EktaTracking.tryEwayAIRead()">⌕ Read with OCR (Local)</button></div><textarea id="etEWPaste" rows="2" placeholder="Or paste E-Way Bill text here (number, vehicle, valid upto)"></textarea><button type="button" class="eway-text-read" onclick="window.EktaTracking.readEwayPastedText()">Extract pasted text</button><div class="eway-doc-note" id="etEWFileNote">Review extracted fields before saving. No document upload.</div></div>
+            <div class="eway-scan-area" id="etEWOcrSection"><div class="eway-scan-title">OCR Scan / Paste <small>Preview only — original file and OCR text are not stored</small></div><div class="eway-scan-controls"><input id="etEWFile" type="file" accept="image/*,application/pdf"><button type="button" class="btn" onclick="window.EktaTracking.tryEwayAIRead()">⌕ Read with OCR (Local)</button></div><textarea id="etEWPaste" rows="2" placeholder="Or paste E-Way Bill text here (bill numbers and valid upto dates)"></textarea><button type="button" class="eway-text-read" onclick="window.EktaTracking.readEwayPastedText()">Extract pasted text</button><div class="eway-doc-note" id="etEWFileNote">Review extracted fields before saving. No document upload.</div></div>
             <div id="etEWOcrTruckChoice" class="field" style="display:none;margin:8px 0 12px"><label>Select Vehicle / Active Trip *</label><select id="etEWOcrTruckSelect" class="et-input"><option value="">Choose vehicle after OCR</option></select></div><input type="hidden" id="etEWTruck" readonly><input type="hidden" id="etEWDateTime">
             <div class="eway-multi-head"><b>E-Way Bills</b><button type="button" class="btn eway-plus" onclick="window.EktaTracking.addEwayBillRow()">＋ Add Bill</button><span>Enter each 12-digit number and Valid Upto</span></div>
             <div id="etEWBillRows" class="eway-bill-rows"></div>
@@ -2344,6 +2395,9 @@
   </form>
  </div>
 </div>
+
+<!-- MARKET / HIRED VEHICLES — independent full-page workspace; no DB writes in this phase -->
+
 </body>
 </html>
 
@@ -2356,4 +2410,11 @@
 .et-quick-date-error{min-height:14px;margin-top:3px}
 .et-quick-date-actions{margin-top:10px;gap:8px}
 .et-quick-date-actions button{font-size:12px;padding:8px 13px}
+
+/* Market Final Report: Truck cell only, preserve existing column widths */
+#etFinalPage .et-market-final-truck{padding:4px 6px;max-width:170px}
+#etFinalPage .et-market-final-box{background:#f0eafe;border:1px solid #c9b5f0;border-radius:6px;padding:5px 7px;max-width:170px;min-width:0;line-height:1.3}
+#etFinalPage .et-market-final-box strong{color:#1264da;font-size:11px}
+#etFinalPage .et-market-final-tag{display:inline-block;background:#e0d3fa;color:#6846a0;font-size:8px;font-weight:700;border-radius:3px;padding:1px 3px}
+#etFinalPage .et-market-final-owner{display:block;font-size:9px;color:#675784;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;max-width:155px}
 </style>

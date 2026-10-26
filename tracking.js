@@ -2360,6 +2360,54 @@ function openSelectedMapFullScreen(){
 function closeSelectedMapFullScreen(){const p=$("etSelectedMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
 
 
+/* Market E-Way integration: separate market_trips records, no fleet trip duplication. */
+let etMarketEwayTrips=[];
+const marketEwayMarker=/\[MARKET_EWAY_V1:([A-Za-z0-9_-]+)\]/;
+function marketEwayDecode(notes){
+ const m=clean(notes).match(marketEwayMarker);if(!m)return [];
+ try{const b=m[1].replace(/-/g,"+").replace(/_/g,"/");const raw=decodeURIComponent(escape(atob(b)));const list=JSON.parse(raw);return Array.isArray(list)?list:[]}catch(e){console.warn("Market E-Way metadata could not be decoded",e);return []}
+}
+function marketEwayEncode(list){return btoa(unescape(encodeURIComponent(JSON.stringify(list)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"")}
+async function loadMarketEwayTrips(){
+ try{
+  const [ts,vs,os]=await Promise.all([S.from("market_trips").select("*").limit(5000),S.from("market_vehicles").select("id,truck_number,transporter_id").limit(5000),S.from("market_transporters").select("id,transporter_name").limit(5000)]);
+  for(const r of [ts,vs,os])if(r.error)throw r.error;
+  const vehicles=new Map((vs.data||[]).map(v=>[String(v.id),v]));const owners=new Map((os.data||[]).map(o=>[String(o.id),o.transporter_name]));
+  etMarketEwayTrips=(ts.data||[]).filter(t=>!["COMPLETED","CANCELLED"].includes(clean(t.trip_status).toUpperCase())).map(t=>{
+   const v=vehicles.get(String(t.vehicle_id));return {...t,_market:true,_marketTruck:v?.truck_number||"",_marketOwner:owners.get(String(t.transporter_id||v?.transporter_id))||"",_marketBills:marketEwayDecode(t.notes)};
+  });
+ }catch(e){console.warn("[EKTA] Market E-Way records unavailable; original fleet register preserved:",e.message);etMarketEwayTrips=[]}
+}
+function marketEwayStatus(t){const bills=t._marketBills||[];if(!bills.length)return "PENDING";if(bills.some(b=>ewayBillStatus(b)==="EXPIRED"))return "EXPIRED";if(bills.some(b=>ewayBillStatus(b)==="WARNING"))return "WARNING";return "OK"}
+function marketEwayRow(t){
+ const bills=t._marketBills||[],s=marketEwayStatus(t),nearest=bills.filter(b=>b.valid_until).sort((a,b)=>new Date(a.valid_until)-new Date(b.valid_until))[0];
+ const latest=bills.slice().sort((a,b)=>new Date(b.eway_bill_date||0)-new Date(a.eway_bill_date||0))[0];
+ const id=esc(String(t.id));return `<tr class="et-market-eway-row"><td class="eway-truck-cell"><strong>${esc(t._marketTruck||"—")} <span class="et-market-eway-tag">MARKET</span></strong><span class="et-market-eway-owner" title="${esc(t._marketOwner)}">${esc(t._marketOwner||"Owner not recorded")}</span><small>${esc(t.trip_number||"")} · ${esc(fmt(t.program_date))}</small></td>
+ <td class="et-party-cell">${esc(t.party_name||"—")}</td><td><span class="et-party-kind">MARKET</span></td>
+ <td class="et-route-cell">${esc(t.from_location||"—")} <span class="et-route-arrow">→</span> ${esc(t.to_location||"—")}</td>
+ <td><div class="eway-number-list">${bills.length?bills.map(b=>`<button class="eway-number eway-text-read" type="button" onclick="window.EktaTracking.openMarketEwayEdit('${id}')">${esc(b.eway_bill_number)}</button>`).join(""):"<span class='eway-empty-cell'>Not entered</span>"}</div></td>
+ <td>${latest?esc(fmtDT(latest.eway_bill_date)):"—"}</td><td>${nearest?esc(fmtDT(nearest.valid_until)):"—"}</td>
+ <td><span class="eway-countdown ${s==='EXPIRED'?'expired':s==='WARNING'?'warn':''}" ${nearest?`data-eway-expiry="${esc(nearest.valid_until)}"`:""}>${nearest?esc(ewayRemaining(nearest.valid_until)):"—"}</span></td>
+ <td>${ewayStatusLabel(s)}</td><td><button type="button" class="btn eway-manage" onclick="window.EktaTracking.openMarketEwayEdit('${id}')">＋ ${bills.length?'Manage Bills':'Enter Bill'}</button></td></tr>`;
+}
+function openMarketEwayEdit(id){
+ const t=etMarketEwayTrips.find(t=>String(t.id)===String(id));if(!t)return alertUser("Market trip not found. Refresh the E-Way Register.");
+ const old=document.getElementById("etMarketEwayOverlay");if(old)old.remove();
+ const overlay=document.createElement("div");overlay.id="etMarketEwayOverlay";overlay.className="modal show";overlay.style.zIndex="100600";
+ overlay.innerHTML=`<div class="box" style="width:min(560px,100%);max-height:90vh"><div class="mh"><b>MARKET — E-Way Bills</b><button class="x" type="button" id="etMarketEwayClose">×</button></div><form class="mb" id="etMarketEwayForm"><div class="et-notice"><b>${esc(t._marketTruck)}</b> · ${esc(t._marketOwner)}<div style="font-size:10px">${esc(t.trip_number)}</div></div><p style="font-size:11px;color:#68758a">Each line: 12-digit E-Way Bill Number, comma, expiry date (YYYY-MM-DD). Existing lines can be edited. Records are linked only to this Market Trip.</p><textarea id="etMarketEwayLines" class="et-input" rows="6" style="font:12px monospace;width:100%;resize:vertical" placeholder="123456789012, 2026-11-01" required></textarea><div id="etMarketEwayError" style="color:#b42335;font-size:11px"></div><div class="et-footer"><button type="button" class="et-btn" id="etMarketEwayCancel">Cancel</button><button class="et-btn et-primary" id="etMarketEwaySave" type="submit">Save Market Bills</button></div></form></div>`;
+ document.body.appendChild(overlay);
+ const close=()=>overlay.remove();overlay.querySelector("#etMarketEwayClose").onclick=close;overlay.querySelector("#etMarketEwayCancel").onclick=close;
+ overlay.querySelector("#etMarketEwayLines").value=(t._marketBills||[]).map(b=>`${b.eway_bill_number}, ${dateOnly(b.valid_until)}`).join("\n");
+ overlay.querySelector("#etMarketEwayForm").onsubmit=async e=>{
+  e.preventDefault();const error=overlay.querySelector("#etMarketEwayError"),lines=overlay.querySelector("#etMarketEwayLines").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),seen=new Set(),entries=[];
+  if(!lines.length){error.textContent="At least one bill is required.";return}
+  for(const line of lines){const m=line.match(/^(\d{12})\s*[,;]\s*(\d{4}-\d{2}-\d{2})$/);if(!m){error.textContent="Use: 123456789012, 2026-11-01";return}const d=new Date(m[2]+"T12:00:00");if(Number.isNaN(d.getTime())||dateOnly(d.toISOString())!==m[2]){error.textContent="Invalid expiry date: "+m[2];return}if(seen.has(m[1])){error.textContent="Duplicate bill: "+m[1];return}seen.add(m[1]);const prior=(t._marketBills||[]).find(b=>b.eway_bill_number===m[1]);entries.push({eway_bill_number:m[1],eway_bill_date:prior?.eway_bill_date||new Date().toISOString(),valid_until:m[2]+"T23:59:59+05:30"})}
+  const button=overlay.querySelector("#etMarketEwaySave");button.disabled=true;
+  try{const original=clean(t.notes).replace(marketEwayMarker,"").trim();const notes=original+(original?"\n":"")+"[MARKET_EWAY_V1:"+marketEwayEncode(entries)+"]";const r=await S.from("market_trips").update({notes}).eq("id",t.id).select("id");if(r.error)throw r.error;if(!r.data?.length)throw new Error("No row returned; check Market update permissions.");close();await loadMarketEwayTrips();renderEwayPage();alertUser("Market E-Way Bills saved.")}
+  catch(err){error.textContent="Save failed: "+err.message}finally{button.disabled=false}
+ };
+}
+
 /* ========================= 15. E-WAY — SELF-CONTAINED MULTI ===== */
 function ewayTripRecords(){
  return trips
@@ -2416,8 +2464,9 @@ function toggleEwayMenu(id){
  $(id)?.classList.toggle("show");
 }
 
-function openEwayRecords(){
+async function openEwayRecords(){
  refreshUploadTrips();
+ await loadMarketEwayTrips();
  $("etEwayDate").value="";
  $("etEwayPartyFilter").value="";
  $("etEwaySearch").value="";
@@ -2435,6 +2484,7 @@ function closeEwayPage(){
 
 async function refreshEwayPage(){
  await loadAll();
+ await loadMarketEwayTrips();
  renderEwayPage();
 }
 
@@ -2460,11 +2510,22 @@ function renderEwayPage(){
   const kind=p?(isBillingClient(p)?"BILLING":"TRANSPORTER"):"";
   const searchable=[tr?.truck_number,t.trip_number,p?.name,p?.party_code,p?.city,kind,t.from_location,t.loading_point,t.to_location,t.destination,...b.map(x=>x.eway_bill_number)].join(" ").toLowerCase();
   return (!q||searchable.includes(q))&&(!pf||kind===pf)&&(!date||dateOnly(t.program_date)===date)&&(!sf||ewayTripOverallStatus(t)===sf);
- }).sort((a,b)=>String(b.program_date||"").localeCompare(String(a.program_date||"")));
- const all=ewayTripRecords(),counts={PENDING:0,OK:0,WARNING:0,EXPIRED:0};all.forEach(t=>counts[ewayTripOverallStatus(t)]++);
- $("etEwayCount").textContent=`${list.length} trips`;
- const stats=$("etEwayStats");if(stats)stats.innerHTML=`<span class="eway-stat"><b>${all.length}</b>Active Trips</span><span class="eway-stat"><b>${counts.OK}</b>Valid</span><span class="eway-stat"><b>${counts.WARNING}</b>Expiring ≤8h</span><span class="eway-stat"><b>${counts.EXPIRED}</b>Expired</span><span class="eway-stat"><b>${counts.PENDING}</b>Awaiting Details</span>`;
- $("etEwayRows").innerHTML=list.length?list.map(t=>{
+ });
+ const marketList=etMarketEwayTrips.filter(t=>{const s=marketEwayStatus(t),searchable=[t._marketTruck,t._marketOwner,t.trip_number,t.party_name,t.from_location,t.to_location,...(t._marketBills||[]).map(b=>b.eway_bill_number)].join(" ").toLowerCase();return (!q||searchable.includes(q))&&(!pf||pf==="BILLING"||pf==="TRANSPORTER")&&(!date||dateOnly(t.program_date)===date)&&(!sf||s===sf)});
+ const all=ewayTripRecords(),counts={PENDING:0,OK:0,WARNING:0,EXPIRED:0};all.forEach(t=>counts[ewayTripOverallStatus(t)]++);etMarketEwayTrips.forEach(t=>counts[marketEwayStatus(t)]++);
+ $("etEwayCount").textContent=`${list.length+marketList.length} trips`;
+ const stats=$("etEwayStats");if(stats)stats.innerHTML=`<span class="eway-stat"><b>${all.length+etMarketEwayTrips.length}</b>Active Trips</span><span class="eway-stat"><b>${counts.OK}</b>Valid</span><span class="eway-stat"><b>${counts.WARNING}</b>Expiring ≤8h</span><span class="eway-stat"><b>${counts.EXPIRED}</b>Expired</span><span class="eway-stat"><b>${counts.PENDING}</b>Awaiting Details</span>`;
+ // Combine both fleets before sorting. A newly created trip always comes first.
+ // Updating E-Way bills does not alter this position.
+ const sortedRows=[...list.map(t=>({kind:"fleet",trip:t})),...marketList.map(t=>({kind:"market",trip:t}))]
+  .sort((a,b)=>{
+   const x=a.trip,y=b.trip;
+   const at=Date.parse(x.created_at||"")||0,bt=Date.parse(y.created_at||"")||0;
+   return bt-at||String(y.id||"").localeCompare(String(x.id||""));
+  });
+ $("etEwayRows").innerHTML=sortedRows.map(entry=>{
+ if(entry.kind==="market")return marketEwayRow(entry.trip);
+ const t=entry.trip;
  const tr=truck(t.truck_id),bills=billsForTrip(t.id),s=ewayTripOverallStatus(t),latest=bills.slice().sort((a,b)=>new Date(b.created_at||b.eway_bill_date||0)-new Date(a.created_at||a.eway_bill_date||0))[0];
  const nearest=bills.filter(b=>b.valid_until).sort((a,b)=>new Date(a.valid_until)-new Date(b.valid_until))[0];
  const p=party(t.party_id);
@@ -2477,7 +2538,8 @@ function renderEwayPage(){
  <td>${latest?esc(fmtDT(latest.eway_bill_date||latest.valid_from)):"—"}</td><td>${nearest?esc(fmtDT(nearest.valid_until)):"—"}</td>
  <td><span class="eway-countdown ${s==='EXPIRED'?'expired':s==='WARNING'?'warn':''}" ${nearest?`data-eway-expiry="${esc(nearest.valid_until)}"`:""}>${nearest?esc(ewayRemaining(nearest.valid_until)):"—"}</span></td>
  <td>${ewayStatusLabel(s)}</td><td><button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','')">＋ ${bills.length?'Add another':'Enter Bill'}</button></td></tr>`;
- }).join(""):`<tr><td colspan="10" class="empty">No active E-Way trips match this search.</td></tr>`;
+ }).join("");
+ if(!list.length&&!marketList.length)$("etEwayRows").innerHTML=`<tr><td colspan="10" class="empty">No active E-Way trips match this search.</td></tr>`;
 }
 function updateEwayCountdowns(){document.querySelectorAll('[data-eway-expiry]').forEach(el=>{const expiry=el.getAttribute('data-eway-expiry');el.textContent=ewayRemaining(expiry);const diff=new Date(expiry).getTime()-Date.now();el.classList.toggle('warn',diff>0&&diff<=28800000);el.classList.toggle('expired',diff<=0)});}
 window.setInterval(()=>{updateEwayCountdowns();if($("etEwayPage")?.classList.contains("show"))renderEwayPage();},60000);
@@ -2533,7 +2595,7 @@ function toLocalInput(v){
 function addEwayBillRow(number="",valid="",recordId=""){
  const host=$("etEWBillRows");if(!host)return;
  const row=document.createElement("div");row.className="eway-bill-row";row.dataset.recordId=recordId;
- row.innerHTML=`<span class="bill-index"></span><div class="field"><label>E-Way Bill Number *</label><input class="eway-row-number" inputmode="numeric" maxlength="12" pattern="[0-9]{12}" required placeholder="12-digit E-Way Bill"></div><div class="field eway-valid-field"><label>Valid Upto — Date & Time *</label><input class="eway-row-expiry" type="datetime-local" required></div><button type="button" class="bill-remove" title="Remove this row" onclick="window.EktaTracking.removeEwayBillRow(this)">×</button>`;
+ row.innerHTML=`<span class="bill-index"></span><div class="field"><label>E-Way Bill Number *</label><input class="eway-row-number" inputmode="numeric" maxlength="12" pattern="[0-9]{12}" required placeholder="12-digit E-Way Bill"></div><div class="field eway-valid-field"><label>Valid Upto — Expiry Date *</label><input class="eway-row-expiry" type="date" required></div><button type="button" class="bill-remove" title="Remove this row" onclick="window.EktaTracking.removeEwayBillRow(this)">×</button>`;
  host.appendChild(row);row.querySelector('.eway-row-number').value=number;row.querySelector('.eway-row-expiry').value=valid;
  host.querySelectorAll('.bill-index').forEach((x,i)=>x.textContent=String(i+1).padStart(2,'0'));
 }
@@ -2548,7 +2610,7 @@ function openEwayEdit(tripId,recordId){
  $("etEWTruck").value=tr?.truck_number||"";$("etEWTruck").readOnly=true;$("etEWTruck").onchange=null;$("etEWTruckLabel").textContent=tr?.truck_number||"—";$("etEWTripLabel").textContent=t.trip_number||"Active";
  $("etEWProgramDate").value=dateOnly(t.program_date);
  $("etEWLoadingDate").value=dateOnly(t.loading_date);
- $("etEWBillRows").innerHTML="";addEwayBillRow(record?.eway_bill_number||"",toLocalInput(record?.valid_until||""),record?.id||"");
+ $("etEWBillRows").innerHTML="";addEwayBillRow(record?.eway_bill_number||"",dateOnly(record?.valid_until||""),record?.id||"");
  $("etEWDateTime").value=toLocalInput(record?.eway_bill_date||record?.valid_from||"");
 
  $("etEWDocument").value=record?.document_file_url||"";
@@ -2620,7 +2682,7 @@ async function saveEwayRecord(e){
  const seen=new Set();
  for(const r of rows){
   if(!/^\d{12}$/.test(r.number))return alertUser("Each E-Way Bill number must contain exactly 12 digits.");
-  if(!r.expiry||!Number.isFinite(new Date(r.expiry).getTime()))return alertUser("Enter a valid Valid Upto date and time for every bill.");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)||!Number.isFinite(new Date(r.expiry+"T00:00:00").getTime()))return alertUser("Enter a valid expiry date for every bill.");
   if(seen.has(r.number))return alertUser("Duplicate E-Way Bill number in this form: "+r.number);seen.add(r.number);
   if(billsForTrip(tripId).some(b=>String(b.id)!==String(r.id)&&clean(b.eway_bill_number)===r.number))return alertUser("Bill already exists for this trip: "+r.number);
  }
@@ -2631,8 +2693,9 @@ async function saveEwayRecord(e){
    // Preserve existing issue timestamp on edits. For new records, use the existing trip's
    // program/loading date as legacy database compatibility only; never claim it was OCR-generated.
    const legacyDate=existing?.eway_bill_date||existing?.valid_from||t.loading_date||t.program_date||new Date().toISOString();
-   const issue=new Date(legacyDate);const fallback=Number.isFinite(issue.getTime())&&issue.getTime()<new Date(r.expiry).getTime()?issue.toISOString():new Date(Math.min(Date.now(),new Date(r.expiry).getTime()-60000)).toISOString();
-   const payload={trip_id:t.id,truck_id:t.truck_id,eway_bill_number:r.number,eway_bill_date:fallback,valid_from:fallback,valid_until:new Date(r.expiry).toISOString(),document_file_url:existing?.document_file_url||null,ai_note:existing?.ai_note||null,verified:false,updated_at:new Date().toISOString()};
+   const expiryEnd=new Date(r.expiry+"T23:59:59");
+   const issue=new Date(legacyDate);const fallback=Number.isFinite(issue.getTime())&&issue.getTime()<expiryEnd.getTime()?issue.toISOString():new Date(Math.min(Date.now(),expiryEnd.getTime()-60000)).toISOString();
+   const payload={trip_id:t.id,truck_id:t.truck_id,eway_bill_number:r.number,eway_bill_date:fallback,valid_from:fallback,valid_until:expiryEnd.toISOString(),document_file_url:existing?.document_file_url||null,ai_note:existing?.ai_note||null,verified:false,updated_at:new Date().toISOString()};
    const result=r.id?await S.from(T.eway).update(payload).eq('id',r.id):await S.from(T.eway).insert(payload);
    if(result.error)throw result.error;
   }
@@ -2677,40 +2740,88 @@ function ewayExtractPlainText(txt){
  const expiry=labelledDate(/(?:valid\s*(?:upto|up\s*to|until|till)|expiry\s*(?:date|time)?|expires\s*(?:on|at)?)/i);
  return {eway_bill_number:/^\d{12}$/.test(number)?number:"",truck_number:vehicles.length===1?vehicles[0]:"",eway_bill_date:issued.parsed,valid_until:expiry.parsed,missing_time:!!(expiry.raw&&!expiry.parsed),ambiguous_vehicle:vehicles.length>1};
 }
-function applyEwayExtracted(data){
- if(!data||typeof data!=="object")throw new Error("No fields extracted");
- const no=clean(data.eway_bill_number||data.ewayBillNumber||data.eway_number||"").replace(/\D/g,"");
- // Never preserve stale extracted values when scanning another document.
- const firstRow=$("etEWBillRows")?.querySelector(".eway-bill-row");if(firstRow)firstRow.querySelector(".eway-row-number").value=/^\d{12}$/.test(no)?no:"";
- const parseDate=v=>{if(!v)return "";const x=clean(v);if(/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(x))return x.slice(0,16);return ewayDateFromText(x)};
-
- if(firstRow)firstRow.querySelector(".eway-row-expiry").value=parseDate(data.valid_until||data.expiry_date||data.expiryDate);
- const vehicle=ewayNormalizeTruck(data.truck_number||data.vehicle_number||data.vehicleNo||"");
- const current=ewayNormalizeTruck($("etEWTruck").value);
- const note=$("etEWFileNote");
- if(vehicle){
-  if($("etEwayEditModal").classList.contains("eway-ocr-mode")){
-   const matches=ewayTripRecords().filter(t=>ewayNormalizeTruck(truck(t.truck_id)?.truck_number)===vehicle);
-   if(matches.length===1){$("etEWOcrTruckSelect").value=matches[0].id;$("etEWOcrTruckSelect").onchange();note.textContent="OCR vehicle matched. Verify the trip and bill details before saving.";}
-   else note.textContent="OCR vehicle could not be uniquely matched. Select the correct active trip manually.";
+/* Read all bill numbers and their own expiry dates, not just the first match.
+   PDF pages are separated before extraction so dates cannot leak between bills. */
+function ewayExtractBills(text){
+ // Keep pages separate: never assign one page's expiry to another bill.
+ const pages=String(text||"").split(/\n\s*\[EWAY_PAGE_\d+\]\s*\n/i);
+ const results=new Map();
+ const dateValue=v=>{
+  const m=String(v||"").replace(/\s/g,"").match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
+  if(!m)return "";
+  const d=+m[1],mo=+m[2],y=+m[3],dt=new Date(y,mo-1,d);
+  return dt.getFullYear()===y&&dt.getMonth()===mo-1&&dt.getDate()===d?`${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`:"";
+ };
+ for(const page of pages){
+  // OCR often inserts spaces/newlines between digits, or reads 'Way Bill' as 'W ay Bill'.
+  const normalized=page.replace(/\r/g,"\n").replace(/[|]/g,"I");
+  const label=/(?:[e£f]\s*[-–]?\s*)?w\s*a\s*y\s*b\s*i\s*l\s*l\s*(?:n\s*[o0]\.?|number|#)\s*[:#.;-]?/gi;
+  const matches=[...normalized.matchAll(label)];
+  const candidates=[];
+  for(const match of matches){
+   const nearby=normalized.slice(match.index+match[0].length,match.index+match[0].length+85);
+   const digits=nearby.match(/(?:[0-9][\s.-]*){12}/);
+   if(digits)candidates.push({number:digits[0].replace(/\D/g,""),index:match.index});
   }
-  else if(current&&vehicle!==current){
-   $("etEWTripId").value="";
-   note.textContent=`OCR vehicle ${vehicle} does not match selected truck ${current}. Select the correct active trip before saving.`;
-  }else if(!current){
-   const matches=ewayTripRecords().filter(t=>ewayNormalizeTruck(truck(t.truck_id)?.truck_number)===vehicle);
-   if(matches.length===1){const t=matches[0];$("etEWTripId").value=t.id;$("etEWTruck").value=truck(t.truck_id)?.truck_number||"";$("etEWTruckLabel").textContent=$("etEWTruck").value;$("etEWTripLabel").textContent=t.trip_number||"Active";}
-   else {$("etEWTripId").value="";note.textContent="Vehicle not uniquely matched to an active trip. Choose the correct truck.";}
+  // Date can appear before the bill number in the right-hand column.
+  const dateMatch=normalized.match(/valid\s*(?:up\s*to|upto|until|till|up\s*tp)\s*[:#.;-]?\s*(\d{1,2}\s*[\/.-]\s*\d{1,2}\s*[\/.-]\s*\d{4})/i);
+  const expiry=dateValue(dateMatch?.[1]);
+  const distinct=[...new Set(candidates.map(x=>x.number).filter(n=>/^\d{12}$/.test(n)))];
+  // One bill per page is usual. For multiple bills on a page, don't guess
+  // which expiry belongs to which number unless there is only one candidate.
+  for(const number of distinct){
+   const value=distinct.length===1?expiry:"";
+   const old=results.get(number);
+   if(!old||(!old.expiry_date&&value))results.set(number,{eway_bill_number:number,expiry_date:value});
   }
  }
- if(data.missing_time)note.textContent+=" Expiry time not visible: enter it manually; no default time assumed.";
- if(data.ambiguous_vehicle)note.textContent+=" Multiple vehicle numbers detected: verify truck manually.";
+ return [...results.values()];
+}
+function applyEwayExtracted(data){
+ const bills=Array.isArray(data)?data:ewayExtractBills(data?.raw_text||"");
+ const host=$("etEWBillRows");host.innerHTML="";
+ if(!bills.length)addEwayBillRow();
+ else bills.forEach(b=>addEwayBillRow(b.eway_bill_number,b.expiry_date));
+ const missing=bills.filter(b=>!b.expiry_date).length;
+ $("etEWFileNote").textContent=bills.length?`${bills.length} E-Way Bill(s) found. ${missing?missing+" expiry date(s) unreadable — enter manually. ":""}Select the correct active trip and verify both fields before Save. Expiry date is stored as end of that day (11:59:59 PM).`:
+  "No reliable E-Way Bill number found. Please enter details manually.";
 }
 function readEwayPastedText(){
  const txt=clean($("etEWPaste")?.value);if(!txt)return alertUser("Paste E-Way Bill text first.");
- const data=ewayExtractPlainText(txt);
- $("etEWFileNote").textContent="OCR text parsed. Check vehicle, 12-digit bill number, expiry time before Save.";
- applyEwayExtracted(data);
+ applyEwayExtracted(ewayExtractBills(txt));
+}
+/* Diagnostic preview: memory only; never saved to Supabase or localStorage. */
+let etOcrDebugPages=[];
+function etOcrDebugPanel(){
+ const area=$("etEWOcrSection");if(!area)return null;
+ let panel=$("etEWOcrDebugPanel");if(panel)return panel;
+ panel=document.createElement("details");panel.id="etEWOcrDebugPanel";panel.className="eway-ocr-debug";
+ panel.innerHTML=`<summary>Show OCR Debug Result (Local Test)</summary>
+ <div class="eway-ocr-debug-note">Page-wise PDF text and OCR passes. This is a local preview only; do not share unredacted text if it contains private details.</div>
+ <div id="etEWOcrDebugContent" class="eway-ocr-debug-content">Run Read with OCR (Local) first.</div>
+ <button type="button" class="btn" id="etEWOcrCopyDebug">Copy OCR Debug Text</button>`;
+ area.appendChild(panel);
+ panel.querySelector("#etEWOcrCopyDebug").addEventListener("click",async()=>{
+  const output=etOcrDebugPages.map(p=>`PAGE ${p.page}\n${p.passes.map(x=>`--- ${x.name} (${x.text.length} chars) ---\n${x.text}`).join("\n")}`).join("\n\n");
+  try{await navigator.clipboard.writeText(output);alertUser("OCR diagnostic copied. Review before sharing.")}
+  catch(e){const t=document.createElement("textarea");t.value=output;panel.appendChild(t);t.select();document.execCommand("copy");t.remove();alertUser("OCR diagnostic copied. Review before sharing.")}
+ });
+ return panel;
+}
+function etOcrDebugUpdate(){
+ const panel=etOcrDebugPanel(),target=panel?.querySelector("#etEWOcrDebugContent");if(!target)return;
+ target.replaceChildren();
+ if(!etOcrDebugPages.length){target.textContent="No page results yet.";return}
+ for(const page of etOcrDebugPages){
+  const wrapper=document.createElement("div");wrapper.className="eway-ocr-debug-page";
+  const header=document.createElement("b");header.textContent=`Page ${page.page}: ${page.passes.length} reading pass(es)`;wrapper.appendChild(header);
+  for(const pass of page.passes){
+   const section=document.createElement("details");section.open=pass.name==="PDF embedded text";
+   const summary=document.createElement("summary");summary.textContent=`${pass.name} — ${pass.text.length} characters`;section.appendChild(summary);
+   const pre=document.createElement("pre");pre.textContent=pass.text||"[No text detected]";section.appendChild(pre);wrapper.appendChild(section);
+  }
+  target.appendChild(wrapper);
+ }
 }
 /* E-Way OCR is browser-only: no Gemini, no API upload, no source persistence. */
 let etOcrLibPromise=null;
@@ -2744,26 +2855,74 @@ async function etOcrImage(image,notify){
  });
  return result?.data?.text||"";
 }
+// Read the header as separate left/right regions, as a human would.
+// Crop at full resolution and try both contrast-enhanced and thresholded images.
+// Local Tesseract only; no bill data leaves the browser.
+async function etOcrHeaderRegion(canvas,x,y,w,h,notify,threshold=false){
+ const zoom=Math.min(4,Math.max(2,2200/Math.max(w,1)));
+ const crop=document.createElement("canvas");crop.width=Math.round(w*zoom);crop.height=Math.round(h*zoom);
+ const ctx=crop.getContext("2d",{willReadFrequently:true});
+ ctx.fillStyle="#fff";ctx.fillRect(0,0,crop.width,crop.height);
+ ctx.filter=threshold?"grayscale(1) contrast(2.4)":"grayscale(1) contrast(1.65) brightness(1.1)";
+ ctx.drawImage(canvas,x,y,w,h,0,0,crop.width,crop.height);
+ if(threshold){
+  const img=ctx.getImageData(0,0,crop.width,crop.height),pixels=img.data;
+  for(let i=0;i<pixels.length;i+=4){const v=pixels[i]<165?0:255;pixels[i]=pixels[i+1]=pixels[i+2]=v;}
+  ctx.putImageData(img,0,0);
+ }
+ try{
+  const out=await window.Tesseract.recognize(crop,"eng",{
+   tessedit_pageseg_mode:6,
+   logger:m=>{if(m.status==="recognizing text"&&notify)notify(`Reading header ${Math.round((m.progress||0)*100)}%`)}
+  });
+  return out?.data?.text||"";
+ }finally{crop.width=0;crop.height=0}
+}
 async function etOcrPdf(file,notify){
  const bytes=await file.arrayBuffer();
  const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(bytes)}).promise;
- if(pdf.numPages>12)throw new Error("PDF has more than 12 pages. Please upload the relevant pages.");
- let all="";
+ if(pdf.numPages>12)throw new Error("PDF has more than 12 pages. Upload relevant pages.");
+ const pageTexts=[];
+ etOcrDebugPages=[];etOcrDebugUpdate();
  for(let p=1;p<=pdf.numPages;p++){
   notify(`Reading PDF page ${p}/${pdf.numPages}…`);
   const page=await pdf.getPage(p);
   const content=await page.getTextContent();
   const extracted=content.items.map(x=>x.str||"").join(" ");
-  if(ewayExtractPlainText(extracted).eway_bill_number){all+="\n"+extracted;continue;}
-  const viewport=page.getViewport({scale:2});
+  const debug={page:p,passes:[{name:"PDF embedded text",text:extracted}]};etOcrDebugPages.push(debug);etOcrDebugUpdate();
+  if(ewayExtractBills(extracted).some(x=>x.expiry_date)){pageTexts.push(extracted);continue;}
+  const viewport=page.getViewport({scale:3});
   const canvas=document.createElement("canvas");canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
-  const ctx=canvas.getContext("2d",{willReadFrequently:true});
   try{
-   await page.render({canvasContext:ctx,viewport}).promise;
-   all+="\n"+extracted+"\n"+await etOcrImage(canvas,m=>notify(`Page ${p}: ${m}`));
+   await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
+   const w=canvas.width,h=canvas.height;
+   // On the sample scanned bills, the header is near 19-30% of page height.
+   // The wide crop retains number and expiry together for page-wise pairing.
+   const regions=[
+    [0,Math.floor(h*.16),w,Math.floor(h*.20)],
+    [0,Math.floor(h*.19),Math.floor(w*.68),Math.floor(h*.13)],
+    [Math.floor(w*.48),Math.floor(h*.19),Math.floor(w*.52),Math.floor(h*.13)]
+   ];
+   const parts=[extracted];
+   for(let i=0;i<regions.length;i++){
+    notify(`Page ${p}/${pdf.numPages}: header ${i+1}/${regions.length}…`);
+    const reading=await etOcrHeaderRegion(canvas,...regions[i],notify,false);parts.push(reading);debug.passes.push({name:`Header crop ${i+1}`,text:reading});etOcrDebugUpdate();
+   }
+   // Only run more expensive threshold passes if first pass did not get both fields.
+   if(!ewayExtractBills(parts.join("\n")).some(x=>x.expiry_date)){
+    notify(`Page ${p}: enhanced OCR pass…`);
+    const threshold1=await etOcrHeaderRegion(canvas,...regions[0],notify,true);parts.push(threshold1);debug.passes.push({name:"Threshold crop 1",text:threshold1});etOcrDebugUpdate();
+    const threshold2=await etOcrHeaderRegion(canvas,...regions[1],notify,true);parts.push(threshold2);debug.passes.push({name:"Threshold crop 2",text:threshold2});etOcrDebugUpdate();
+    const threshold3=await etOcrHeaderRegion(canvas,...regions[2],notify,true);parts.push(threshold3);debug.passes.push({name:"Threshold crop 3",text:threshold3});etOcrDebugUpdate();
+   }
+   if(!ewayExtractBills(parts.join("\n")).length){
+    notify(`Page ${p}: full-page fallback…`);
+    const full=await etOcrImage(canvas,notify);parts.push(full);debug.passes.push({name:"Full page fallback",text:full});etOcrDebugUpdate();
+   }
+   pageTexts.push(parts.join("\n"));
   }finally{canvas.width=0;canvas.height=0}
  }
- return all;
+ return pageTexts.map((x,i)=>`\n[EWAY_PAGE_${i+1}]\n${x}`).join("");
 }
 async function tryEwayAIRead(){
  const file=$("etEWFile")?.files?.[0];if(!file)return readEwayPastedText();
@@ -2774,20 +2933,19 @@ async function tryEwayAIRead(){
  if(button)button.disabled=true;
  const notify=m=>{note.textContent=m+" File remains in your browser; nothing is uploaded."};
  try{
+  etOcrDebugPages=[];etOcrDebugPanel();etOcrDebugUpdate();
   notify("Loading local OCR libraries…");
   await etOcrLibraries();
   let text="";
   if(file.type==="application/pdf")text=await etOcrPdf(file,notify);
   else{
    const url=URL.createObjectURL(file);
-   try{text=await etOcrImage(url,notify)}finally{URL.revokeObjectURL(url)}
+   try{text=await etOcrImage(url,notify);etOcrDebugPages=[{page:1,passes:[{name:"Image OCR",text}]}];etOcrDebugUpdate()}finally{URL.revokeObjectURL(url)}
   }
   if(!clean(text))throw new Error("No readable text found. Try a clearer photo or manual entry.");
-  const fields=ewayExtractPlainText(text);
-  note.textContent="OCR finished. Verify the E-Way number, vehicle and Valid Upto before saving. Unclear fields remain blank.";
+  const fields=ewayExtractBills(text);
   applyEwayExtracted(fields);
-  if(!fields.eway_bill_number)note.textContent+=" E-Way Bill number not confidently found.";
-  if(!fields.valid_until)note.textContent+=" Enter expiry date AND time manually if missing.";
+  if(!fields.length)note.textContent+=" OCR could not read the printed header. Please try a clearer scan; no values were guessed.";
  }catch(e){console.warn("Local E-Way OCR error",e);note.textContent="Local OCR failed: "+(e.message||"Unknown error")+". You can paste text or enter fields manually.";}
  finally{if(button)button.disabled=false}
 }
@@ -2829,15 +2987,58 @@ function renderHistoryRecords(){
 /* ========================= 16. FINAL REPORT ================= */
 let etFinalAllDates=true;
 function finalTripDate(t){return dateOnly(t.unloading_date||t.end_date||t.updated_at||t.created_at)}
-function openFinalReport(){finalAll();$("etFinalPage").classList.add("show");renderFinal()}
+async function openFinalReport(){finalAll();$("etFinalPage").classList.add("show");await loadMarketFinalTrips();renderFinal()}
 function closeFinal(){$("etFinalPage").classList.remove("show")}
 function finalAll(){etFinalAllDates=true;["etFinalFrom","etFinalTo","etFinalSearch"].forEach(id=>{if($(id))$(id).value=""});renderFinal()}
 function finalDateChanged(){etFinalAllDates=!($("etFinalFrom")?.value||$("etFinalTo")?.value||clean($("etFinalSearch")?.value));renderFinal()}
+/* Market completed trips are displayed in the original Final Report, without
+   inserting them into the own-fleet trips table or changing its POD markers. */
+let etMarketFinalTrips=[];
+async function loadMarketFinalTrips(){
+ try{
+  const [ts,vs,os]=await Promise.all([
+   S.from("market_trips").select("*").limit(5000),
+   S.from("market_vehicles").select("id,truck_number,transporter_id").limit(5000),
+   S.from("market_transporters").select("id,transporter_name").limit(5000)
+  ]);
+  for(const r of [ts,vs,os])if(r.error)throw r.error;
+  const vehicles=new Map((vs.data||[]).map(v=>[String(v.id),v]));
+  const owners=new Map((os.data||[]).map(o=>[String(o.id),o.transporter_name]));
+  etMarketFinalTrips=(ts.data||[]).filter(t=>clean(t.trip_status).toUpperCase()==="COMPLETED").map(t=>{
+   const v=vehicles.get(String(t.vehicle_id));
+   return {...t,_market:true,_marketTruck:v?.truck_number||"",_marketOwner:owners.get(String(t.transporter_id||v?.transporter_id))||""};
+  });
+ }catch(e){console.warn("[EKTA] Market Final Report unavailable:",e);etMarketFinalTrips=[];}
+}
+function marketFinalView(id){
+ const t=etMarketFinalTrips.find(x=>String(x.id)===String(id));if(!t)return alertUser("Market trip not found. Reopen Final Report.");
+ const customer=num(t.customer_freight),hire=num(t.hire_freight);
+ const overlay=document.createElement("div");overlay.className="modal show";overlay.style.zIndex="100700";
+ overlay.innerHTML=`<div class="box" style="width:min(540px,100%)"><div class="mh"><b>Market Trip — ${esc(t.trip_number||"")}</b><button type="button" class="x" data-close>×</button></div><div class="mb">
+ <p><b>${esc(t._marketTruck)}</b> · ${esc(t._marketOwner||"Owner not recorded")}</p>
+ <p>Party: ${esc(t.party_name||"—")}</p><p>Route: ${esc(t.from_location||"—")} → ${esc(t.to_location||"—")}</p>
+ <p>Customer Freight: <b>₹${customer.toLocaleString("en-IN")}</b></p>
+ <p>Owner Hire Freight: <b>₹${hire.toLocaleString("en-IN")}</b></p>
+ <p>Gross Margin: <b>₹${(customer-hire).toLocaleString("en-IN")}</b></p>
+ <p class="muted" style="font-size:11px">Customer billing is for full freight, not margin. Market POD is linked by Market Trip ID. Invoice and Party Ledger posting still require validation.</p>
+ <div class="et-footer"><button class="et-btn" type="button" data-close>Close</button></div></div></div>`;
+ document.body.append(overlay);overlay.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>overlay.remove());
+}
+function marketFinalRow(t){
+ const id=esc(String(t.id));const program=fmt(t.program_date),loading=fmt(t.loading_date);
+ return `<tr class="et-market-final-row"><td>${esc(fmt(finalTripDate(t)))}</td><td>${esc(t.trip_number||"—")}</td>
+ <td class="et-market-final-truck"><div class="et-market-final-box"><div><strong>${esc(t._marketTruck||"—")}</strong> <span class="et-market-final-tag">MARKET</span></div><span class="et-market-final-owner" title="${esc(t._marketOwner||"")}">${esc(t._marketOwner||"Owner not recorded")}</span></div></td>
+ <td>${esc(program)}</td><td>${esc(loading)}</td><td>${esc(t.party_name||"—")}</td><td>—</td><td>—</td><td>—</td>
+ <td>${esc(fmt(t.reporting_date))}</td><td>${esc(fmt(t.unloading_date))}</td>
+ <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+ <td><span class="et-badge ${clean(getNote(t.notes,"POD_SENT")).toUpperCase()==="YES"?"b-running":"b-cancel"}">${clean(getNote(t.notes,"POD_SENT")).toUpperCase()==="YES"?"SENT TO POD":"NOT SENT"}</span></td>
+ <td><button class="action" onclick="window.EktaTracking.marketFinalView('${id}')">View</button></td></tr>`;
+}
 function finalTrips(){
  const from=$("etFinalFrom")?.value||"",to=$("etFinalTo")?.value||"",q=clean($("etFinalSearch")?.value).toLowerCase();
- return trips.filter(t=>clean(t.trip_status).toLowerCase()==="completed")
+ return [...trips.filter(t=>clean(t.trip_status).toLowerCase()==="completed"),...etMarketFinalTrips]
   .filter(t=>{const d=finalTripDate(t);return (!from||d>=from)&&(!to||d<=to)})
-  .filter(t=>!q||[t.trip_number,truck(t.truck_id)?.truck_number,party(t.party_id)?.name,party(t.party_id)?.party_code,party(t.party_id)?.city].some(v=>clean(v).toLowerCase().includes(q)))
+  .filter(t=>!q||(t._market?[t.trip_number,t._marketTruck,t._marketOwner,t.party_name,t.from_location,t.to_location]:[t.trip_number,truck(t.truck_id)?.truck_number,party(t.party_id)?.name,party(t.party_id)?.party_code,party(t.party_id)?.city]).some(v=>clean(v).toLowerCase().includes(q)))
   .sort((a,b)=>finalTripDate(a).localeCompare(finalTripDate(b))||clean(a.trip_number).localeCompare(clean(b.trip_number)));
 }
 let finalEditingTripId=null;
@@ -2852,7 +3053,7 @@ function finalPartySelect(t){
 }
 function renderFinal(){
  const list=finalTrips();
- const pending=trips.filter(t=>clean(t.trip_status).toLowerCase()==="completed"&&clean(getNote(t.notes,"POD_SENT")).toUpperCase()!=="YES");
+ const pending=[...trips,...etMarketFinalTrips].filter(t=>clean(t.trip_status).toLowerCase()==="completed"&&clean(getNote(t.notes,"POD_SENT")).toUpperCase()!=="YES");
  const from=$("etFinalFrom")?.value,to=$("etFinalTo")?.value,q=clean($("etFinalSearch")?.value);
  $("etSendDateText").textContent=`ALL completed trips • ${pending.length} not yet sent to POD`;
  const allBtn=$("etFinalAllBtn");if(allBtn){allBtn.classList.toggle("primary",!from&&!to&&!q);allBtn.setAttribute("aria-pressed",String(!from&&!to&&!q));}
@@ -2860,6 +3061,7 @@ function renderFinal(){
  $("etFinalCount").textContent=`${list.length} completed trip(s) shown`;
  if(finalEditingTripId && !list.some(t=>String(t.id)===String(finalEditingTripId))) finalEditingTripId=null;
  $("etFinalRows").innerHTML=list.length?list.map(t=>{
+  if(t._market)return marketFinalRow(t);
   const tr=truck(t.truck_id),p=party(t.party_id),l=latestLocation(t.truck_id);
   const ld=loadingDetentionDays(t),ud=unloadingDetentionDays(t),lc=loadingDetentionCharge(t),uc=unloadingDetentionCharge(t);
   const editing=String(finalEditingTripId)===String(t.id);
@@ -2995,7 +3197,7 @@ function finalToday(){finalAll()}
 let etPodSending=false;
 async function sendSelectedDateToPOD(){
  if(etPodSending)return;
- const list=trips.filter(t=>clean(t.trip_status).toLowerCase()==="completed"&&clean(getNote(t.notes,"POD_SENT")).toUpperCase()!=="YES");
+ const list=[...trips,...etMarketFinalTrips].filter(t=>clean(t.trip_status).toLowerCase()==="completed"&&clean(getNote(t.notes,"POD_SENT")).toUpperCase()!=="YES");
  if(!list.length)return alertUser("All completed trips have already been sent to POD. No new trips to send.");
  if(!window.confirm(`Send ${list.length} NEW completed trip(s) to POD Section?\nPreviously sent trips will not be sent again.\nDate/search filters do not affect POD sending.`))return;
  etPodSending=true;
@@ -3005,19 +3207,20 @@ async function sendSelectedDateToPOD(){
   for(const t of list){
    try{
     // Re-check database marker immediately before update, not just the cached UI list.
-    const check=await S.from(T.trips).select("id,notes").eq("id",t.id).single();
+    const check=await S.from(t._market?"market_trips":T.trips).select("id,notes").eq("id",t.id).single();
     if(check.error)throw check.error;
     let notes=clean(check.data?.notes)||"";
     if(clean(getNote(notes,"POD_SENT")).toUpperCase()==="YES"){already++;continue;}
     notes=putNote(notes,"POD_SENT","YES");
     notes=putNote(notes,"POD_SENT_AT",new Date().toISOString());
     if(!getNote(notes,"POD_STATUS"))notes=putNote(notes,"POD_STATUS","PENDING");
-    const r=await S.from(T.trips).update({notes}).eq("id",t.id);
+    const r=await S.from(t._market?"market_trips":T.trips).update({notes}).eq("id",t.id).select("id");
     if(r.error)throw r.error;
+    if(!r.data?.length)throw new Error("POD handoff not saved; check table permissions.");
     sent++;
    }catch(err){failed++;console.error("[EKTA TRACKING] POD hand-off failed:",t?.id,err);}
   }
-  await loadAll();renderFinal();
+  await loadAll();await loadMarketFinalTrips();renderFinal();
   alertUser(`POD hand-off complete.\nNewly sent: ${sent}\nAlready in POD: ${already}\nFailed: ${failed}\nPOD register groups trips by Loading Date.`);
  }finally{etPodSending=false;renderFinal()}
 }
@@ -3283,6 +3486,7 @@ function exportFinal(){
  csvDownload([
   ["Completed Date","Trip No","Truck","Program Date","Loading Date","Party","Party Type","Party Zone","Truck Zone","Reporting Date","Unloading Date","Loading Detention","Loading Detention Charge","Unloading Detention","Unloading Detention Charge","Unloading","Other","NGT","POD"],
   ...list.map(t=>{
+   if(t._market)return[finalTripDate(t),t.trip_number,t._marketTruck,dateOnly(t.program_date),dateOnly(t.loading_date),t.party_name,"MARKET","","",dateOnly(t.reporting_date),dateOnly(t.unloading_date),"","","","","","","","POD TO LINK"];
    const tr=truck(t.truck_id),p=party(t.party_id),l=latestLocation(t.truck_id);
    return[finalTripDate(t),t.trip_number,tr?.truck_number,dateOnly(t.program_date),dateOnly(t.loading_date),p?.name,p?.party_type,p?.zone,truckZone(t,l),
     dateOnly(t.reporting_date),dateOnly(t.unloading_date||t.end_date),loadingDetentionDays(t),loadingDetentionCharge(t),
@@ -3291,6 +3495,29 @@ function exportFinal(){
   })
  ],`ekta-final-report-${today()}.csv`);
 }
+
+/* Final Report worksheet: arrows scroll its own table, not the underlying Tracking page.
+   Never intercept keyboard editing, date fields, dropdowns, dialogs, or modifiers. */
+document.addEventListener("keydown",function(e){
+ if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key))return;
+ if(e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+ const page=document.getElementById("etFinalPage");
+ if(!page||!page.classList.contains("show"))return;
+ if(document.querySelector("#trackingModule .modal.show"))return;
+ const target=e.target;
+ if(target instanceof Element && target.closest("input,textarea,select,button,[contenteditable='true'],[role='combobox'],[role='dialog']"))return;
+ const wrap=page.querySelector(".tablewrap");
+ if(!wrap)return;
+ const delta=110*(e.key==="ArrowDown"||e.key==="ArrowRight"?1:-1);
+ if(e.key==="ArrowLeft"||e.key==="ArrowRight"){
+  wrap.scrollLeft+=delta;
+ }else{
+  // Prefer worksheet vertical scrolling; fall back to report page if no worksheet overflow.
+  if(wrap.scrollHeight>wrap.clientHeight+2)wrap.scrollTop+=delta;
+  else page.scrollTop+=delta;
+ }
+ e.preventDefault();
+},true);
 
 /* ========================= 18. KEYBOARD ===================== */
 let etKeyboardZone="worksheet";
@@ -3583,7 +3810,25 @@ async function saveQuickDriverAssignment(e){
 }
 
 /* ========================= 21. PUBLIC API =================== */
-window.EktaTracking={sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+
+/* Market workspace: navigation only; no data mutation until supplier schema is approved. */
+function openMarketVehicles(){
+ const page=$("etMarketPage");if(!page)return;
+ page.classList.add("show");page.setAttribute("aria-hidden","false");marketTab("transporters");
+}
+function closeMarketVehicles(){
+ const page=$("etMarketPage");if(!page)return;
+ page.classList.remove("show");page.setAttribute("aria-hidden","true");
+}
+function marketTab(name){
+ if(!["transporters","vehicles","trips"].includes(name))return;
+ document.querySelectorAll("#etMarketPage [data-market-tab]").forEach(b=>{
+  const active=b.dataset.marketTab===name;b.classList.toggle("primary",active);b.setAttribute("aria-selected",String(active));
+ });
+ document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
+}
+
+window.EktaTracking={marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus="";selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();

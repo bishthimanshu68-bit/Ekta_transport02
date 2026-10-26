@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1.0" name="viewport"/><title>Ekta Transport — Market / Hired Vehicles</title><style>
+:root{--navy:#173653;--blue:#3677b6;--line:#e4ebf4;--muted:#68758a;--bg:#f5f8fc}*{box-sizing:border-box}body{margin:0;font:13px Inter,Segoe UI,Arial,sans-serif;color:#1b2a3d;background:var(--bg)}.inner{padding:22px 25px;max-width:1900px;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}.title h1{font-size:24px;font-weight:500;margin:0 0 7px;color:var(--navy)}.title p{margin:0;color:var(--muted)}.btn{border:1px solid #d6e0ec;background:#fff;color:var(--navy);border-radius:9px;padding:14px 16px;font-size:13px;font-weight:750;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.red{color:#d9293e;border-color:#ffd0d5;background:#fff1f2}.et-market-intro{padding:18px 20px;background:#eef7ff;border:1px solid #cfe4fb;border-radius:12px;margin:15px 0 17px;font-size:15px}.et-market-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.panel{border:1px solid var(--line);background:#fff;border-radius:14px;overflow:hidden;min-height:360px}.ph{padding:17px;border-bottom:1px solid var(--line);font-size:16px}.mb{padding:21px;font-size:15px}.empty{padding:36px;text-align:center;color:#8898ae}.et-market-panel[hidden]{display:none!important}@media(max-width:650px){.inner{padding:12px}.top{align-items:flex-start;flex-direction:column}.title h1{font-size:20px}.btn{padding:10px}}
+
+/* Ekta compact office workspace: typography and spacing only */
+body{font-size:12px;line-height:1.4}
+.inner{padding:13px 18px;max-width:1900px}
+.top{margin-bottom:10px;gap:10px}
+.title h1{font-size:20px;font-weight:650;margin:0 0 3px;line-height:1.2}
+.title p{font-size:11px}
+.btn{padding:8px 11px;font-size:11px;min-height:34px;border-radius:8px}
+.et-market-intro{padding:9px 12px;margin:9px 0 11px;font-size:11px;line-height:1.4;border-radius:9px}
+.et-market-tabs{gap:7px;margin-bottom:10px}
+.panel{border-radius:10px;min-height:230px}
+.ph{padding:10px 13px;font-size:13px}
+.mb{padding:12px 14px;font-size:12px}
+.mb p{margin:0 0 10px}
+.empty{padding:24px 12px;font-size:11px}
+@media(max-width:650px){.inner{padding:10px}.title h1{font-size:18px}.btn{padding:8px 10px}}
+
+/* Office header — isolated to Market Vehicles page */
+.market-actions,.market-toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:0 0 9px}
+.market-actions .btn{white-space:nowrap}.market-actions .btn.green{background:#09995f;border-color:#09995f;color:white}
+.market-toolbar input,.market-toolbar select{border:1px solid #d7e2ef;background:white;border-radius:8px;padding:8px 10px;min-height:34px;font:inherit}
+.market-toolbar input[type=search]{flex:1 1 300px;min-width:180px}.market-toolbar input[type=date]{width:145px}
+.market-heading{margin:0 0 10px}.market-heading h1{margin:0;font-size:20px;font-weight:650;color:#173653}.market-heading p{margin:2px 0 0;color:#68758a;font-size:11px}
+.market-hint{font-size:10px;color:#68758a;margin:-2px 0 9px}
+@media(max-width:650px){.market-toolbar input[type=search]{flex-basis:100%}}
+
+/* Market Vehicle Owners - isolated preview styles */
+.owner-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.owner-notice{background:#fff8e8;border:1px solid #f4dcab;border-radius:8px;padding:9px 11px;margin-bottom:12px;color:#77551d;font-size:11px}
+.owner-form{border:1px solid #dbe6f1;background:#f9fbfe;border-radius:10px;padding:14px;margin-bottom:15px}
+.owner-form[hidden]{display:none}.owner-form-title{font-size:14px;font-weight:700;margin-bottom:12px;color:#173653}
+.owner-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.owner-fields label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:650;color:#31465d}
+.owner-fields input,.owner-fields textarea{width:100%;padding:9px 10px;border:1px solid #d3dfeb;border-radius:7px;font:inherit;font-weight:400;background:#fff;color:#1b2a3d}
+.owner-fields input:focus,.owner-fields textarea:focus{outline:2px solid #a6cdec;outline-offset:0}
+.owner-full{grid-column:1/-1}.owner-buttons{display:flex;gap:8px;margin-top:13px}
+.owner-list-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0 9px;font-size:12px}.owner-list-title span{color:#68758a}
+.owner-table-wrap{overflow-x:auto}.owner-table{width:100%;border-collapse:collapse;text-align:left;font-size:11px}
+.owner-table th,.owner-table td{border-bottom:1px solid #e4ebf4;padding:10px 9px;white-space:nowrap}.owner-table th{background:#f2f6fb;color:#41536a}.owner-table td{color:#263c54}
+.owner-table .btn{padding:5px 9px;min-height:27px}.owner-empty{text-align:center;color:#8090a3;padding:22px!important}
+.truck-inline{border:1px solid #cfe0f0;background:#f5f9fe;border-radius:9px;padding:13px;margin:12px 0}.truck-inline[hidden]{display:none}.truck-inline-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.truck-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.truck-fields label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:650}.truck-fields input{border:1px solid #d3dfeb;border-radius:7px;padding:9px;font:inherit}.truck-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}.truck-table th,.truck-table td{padding:9px;border-bottom:1px solid #e4ebf4;text-align:left}.truck-table th{background:#f2f6fb}.owner-actions{display:flex;gap:6px;align-items:center}.truck-owner-label{font-weight:700;color:#173653}.truck-table-wrap{overflow:auto}.truck-title{margin:15px 0 5px;font-size:12px}
+@media(max-width:800px){.truck-fields{grid-template-columns:1fr}.owner-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){.owner-fields{grid-template-columns:1fr}}
+
+/* Market header navigation and compact tracking status cards */
+.top{align-items:center;flex-wrap:wrap}
+.top .actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.top .et-market-tabs{display:flex;align-items:center;gap:7px;margin:0}
+.top .et-market-tabs .btn{padding:9px 12px;min-height:35px}
+.market-status-cards{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin:9px 0 12px}
+.market-status-card{min-width:0;min-height:49px;border:1px solid #d6e0ec;border-radius:10px;padding:6px 7px;background:#fff;text-align:left;color:#173653;font:inherit;cursor:pointer}
+.market-status-card small{display:block;font-size:9px;font-weight:800;line-height:1.1;min-height:20px}
+.market-status-card strong{display:block;font-size:16px;line-height:1;font-weight:800}
+.market-status-card[data-status="EMPTY"]{background:#e8edf4;border-color:#b7c9de}
+.market-status-card[data-status="PROGRAM"]{background:#dce9ff;border-color:#9cc2ff}
+.market-status-card[data-status="RUNNING"]{background:#daf5e7;border-color:#86d9a8}
+.market-status-card[data-status="REPORTING"]{background:#e9e1ff;border-color:#c4a9ff}
+.market-status-card[data-status="NO DRIVER"]{background:#ffe2e2;border-color:#ffa3a3}
+.market-status-card[data-status="DELAYED TRIPS"]{background:#fff0c9;border-color:#f6c35a}
+.market-status-card[data-status="LIVE ALERTS"]{background:#ffe1ef;border-color:#ffa9cc}
+.market-status-card[data-status="COMPLETED / CANCELLED"]{background:#fff}
+.market-status-card[aria-pressed="true"]{box-shadow:inset 0 0 0 2px #3677b6}
+.market-status-card:focus-visible{outline:2px solid #3677b6;outline-offset:2px}
+.market-status-note{font-size:10px;color:#68758a;margin:-4px 0 10px}
+@media(max-width:850px){.market-status-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.market-status-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.top .actions{justify-content:flex-start}}
+
+/* Market owner/vehicle masters are separate half-screen drawers, not trip worksheet rows. */
+.market-drawer-backdrop{position:fixed;inset:0;background:rgba(15,32,53,.38);z-index:900;opacity:0;visibility:hidden;transition:opacity .23s,visibility .23s}
+.market-drawer-backdrop.is-open{opacity:1;visibility:visible}
+.market-drawer{position:fixed;right:0;top:0;bottom:0;width:min(920px,54vw);max-width:100%;background:#f5f8fc;z-index:901;box-shadow:-12px 0 32px rgba(22,46,72,.18);transform:translateX(105%);transition:transform .27s ease;display:flex;flex-direction:column;visibility:hidden}
+.market-drawer.is-open{transform:translateX(0);visibility:visible}
+.market-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 17px;background:white;border-bottom:1px solid #e4ebf4;flex:none}
+.market-drawer-head strong{font-size:16px;color:#173653}
+.market-drawer-content{padding:14px;overflow:auto;flex:1;min-height:0}
+.market-drawer-content .et-market-panel{min-height:0}
+.market-drawer-content .owner-table-wrap,.market-drawer-content .truck-table-wrap{overflow-x:auto}
+.market-drawer-content .owner-table,.market-drawer-content .truck-table{min-width:690px}
+body.market-drawer-active{overflow:hidden}
+@media(max-width:850px){.market-drawer{width:100vw}.market-drawer-content{padding:9px}}
+@media(prefers-reduced-motion:reduce){.market-drawer,.market-drawer-backdrop{transition:none}}
+.market-program-backdrop{display:none;position:fixed;inset:0;z-index:1100;background:#10233b99;align-items:center;justify-content:center;padding:14px}.market-program-box{width:min(900px,100%);max-height:94vh;overflow:auto;background:white;border-radius:12px;padding:16px}.market-program-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.market-program-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.market-program-fields label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700}.market-program-fields input,.market-program-fields select,.market-program-fields textarea{padding:8px;border:1px solid #d7e2ef;border-radius:7px;width:100%}.market-program-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.market-preview-banner{padding:8px;background:#fff7df;margin-bottom:10px}.market-party-results{display:none;max-height:150px;overflow:auto;background:#fff;border:1px solid #ddd}.market-party-results button{display:block;width:100%;text-align:left;background:white;border:0;padding:7px;cursor:pointer}@media(max-width:650px){.market-program-fields{grid-template-columns:1fr}} 
+/* Market stage action: same quick-date UI as original Tracking */
+.market-quick-date-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(20,40,65,.38);display:flex;align-items:center;justify-content:center;padding:18px}
+.market-quick-date-box{width:min(100%,360px);background:#fff;border:1px solid #d9e4f2;border-radius:16px;box-shadow:0 22px 65px rgba(20,40,65,.24);padding:22px;color:#18334e}
+.market-quick-date-title{font-size:19px;font-weight:800;margin-bottom:8px}
+.market-quick-date-sub{font-size:13px;color:#60738c;line-height:1.5;margin-bottom:16px}
+.market-quick-date-input{width:100%;box-sizing:border-box;border:1px solid #bdd2ed;border-radius:10px;padding:12px 14px;font-size:22px;color:#193650;outline:none}
+.market-quick-date-input:focus{border-color:#367cc4;box-shadow:0 0 0 3px #e0edfc}
+.market-quick-date-error{min-height:20px;color:#c6283d;font-size:12px;margin-top:5px}
+.market-quick-date-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
+.market-quick-date-actions button{padding:10px 17px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer}
+.market-quick-date-cancel{background:#fff;border:1px solid #cbd9ea;color:#29435f}
+.market-quick-date-confirm{background:#347cbe;border:1px solid #347cbe;color:white}
+.market-quick-date-box{width:min(100%,310px);padding:18px 20px;border-radius:14px}
+.market-quick-date-title{font-size:17px;margin-bottom:8px}
+.market-quick-date-sub{display:block;font-size:12px;margin-bottom:8px}
+.market-quick-date-input{font-size:15px;min-height:43px;padding:8px 10px}
+.market-quick-date-error{min-height:14px;margin-top:3px}
+.market-quick-date-actions{margin-top:10px;gap:8px}
+.market-quick-date-actions button{font-size:12px;padding:8px 13px}
+</style><style>
+.market-worktable{width:100%;border-collapse:collapse;min-width:1050px;font-size:11px}.market-worktable th,.market-worktable td{padding:9px;border-bottom:1px solid #e5ebf3;text-align:left;white-space:nowrap}.market-worktable th{background:#f2f6fb;color:#41536a}.market-worktable select{padding:5px;border:1px solid #ccd9e7;border-radius:6px}.market-program-backdrop.open{display:flex!important}.market-program-backdrop{position:fixed;inset:0;background:#142b4470;z-index:1000;display:none;align-items:center;justify-content:center;padding:12px}.market-program-backdrop.open{display:flex}.market-program-box{background:#fff;border-radius:12px;width:min(880px,100%);max-height:94vh;overflow:auto;padding:16px;box-shadow:0 18px 60px #10233b35}.market-program-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.market-program-fields label{font-size:11px;font-weight:700;display:flex;flex-direction:column;gap:5px}.market-program-fields input,.market-program-fields select,.market-program-fields textarea{width:100%;padding:8px;border:1px solid #d5e0eb;border-radius:7px;font:inherit}.market-program-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.market-program-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.market-preview-banner{font-size:11px;color:#7a5118;background:#fff8e6;border:1px solid #f4ddab;padding:9px 12px;border-radius:8px;margin-bottom:10px}.market-worktable .btn{min-height:27px;padding:5px 8px}.market-party-results{font-size:11px;color:#45627e;min-height:18px}.market-trip-status{font-weight:750}.market-trip-empty{padding:24px;color:#8491a2;text-align:center}@media(max-width:700px){.market-program-fields{grid-template-columns:1fr 1fr}}@media(max-width:450px){.market-program-fields{grid-template-columns:1fr}}
+.market-program-backdrop{display:none;position:fixed;inset:0;z-index:1100;background:#10233b99;align-items:center;justify-content:center;padding:14px}.market-program-box{width:min(900px,100%);max-height:94vh;overflow:auto;background:white;border-radius:12px;padding:16px}.market-program-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.market-program-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.market-program-fields label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700}.market-program-fields input,.market-program-fields select,.market-program-fields textarea{padding:8px;border:1px solid #d7e2ef;border-radius:7px;width:100%}.market-program-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.market-preview-banner{padding:8px;background:#fff7df;margin-bottom:10px}.market-party-results{display:none;max-height:150px;overflow:auto;background:#fff;border:1px solid #ddd}.market-party-results button{display:block;width:100%;text-align:left;background:white;border:0;padding:7px;cursor:pointer}@media(max-width:650px){.market-program-fields{grid-template-columns:1fr}} .market-truck-number{color:#1268df;font-weight:900;display:inline-block;margin-right:9px}.market-transport-inline{display:inline-block;color:#31465d;font-weight:750;background:#eef4fb;border:1px solid #d7e5f4;border-radius:5px;padding:3px 7px;white-space:normal;vertical-align:middle} [data-market-panel=trips] .truck-table th,[data-market-panel=trips] .truck-table td{padding:11px 9px;white-space:nowrap}</style><style>
+/* Program modal follows the approved original Tracking visual hierarchy. */
+#marketProgramBackdrop{background:rgba(19,37,62,.49);backdrop-filter:blur(2px);padding:9px}
+#marketProgramBackdrop .market-program-box{width:min(1560px,calc(100vw - 20px));max-height:calc(100vh - 20px);overflow:auto;padding:0;border-radius:19px;border:1px solid #dfe8f4;box-shadow:0 22px 65px rgba(21,43,73,.24)}
+#marketProgramBackdrop .mh{display:flex;justify-content:space-between;align-items:center;padding:15px 29px;border-bottom:1px solid #e7edf6;background:#f8fbff;position:sticky;top:0;z-index:3}
+#marketProgramBackdrop .mh b{font-size:24px;color:#173653}
+#marketProgramBackdrop .x{border:0;border-radius:50%;background:#edf3fa;width:42px;height:42px;font-size:22px;cursor:pointer}
+#marketProgramBackdrop .mb{padding:20px 30px 24px}
+#marketProgramBackdrop .flow{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+#marketProgramBackdrop .step{background:#edf2f8;border-radius:10px;padding:12px 14px;font-size:13px;font-weight:850;color:#617188}
+#marketProgramBackdrop .step.active{background:#dff0ff;color:#1264da}
+#marketProgramBackdrop .formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px}
+#marketProgramBackdrop .field{min-width:0;position:relative}
+#marketProgramBackdrop .field label{display:block;font-size:14px;font-weight:800;color:#53647d;margin-bottom:8px}
+#marketProgramBackdrop .field input,#marketProgramBackdrop .field select,#marketProgramBackdrop .field textarea{width:100%;min-height:53px;border:1px solid #cbdaf0;border-radius:13px;padding:13px 16px;background:white;font:15px Segoe UI,Arial,sans-serif;color:#173653}
+#marketProgramBackdrop .field textarea{min-height:70px;resize:vertical}
+#marketProgramBackdrop .field.full{grid-column:1/-1}
+#marketProgramBackdrop .readonly{background:#f6f8fb!important}
+#marketProgramBackdrop .party-label-row{display:flex;justify-content:space-between;align-items:center}
+#marketProgramBackdrop .party-add-btn{border:1px solid #bcd9f6;background:#f0f7ff;border-radius:7px;padding:5px 10px;color:#1264da;cursor:pointer}
+#marketProgramBackdrop .suggestions{display:none;position:absolute;z-index:9;top:100%;left:0;right:0;background:white;border:1px solid #ccd9e9;box-shadow:0 10px 22px #17365320;max-height:230px;overflow:auto;border-radius:7px}
+#marketProgramBackdrop .suggestions.show{display:block!important}
+#marketProgramBackdrop .suggestions button{display:block;width:100%;padding:10px 12px;text-align:left;border:0;border-bottom:1px solid #eef1f5;background:#fff;cursor:pointer}
+#marketProgramBackdrop .notice{background:#eef7ff;border:1px solid #cfe4fb;padding:10px;border-radius:9px;margin-top:15px}
+#marketProgramBackdrop .et-program-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:16px}
+#marketProgramBackdrop .et-program-actions .btn{font-size:14px;padding:12px 22px}
+#marketProgramBackdrop .et-program-actions .primary{background:#09995f;border-color:#09995f;color:white}
+@media(max-width:700px){#marketProgramBackdrop .formgrid{grid-template-columns:1fr}#marketProgramBackdrop .mb{padding:12px}#marketProgramBackdrop .mh{padding:12px}#marketProgramBackdrop .mh b{font-size:18px}}
+
+/* 26-Oct: compact original-style NEW PROGRAM modal; presentation only. */
+#marketProgramBackdrop{padding:10px}
+#marketProgramBackdrop .market-program-box{width:min(980px,calc(100vw - 20px));max-height:calc(100dvh - 20px);border-radius:13px;overflow:auto}
+#marketProgramBackdrop .mh{padding:9px 15px}
+#marketProgramBackdrop .mh b{font-size:17px}
+#marketProgramBackdrop .x{width:30px;height:30px;font-size:17px}
+#marketProgramBackdrop .mb{padding:11px 16px 14px}
+#marketProgramBackdrop .flow{gap:5px;margin-bottom:10px}
+#marketProgramBackdrop .step{padding:7px 10px;font-size:10px;border-radius:7px}
+#marketProgramBackdrop .formgrid{gap:9px 13px}
+#marketProgramBackdrop .field label{font-size:11px;margin-bottom:4px}
+#marketProgramBackdrop .field input,#marketProgramBackdrop .field select,#marketProgramBackdrop .field textarea{min-height:37px;padding:8px 10px;font-size:12px;border-radius:8px}
+#marketProgramBackdrop .field textarea{min-height:48px;height:48px}
+#marketProgramBackdrop .party-add-btn{padding:3px 8px;font-size:11px}
+#marketProgramBackdrop .notice{padding:7px 9px;margin-top:9px;font-size:11px}
+#marketProgramBackdrop .et-program-actions{gap:8px;margin-top:10px}
+#marketProgramBackdrop .et-program-actions .btn{font-size:11px;padding:8px 13px;min-height:34px}
+@media(max-width:700px){#marketProgramBackdrop .formgrid{grid-template-columns:1fr}#marketProgramBackdrop .mb{padding:10px 12px}#marketProgramBackdrop .mh{padding:9px 12px}}
+@media(max-height:720px) and (min-width:701px){#marketProgramBackdrop .mb{padding:8px 13px 10px}#marketProgramBackdrop .formgrid{gap:6px 11px}#marketProgramBackdrop .flow{margin-bottom:6px}#marketProgramBackdrop .field input,#marketProgramBackdrop .field select{min-height:33px;padding:6px 9px}}
+</style><style id="market-owner-visible-actions-fix">
+/* Keep all owner columns and the Add Truck action visible inside the right drawer. */
+#marketDrawer [data-market-panel="transporters"] .owner-table-wrap{width:100%;overflow-x:visible}
+#marketDrawer [data-market-panel="transporters"] .owner-table{min-width:0!important;width:100%;table-layout:fixed;border-collapse:collapse}
+#marketDrawer [data-market-panel="transporters"] .owner-table th,
+#marketDrawer [data-market-panel="transporters"] .owner-table td{padding:9px 6px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:middle;font-size:10.5px}
+#marketDrawer [data-market-panel="transporters"] .owner-table th:nth-child(1){width:23%}
+#marketDrawer [data-market-panel="transporters"] .owner-table th:nth-child(2){width:22%}
+#marketDrawer [data-market-panel="transporters"] .owner-table th:nth-child(3){width:13%}
+#marketDrawer [data-market-panel="transporters"] .owner-table th:nth-child(4){width:9%}
+#marketDrawer [data-market-panel="transporters"] .owner-table th:nth-child(5){width:9%}
+#marketDrawer [data-market-panel="transporters"] .owner-table th:nth-child(6){width:24%}
+#marketDrawer [data-market-panel="transporters"] .owner-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start}
+#marketDrawer [data-market-panel="transporters"] .owner-actions .btn{font-size:10px;padding:6px 7px;min-height:28px;white-space:nowrap}
+#marketDrawer [data-market-panel="transporters"] .mb{padding:12px 10px}
+@media(max-width:650px){#marketDrawer [data-market-panel="transporters"] .owner-table th,#marketDrawer [data-market-panel="transporters"] .owner-table td{font-size:9px;padding:6px 3px}#marketDrawer [data-market-panel="transporters"] .owner-actions .btn{font-size:9px;padding:5px}}
+</style><style>
+/* Market trip worksheet: isolated, same status action language as own-fleet tracking. */
+.market-trip-grid{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1280px;font-size:12px}
+.market-trip-grid th,.market-trip-grid td{padding:10px 8px;border-bottom:1px solid #e4ebf4;text-align:left;vertical-align:middle;white-space:normal;overflow-wrap:anywhere}
+.market-trip-grid th{background:#f6f9fd;color:#52647d;font-weight:800}
+.market-trip-grid .market-truck-number{display:block;margin:0 0 5px;white-space:nowrap}
+.market-trip-grid .market-transport-inline{display:block;width:fit-content;max-width:100%;font-size:11px;line-height:1.3}
+.market-trip-grid .market-party-name{line-height:1.4;overflow-wrap:anywhere}
+.market-trip-grid .market-location-value{line-height:1.45;margin-bottom:7px}
+.market-action-set{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;white-space:nowrap}
+.market-action-set button{cursor:pointer;font-weight:900;border-radius:10px;border:1px solid transparent;min-height:36px;padding:6px 9px;flex:none}
+.market-stage-badge{display:inline-flex;align-items:center;border-radius:10px;padding:9px 10px;white-space:nowrap;flex:none;font-weight:900;font-size:11px;background:#e3efff;color:#1264da}
+.market-stage-badge.running{background:#dff8eb;color:#087a4b}.market-stage-badge.reporting{background:#e3efff;color:#1264da}.market-stage-badge.loading{background:#fff0d5;color:#c97900}
+.market-stage-badge.completed{background:#edf2f8;color:#52647a}.market-stage-badge.cancelled{background:#fff1f2;color:#c52031}
+.market-action-set .market-advance{background:#dff8eb;border-color:#91dfb5;color:#087a4b;font-size:19px}
+.market-action-set .market-cancel{background:#fff1f2;border-color:#ffb5bd;color:#d9293e;font-size:18px}
+.market-action-set .market-edit-stage{background:#fff2dc;border-color:#ffce8c;color:#a96900;font-size:16px}
+.market-location-edit{background:#fff;border:1px solid #d4e0ef;border-radius:8px;padding:6px 9px;color:#173653;font-weight:800;cursor:pointer}
+.market-trip-grid col:nth-child(1){width:4%}.market-trip-grid col:nth-child(2){width:16%}.market-trip-grid col:nth-child(3){width:20%}.market-trip-grid col:nth-child(4){width:5%}.market-trip-grid col:nth-child(5){width:8%}.market-trip-grid col:nth-child(6){width:8%}.market-trip-grid col:nth-child(7){width:20%}.market-trip-grid col:nth-child(8){width:11%}.market-trip-grid col:nth-child(9){width:8%}
+.market-trip-scroll{overflow-x:auto;width:100%}
+</style><style>
+/* Market PROGRAM worksheet: compact typography only; preserve all columns and actions. */
+.market-trip-grid{font-size:10px!important}
+.market-trip-grid th{font-size:10px!important;font-weight:750!important;line-height:1.25!important}
+.market-trip-grid td{font-size:10px!important;line-height:1.35!important}
+.market-trip-grid th,.market-trip-grid td{padding:7px 7px!important}
+.market-trip-grid .market-truck-number{font-size:11px!important}
+.market-trip-grid .market-transport-inline{font-size:10px!important;padding:3px 6px!important}
+.market-trip-grid .market-stage-badge{font-size:10px!important;padding:7px 8px!important}
+.market-trip-grid .market-action-set{gap:5px!important;flex-wrap:nowrap!important}
+.market-trip-grid .market-action-set button{min-height:30px!important;padding:4px 7px!important}
+.market-trip-grid .market-location-edit{font-size:10px!important;padding:4px 7px!important}
+</style><style>/* Market stage: respect hidden fields and match original Tracking loading layout */
+#marketStageBackdrop [hidden]{display:none!important}
+#marketStageBackdrop .market-stage-info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#marketStageBackdrop .market-stage-info label:last-child{grid-column:1/-1}
+#marketStageBackdrop .market-stage-info input[readonly]{background:#f6f8fb;color:#41536a}
+@media(max-width:520px){#marketStageBackdrop .market-stage-info{grid-template-columns:1fr}#marketStageBackdrop .market-stage-info label:last-child{grid-column:auto}}
+</style></head><body><section class="market-page" id="etMarketPage">
+<div class="inner">
+<div class="top">
+<div class="title"><h1>MARKET / HIRED VEHICLES</h1><p>Outside transporters • Reusable vehicles • Trip-wise history</p></div>
+<div class="actions"><div aria-label="Market Vehicles sections" class="et-market-tabs" role="tablist">
+<button aria-selected="true" class="btn primary" data-market-tab="transporters" onclick="marketTab('transporters')" role="tab" type="button">Market Vehicle Owners</button>
+<button aria-selected="false" class="btn" data-market-tab="vehicles" onclick="marketTab('vehicles')" role="tab" type="button">Market Vehicle Master</button>
+<button aria-selected="false" class="btn" data-market-tab="trips" onclick="marketTab('trips')" role="tab" type="button">Market Trips</button>
+</div><button class="btn red" onclick='window.close(); if(!window.closed) window.location.href="tracking.html";' type="button">← Back to Tracking</button></div>
+</div>
+<div aria-label="Operations navigation" class="market-actions">
+<button class="btn primary" onclick="marketProgramOpen()" type="button">+ New Program</button>
+<button class="btn green" onclick="goTracking('Live Map')" type="button">🗺 LIVE MAP</button>
+<button class="btn" onclick="goTracking('E-Way Bill Records')" type="button">E-Way Bill Records</button>
+<button class="btn" onclick="goTracking('Final Report')" type="button">Final Report</button>
+<button class="btn" onclick="marketExport()" type="button">Export Excel</button>
+</div>
+<div class="market-toolbar">
+<input aria-label="Search market workspace" id="marketSearch" oninput="marketSearch()" placeholder="Search owner / vehicle / trip..." type="search"/>
+<select aria-label="Market section" id="marketScope" onchange="marketTab(this.value)"><option value="transporters">Market Vehicle Owners</option><option value="vehicles">Market Vehicle Master</option><option value="trips">Market Trips</option></select>
+<input aria-label="Selected date" id="marketDate" type="date"/>
+<button class="btn" onclick="marketDateStep(-1)" type="button">‹ Previous</button>
+<button class="btn" onclick="marketDateToday()" type="button">Today</button>
+<button class="btn" onclick="marketDateStep(1)" type="button">Next ›</button>
+<button class="btn" onclick="location.reload()" type="button">↻ Refresh</button>
+</div><div aria-label="Market vehicle tracking status cards" class="market-status-cards"><button aria-pressed="false" class="market-status-card" data-status="EMPTY" onclick="marketStatus(this)" type="button"><small>EMPTY (Available)</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="PROGRAM" onclick="marketStatus(this)" type="button"><small>PROGRAM</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="RUNNING" onclick="marketStatus(this)" type="button"><small>RUNNING</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="REPORTING" onclick="marketStatus(this)" type="button"><small>REPORTING</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="NO DRIVER" onclick="marketStatus(this)" type="button"><small>NO DRIVER</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="DELAYED TRIPS" onclick="marketStatus(this)" type="button"><small>DELAYED TRIPS</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="LIVE ALERTS" onclick="marketStatus(this)" type="button"><small>LIVE ALERTS</small><strong>—</strong></button><button aria-pressed="false" class="market-status-card" data-status="COMPLETED / CANCELLED" onclick="marketStatus(this)" type="button"><small>COMPLETED / CANCELLED</small><strong>—</strong></button></div><div class="market-status-note" id="marketStatusNote">Market records • Own fleet separate</div>
+<div class="market-hint" id="marketHint">Market records are loaded from Supabase. Own fleet remains separate.</div>
+
+<div class="market-drawer-backdrop" id="marketDrawerBackdrop" onclick="marketDrawerClose()"></div><aside class="market-drawer" id="marketDrawer" role="dialog" aria-modal="true" aria-label="Market master" aria-hidden="true"><div class="market-drawer-head"><strong id="marketDrawerTitle">Market Vehicle Owners</strong><button type="button" class="btn red" onclick="marketDrawerClose()">✕ Close</button></div><div class="market-drawer-content" id="marketDrawerContent"><div class="panel et-market-panel" data-market-panel="transporters"><div class="ph owner-head"><b>Market Vehicle Owners</b><button class="btn primary" onclick="ownerFormOpen()" type="button">+ Add Market Vehicle Owner</button></div><div class="mb">
+<div class="owner-notice">Market owners and trucks are stored in Supabase. Driver details can be added later.</div>
+<form class="owner-form" hidden="" id="ownerForm" onsubmit="ownerSave(event)"><div class="owner-form-title" id="ownerFormTitle">Add Market Vehicle Owner</div><div class="owner-fields">
+<label>Transport Name *<input id="ownerTransport" maxlength="150" placeholder="Transport company / firm name" required=""/></label>
+<label>Owner Name *<input id="ownerName" maxlength="150" placeholder="Owner full name" required=""/></label>
+<label>Mobile Number *<input id="ownerMobile" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10 digit mobile" required=""/></label>
+<label>GST Number<input id="ownerGst" maxlength="15" placeholder="GSTIN (optional)"/></label>
+<label>PAN Card Number<input id="ownerPan" maxlength="10" placeholder="PAN (optional)"/></label>
+<label>City<input id="ownerCity" maxlength="100" placeholder="City"/></label>
+<label>State<input id="ownerState" maxlength="100" placeholder="State"/></label>
+<label class="owner-full">Full Address<textarea id="ownerAddress" maxlength="500" placeholder="Address" rows="2"></textarea></label>
+</div><div class="owner-buttons"><button class="btn primary" id="ownerSaveBtn" type="submit">Save Owner (Supabase)</button><button class="btn" onclick="ownerFormClose()" type="button">Cancel</button></div></form>
+<form class="truck-inline" hidden="" id="truckForm" onsubmit="truckSave(event)"><div class="truck-inline-head"><b id="truckFormTitle">Add Truck</b><button class="btn" onclick="truckFormClose()" type="button">Cancel</button></div><div class="truck-fields"><label>Truck Number *<input id="truckNumber" maxlength="20" placeholder="Enter truck number" required=""/></label><label>Driver Name (Optional)<input id="truckDriver" maxlength="120" placeholder="Enter when available"/></label><label>Driver Mobile Number (Optional)<input id="truckMobile" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="Enter when available"/></label></div><div class="owner-buttons"><button class="btn primary" type="submit">Save Truck (Supabase)</button></div></form>
+<div class="owner-list-title"><b>Market Vehicle Owners List</b><span id="ownerCount">0 Owners</span></div>
+<div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>Transport Name</th><th>Owner Name</th><th>Mobile</th><th>GST</th><th>City</th><th>Actions</th></tr></thead><tbody id="ownerRows"></tbody></table></div>
+</div></div>
+<div class="panel et-market-panel" data-market-panel="vehicles" hidden=""><div class="ph"><b>Market Vehicle Master</b><span id="truckCount" style="float:right;color:#68758a;font-size:12px;font-weight:400">0 Trucks</span></div><div class="mb"><div class="truck-table-wrap"><table class="truck-table"><thead><tr><th>Truck Number</th><th>Market Vehicle Owner</th><th>Driver Name</th><th>Driver Mobile</th><th>Action</th></tr></thead><tbody id="truckRows"></tbody></table></div></div></div>
+</div></aside>
+<div class="panel et-market-panel" data-market-panel="trips" hidden=""><div class="ph"><b>Market Trip History</b></div><div class="mb"><p>Every program has its own Trip ID. Market records stay separate from the owned fleet.</p><div class="market-preview-banner">Market tracking • Records are stored in Supabase.</div><div class="owner-table-wrap"><table class="market-worktable"><thead><tr><th>Truck No</th><th>Market Owner</th><th>Driver</th><th>Party</th><th>From → To</th><th>Program Date</th><th>LR No</th><th>Trip ID</th><th>Status</th><th>Action</th></tr></thead><tbody id="marketWorkRows"></tbody></table></div></div></div>
+</div>
+</section><script>
+function marketDrawerClose(){
+ document.getElementById('marketDrawer').classList.remove('is-open');
+ document.getElementById('marketDrawerBackdrop').classList.remove('is-open');
+ document.getElementById('marketDrawer').setAttribute('aria-hidden','true');
+ document.body.classList.remove('market-drawer-active');
+ document.querySelectorAll('[data-market-panel]').forEach(p=>p.hidden=p.dataset.marketPanel!=='trips');
+ document.querySelectorAll('[data-market-tab]').forEach(b=>{const active=b.dataset.marketTab==='trips';b.classList.toggle('primary',active);b.setAttribute('aria-selected',String(active))});
+ const scope=document.getElementById('marketScope');if(scope)scope.value='trips';
+}
+function marketTab(name){
+ if(!['transporters','vehicles','trips'].includes(name))return;
+ document.querySelectorAll('[data-market-tab]').forEach(b=>{const active=b.dataset.marketTab===name;b.classList.toggle('primary',active);b.setAttribute('aria-selected',String(active))});
+ document.querySelectorAll('[data-market-panel]').forEach(p=>p.hidden=p.dataset.marketPanel!==name);
+ const drawer=document.getElementById('marketDrawer'),backdrop=document.getElementById('marketDrawerBackdrop');
+ const open=name!=='trips';
+ drawer.classList.toggle('is-open',open);backdrop.classList.toggle('is-open',open);
+ drawer.setAttribute('aria-hidden',String(!open));document.body.classList.toggle('market-drawer-active',open);
+ if(open)document.getElementById('marketDrawerTitle').textContent=name==='transporters'?'Market Vehicle Owners':'Market Vehicle Master';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('marketDrawer').classList.contains('is-open'))marketDrawerClose()});
+function goTracking(action){
+  if(window.confirm(action+' is available on the existing Tracking page. Open Tracking now?'))window.open('tracking.html','_blank');
+}
+function marketDateToday(){const d=new Date();document.getElementById('marketDate').value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function marketDateStep(days){const el=document.getElementById('marketDate');const d=new Date((el.value||'2026-10-26')+'T12:00:00');d.setDate(d.getDate()+days);el.value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function marketSearch(){ownerRender();truckRender()}
+function marketExport(){alert('Market records are not connected yet. Excel export will be enabled after Market Trips are saved.')}
+const originalMarketTab=marketTab;
+marketTab=function(name){originalMarketTab(name);const s=document.getElementById('marketScope');if(s)s.value=name};
+
+// Browser-only preview; intentionally no Supabase write or RLS changes.
+const OWNER_STORE_KEY='ekta_market_owner_preview_v1';
+let ownerEditingId=null;
+function ownerLoad(){try{const v=JSON.parse(localStorage.getItem(OWNER_STORE_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
+function ownerFormOpen(id){const form=document.getElementById('ownerForm');form.hidden=false;ownerEditingId=id||null;form.reset();if(id){const x=ownerLoad().find(v=>v.id===id);if(!x)return ownerFormClose();for(const [key,field] of Object.entries({transport:'ownerTransport',name:'ownerName',mobile:'ownerMobile',gst:'ownerGst',pan:'ownerPan',city:'ownerCity',state:'ownerState',address:'ownerAddress'}))document.getElementById(field).value=x[key]||'';}document.getElementById('ownerFormTitle').textContent=id?'Edit Market Vehicle Owner':'Add Market Vehicle Owner';document.getElementById('ownerSaveBtn').textContent=id?'Update Owner (Supabase)':'Save Owner (Supabase)';document.getElementById('ownerTransport').focus()}
+function ownerFormClose(){document.getElementById('ownerForm').hidden=true;document.getElementById('ownerForm').reset();ownerEditingId=null}
+function ownerSave(e){e.preventDefault();const val=id=>document.getElementById(id).value.trim();const obj={transport:val('ownerTransport'),name:val('ownerName'),mobile:val('ownerMobile'),gst:val('ownerGst').toUpperCase(),pan:val('ownerPan').toUpperCase(),city:val('ownerCity'),state:val('ownerState'),address:val('ownerAddress')};if(!/^\d{10}$/.test(obj.mobile)){alert('Enter a valid 10-digit mobile number');return}if(obj.gst&&!/^[0-9A-Z]{15}$/.test(obj.gst)){alert('GST Number should contain 15 characters');return}if(obj.pan&&!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(obj.pan)){alert('Please enter a valid PAN format');return}const arr=ownerLoad();if(ownerEditingId){const idx=arr.findIndex(v=>v.id===ownerEditingId);if(idx<0)return;arr[idx]={...arr[idx],...obj}}else{arr.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()),...obj})}try{localStorage.setItem(OWNER_STORE_KEY,JSON.stringify(arr))}catch(err){alert('Browser storage failed; owner was not saved.');return}ownerFormClose();ownerRender();truckRender()}
+function ownerRender(){const all=ownerLoad(),q=document.getElementById('marketSearch').value.trim().toLowerCase(),rows=all.filter(v=>[v.transport,v.name,v.mobile,v.gst,v.pan,v.city,v.state,v.address].some(x=>String(x||'').toLowerCase().includes(q)));const tbody=document.getElementById('ownerRows');tbody.replaceChildren();document.getElementById('ownerCount').textContent=rows.length+' / '+all.length+' Owners';if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;td.className='owner-empty';td.textContent=q?'No matching owners found.':'No owners added yet. Click + Add Market Vehicle Owner.';tr.append(td);tbody.append(tr);return}for(const v of rows){const tr=document.createElement('tr');for(const k of ['transport','name','mobile','gst','city']){const td=document.createElement('td');td.textContent=v[k]||'—';tr.append(td)}const td=document.createElement('td'),btn=document.createElement('button');btn.className='btn';btn.type='button';btn.textContent='Edit';btn.addEventListener('click',()=>ownerFormOpen(v.id));const add=document.createElement('button');add.className='btn primary';add.type='button';add.textContent='+ Add Truck';add.addEventListener('click',()=>truckFormOpen(v.id));const wrap=document.createElement('div');wrap.className='owner-actions';wrap.append(btn,add);td.append(wrap);tr.append(td);tbody.append(tr)}}
+// Trucks in browser preview only, associated with their Market Vehicle Owner.
+const TRUCK_STORE_KEY='ekta_market_trucks_preview_v1';
+let truckOwnerId=null;
+let truckEditingId=null;
+function truckLoad(){try{const a=JSON.parse(localStorage.getItem(TRUCK_STORE_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function truckFormOpen(ownerId){const owner=ownerLoad().find(o=>o.id===ownerId);if(!owner)return;truckOwnerId=ownerId;truckEditingId=null;const f=document.getElementById('truckForm');f.reset();f.hidden=false;document.getElementById('truckFormTitle').textContent='Add Truck — '+owner.transport;f.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('truckNumber').focus()}
+function truckFormClose(){truckOwnerId=null;truckEditingId=null;const f=document.getElementById('truckForm');f.hidden=true;f.reset()}
+function truckSave(e){e.preventDefault();if(!truckOwnerId||!ownerLoad().some(o=>o.id===truckOwnerId))return;const number=document.getElementById('truckNumber').value.trim().toUpperCase().replace(/\s+/g,''),driver=document.getElementById('truckDriver').value.trim(),mobile=document.getElementById('truckMobile').value.trim();if(!number||(mobile&&!/^\d{10}$/.test(mobile))){alert('Enter a Truck Number. If Driver Mobile is provided, it must be 10 digits.');return}const arr=truckLoad();if(arr.some(t=>t.number===number&&t.id!==truckEditingId)){alert('This truck is already added.');return}if(truckEditingId){const idx=arr.findIndex(t=>t.id===truckEditingId);if(idx<0)return;arr[idx]={...arr[idx],number,driver,mobile}}else{arr.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()),ownerId:truckOwnerId,number,driver,mobile})}try{localStorage.setItem(TRUCK_STORE_KEY,JSON.stringify(arr))}catch(err){alert('Browser storage failed. Truck was not saved.');return}truckFormClose();truckRender();marketTab('vehicles')}
+function truckFormEdit(id){const t=truckLoad().find(x=>x.id===id);if(!t)return;marketTab('transporters');truckFormOpen(t.ownerId);truckEditingId=id;document.getElementById('truckFormTitle').textContent='Edit Truck — '+t.number;document.getElementById('truckNumber').value=t.number;document.getElementById('truckDriver').value=t.driver;document.getElementById('truckMobile').value=t.mobile;}
+function truckRender(){const owners=ownerLoad(),q=document.getElementById('marketSearch').value.trim().toLowerCase(),tbody=document.getElementById('truckRows');tbody.replaceChildren();const rows=truckLoad().filter(t=>{const o=owners.find(x=>x.id===t.ownerId);return [t.number,t.driver,t.mobile,o?.transport,o?.name].some(x=>String(x||'').toLowerCase().includes(q))});document.getElementById('truckCount').textContent=rows.length+' / '+truckLoad().length+' Trucks';if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.className='owner-empty';td.textContent='No market trucks added yet.';tr.append(td);tbody.append(tr);return}for(const t of rows){const tr=document.createElement('tr'),owner=owners.find(x=>x.id===t.ownerId);for(const value of [t.number,owner?.transport||'—',t.driver,t.mobile]){const td=document.createElement('td');td.textContent=value;tr.append(td)}const td=document.createElement('td');const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Edit';b.onclick=()=>truckFormEdit(t.id);td.append(b);tr.append(td);tbody.append(tr)}}
+ownerRender();truckRender();
+
+marketDateToday();marketTab('trips');
+
+function marketStatus(button){
+  document.querySelectorAll('.market-status-card').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+  marketTab('trips');
+  document.getElementById('marketStatusNote').textContent = button.dataset.status + ' — Market Trips tracking is not connected yet; no status records are available in this preview.';
+}
+</script><div class="market-program-backdrop" id="marketProgramBackdrop"><div class="market-program-box" role="dialog" aria-modal="true" aria-label="NEW PROGRAM">
+
+    <div class="box">
+
+        <div class="mh">
+            <b>NEW PROGRAM</b>
+            <button class="x"
+                    onclick="marketProgramClose()">
+                ×
+            </button>
+        </div>
+
+        <form class="mb" id="marketProgramForm"
+              onsubmit="return marketProgramSave(event)">
+
+            <div id="marketProgramRequestContext"></div>
+
+            <div class="flow">
+                <span class="step active" >1 PROGRAM</span>
+                <span class="step" >2 LOADING</span>
+                <span class="step" >3 RUNNING</span>
+                <span class="step" >4 REPORTING</span>
+                <span class="step" >5 EMPTY</span>
+            </div>
+
+            <div class="formgrid">
+
+                <div class="field typeahead">
+                    <label>Truck Number *</label>
+                    <input id="mpTruckSearch" oninput="marketTruckSearch()"
+                           autocomplete="off"
+                           required
+                           placeholder="Type truck number">
+                    <div class="suggestions"
+                         id="mpTruckSuggestions"></div>
+                </div>
+
+                <div class="field">
+                    <label>Program Date *</label>
+                    <input id="mpDate" onchange="window.marketRateSuggest?.()"
+                           type="date"
+                           required>
+                </div>
+
+                <div class="field typeahead">
+                    <div class="party-label-row">
+                        <label>Party (can complete later)</label>
+                        <button type="button" class="party-add-btn" onclick="alert('Add Party is managed in the existing Party Master.')">＋ Add Party</button>
+                    </div>
+                    <input id="mpParty" oninput="marketPartySearch();marketProgramPartyChanged()"
+                           autocomplete="off"
+                           placeholder="Type Party Code / Name">
+                    <div class="suggestions"
+                         id="mpPartyResults"></div>
+                </div>
+
+                <div class="field">
+                    <label>Party Type</label>
+                    <input id="mpPartyType"
+                           class="readonly"
+                           readonly>
+                </div>
+
+                <div class="field">
+                    <label>Loading Point / From (optional)</label>
+                    <input id="mpFrom" autocomplete="off" oninput="window.marketRateSuggest?.()"
+                           placeholder="e.g. NOIDA">
+                </div>
+
+                <div class="field">
+                    <label>Destination / To (optional)</label>
+                    <input id="mpTo" autocomplete="off" oninput="window.marketRateSuggest?.()"
+                           placeholder="e.g. PUNE">
+                </div>
+
+                <div class="field" id="mpCategoryWrap"><label>Rate List Category (optional)</label><select id="mpCategory" onchange="window.marketRateSuggest?.()"><option value="">Select later / Auto match</option><option value="32FT">32FT</option><option value="34FT">34FT</option><option value="36FT">36FT</option></select><div id="mpVehicleHint" style="font-size:11px;color:#176a55;margin-top:5px"></div></div>
+                <div class="field" id="mpHaierWrap"><label>Haier Billing (optional)</label><select id="mpHaier"><option value="">Select later</option><option value="HAIER_TO_HAIER">Haier to Haier</option><option value="HAIER_TO_OTHER">Haier to Other</option></select></div>
+                <div class="field" id="mpWeightWrap"><label>Weight (Ton) — optional</label><input id="mpWeight" type="number" min="0" step="0.01" placeholder="Enter weight in Ton"></div>
+                <div class="field">
+                    <label>Trip Freight / Revenue (₹) — Optional / Provisional</label>
+                    <input id="mpFreight" oninput="this.dataset.autoRate='no'"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           placeholder="Optional — confirm after LR"><div id="mpRateHint" style="font-size:11px;color:#176a55;margin-top:5px"></div>
+                </div>
+
+                <div class="field full">
+                    <label>Remarks</label>
+                    <textarea id="mpNotes"
+                              placeholder="Route / special instruction"></textarea>
+                </div>
+
+            </div>
+
+            <div class="notice">
+                Expected Arrival Date / Time / Travel Days are not entered in Program.
+                GPS + route history + AI can generate ETA later.
+            </div>
+
+            <div class="et-program-actions" role="group" aria-label="Program actions">
+
+                <button type="button"
+                        class="btn"
+                        onclick="marketProgramClose()">
+                    Cancel
+                </button>
+
+                <button type="submit" class="btn primary et-program-save">
+                    ✓ Save Program
+                </button>
+
+            </div>
+
+        <div hidden><select id="mpTruck"></select><input id="mpDriver"><input id="mpMobile"><input id="mpPartySelected"><input id="mpExpected"><input id="mpLR"><input id="mpHire"></div></form></div></div><script>
+/* Market-only browser preview. No writes to Supabase or owned-fleet records. */
+const MARKET_TRIP_KEY='ekta_market_trips_preview_v1';
+let marketActiveStatus='EMPTY';
+function marketTripLoad(){try{const a=JSON.parse(localStorage.getItem(MARKET_TRIP_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return []}}
+function marketTripSaveAll(a){localStorage.setItem(MARKET_TRIP_KEY,JSON.stringify(a))}
+function marketProgramOpen(){
+ const a=truckLoad(),active=marketTripLoad().filter(t=>!['COMPLETED','CANCELLED'].includes(t.status)).map(t=>t.truckId);
+ const available=a.filter(t=>!active.includes(t.id));
+ if(!available.length){alert('No EMPTY / Available Market Trucks. First save a truck in Market Vehicle Master, or complete an existing trip.');return}
+ const select=document.getElementById('mpTruck');select.replaceChildren();
+ available.forEach(t=>{const o=document.createElement('option');o.value=t.id;const owner=ownerLoad().find(x=>x.id===t.ownerId);o.textContent=t.number+' — '+(owner?.transport||'Owner not found');select.append(o)});
+ document.getElementById('marketProgramForm').reset();marketPartyChoice=null;window.marketRateReset?.();document.getElementById('mpDate').value=new Date().toLocaleDateString('en-CA');
+ marketProgramTruckChanged();document.getElementById('mpTruckSearch').value='';document.getElementById('mpPartyType').value='';document.getElementById('marketProgramBackdrop').classList.add('open');setTimeout(()=>document.getElementById('mpTruckSearch').focus(),50);
+}
+
+function marketTruckSearch(){
+ const input=document.getElementById('mpTruckSearch'),box=document.getElementById('mpTruckSuggestions'),q=input.value.trim().toLowerCase();
+ document.getElementById('mpTruck').value='';box.replaceChildren();
+ if(!q){box.classList.remove('show');return}
+ const active=new Set(marketTripLoad().filter(x=>!['COMPLETED','CANCELLED'].includes(x.status)).map(x=>x.truckId));
+ const matches=truckLoad().filter(t=>!active.has(t.id)&&[t.number,ownerLoad().find(o=>o.id===t.ownerId)?.transport].some(x=>String(x||'').toLowerCase().includes(q))).slice(0,25);
+ for(const t of matches){const owner=ownerLoad().find(o=>o.id===t.ownerId);const b=document.createElement('button');b.type='button';b.textContent=t.number+' — '+(owner?.transport||'Owner not found');b.onclick=()=>{document.getElementById('mpTruck').value=t.id;input.value=t.number;box.classList.remove('show');marketProgramTruckChanged()};box.append(b)}
+ box.classList.toggle('show',matches.length>0);
+}
+function marketProgramPartyChanged(){document.getElementById('mpPartyType').value='';window.marketRateReset?.();}
+
+
+function marketProgramClose(){document.getElementById('marketProgramBackdrop').classList.remove('open')}
+function marketProgramTruckChanged(){const t=truckLoad().find(x=>x.id===document.getElementById('mpTruck').value);document.getElementById('mpDriver').value=t?.driver||'';document.getElementById('mpMobile').value=t?.mobile||''}
+let marketPartyChoice=null,marketPartySeq=0;
+function marketPartySearch(){
+ const q=document.getElementById('mpParty').value.trim(),box=document.getElementById('mpPartyResults');
+ marketPartyChoice=null;document.getElementById('mpPartySelected').value='';box.replaceChildren();
+ if(!q){box.style.display='none';return}
+ const S=window.supabaseClient;if(!S?.from){box.style.display='none';return}
+ const seq=++marketPartySeq;clearTimeout(window._marketPartyTimer);
+ window._marketPartyTimer=setTimeout(async()=>{
+  try{
+   const r=await S.from('parties').select('*').limit(1000);if(r.error)throw r.error;
+   if(seq!==marketPartySeq)return;
+   const matches=(r.data||[]).filter(p=>{
+    const code=String(p.party_code??p.code??'').toLowerCase(),name=String(p.party_name??p.name??'').toLowerCase(),branch=String(p.location??p.city??p.branch??'').toLowerCase();
+    const term=q.toLowerCase();return code.includes(term)||name.includes(term)||branch.includes(term);
+   }).slice(0,25);
+   box.replaceChildren();
+   for(const p of matches){
+    const code=p.party_code??p.code??'',name=p.party_name??p.name??'',city=p.location??p.city??p.branch??'';
+    const label=[code,name,city].filter(Boolean).join(' ');
+    const b=document.createElement('button');b.type='button';b.textContent=label;
+    b.onclick=()=>{marketPartyChoice={id:p.id,label};document.getElementById('mpParty').value=String(code||name);document.getElementById('mpPartySelected').value=label;document.getElementById('mpPartyType').value=String(p.party_type??p.type??p.category??'');box.style.display='none';box.classList.remove('show');window.marketPartySelected?.(p)};
+    box.append(b);
+   }
+   box.style.display=matches.length?'block':'none';box.classList.toggle('show',matches.length>0);
+  }catch(e){console.warn('Market party lookup unavailable:',e)}
+ },250);
+}
+
+function marketProgramSave(e){e.preventDefault();const g=id=>document.getElementById(id).value.trim(),truckId=g('mpTruck'),t=truckLoad().find(x=>x.id===truckId);if(!t)return alert('Select an EMPTY Market Truck from the suggestions.');if(g('mpParty')&&!marketPartyChoice)return alert('Select the Party / Branch from suggestions, or leave Party blank to complete later.');const arr=marketTripLoad();if(arr.some(x=>x.truckId===truckId&&!['COMPLETED','CANCELLED'].includes(x.status)))return alert('This truck already has an active trip.');
+ arr.push({id:'MKT-'+Date.now(),truckId,number:t.number,driver:t.driver,mobile:t.mobile,party:g('mpPartySelected'),partyId:marketPartyChoice?.id||null,code:g('mpParty'),from:g('mpFrom'),to:g('mpTo'),date:g('mpDate'),expected:g('mpExpected'),lr:g('mpLR'),category:g('mpCategory'),weight:g('mpWeight'),haier:g('mpHaier'),hire:g('mpHire'),freight:g('mpFreight'),notes:g('mpNotes'),status:'PROGRAM',createdAt:new Date().toISOString()});try{marketTripSaveAll(arr)}catch(err){return alert('Browser storage error: '+err.message)}marketProgramClose();marketRender('PROGRAM')}
+function marketSetStatus(id,next){
+ const t=marketTripLoad().find(x=>String(x.id)===String(id));if(!t){alert('Trip not found. Please refresh Market Tracking.');return;}
+ const allowed={PROGRAM:['RUNNING','CANCELLED'],LOADING:['RUNNING','CANCELLED'],RUNNING:['REPORTING','CANCELLED'],REPORTING:['COMPLETED','CANCELLED']};
+ if(!allowed[t.status]?.includes(next)){alert('Invalid status transition.');marketRender(t.status);return}
+ document.getElementById('marketStageTrip').value=id;
+ document.getElementById('marketStageNext').value=next;
+ document.getElementById('marketStageTitle').textContent=t.status+' → '+next;
+ document.getElementById('marketStageTruckDisplay').value=t.number||'';
+ document.getElementById('marketStageTripDisplay').value=String(t.id||'');
+ document.getElementById('marketStageProgramDisplay').value=t.date||'';
+ document.getElementById('marketStageFromDisplay').value=t.from||'';
+ document.getElementById('marketStageInfo').hidden=!['LOADING','RUNNING'].includes(next);
+ document.getElementById('marketStageDateLabel').textContent=next==='LOADING'?'Loading Date *':next==='RUNNING'?'LR Date *':next==='REPORTING'?'Reporting Date *':next==='COMPLETED'?'Unloading Date *':'Cancellation Date *';
+ document.getElementById('marketStageDate').value=new Date().toLocaleDateString('en-CA');
+ document.getElementById('marketStageLR').value=t.lr||'';
+ document.getElementById('marketStageLocation').value=t.currentLocation||t.from||'';
+ document.getElementById('marketStageReason').value='';
+ document.getElementById('marketStageLRField').hidden=next!=='RUNNING';
+ document.getElementById('marketStageLocationField').hidden=!['RUNNING','REPORTING'].includes(next);
+ document.getElementById('marketStageReasonField').hidden=next!=='CANCELLED';
+ const modal=document.getElementById('marketStageBackdrop');
+ if(!modal){alert('Stage form is missing. Please refresh the page.');return;}
+ if(modal.parentElement!==document.body)document.body.appendChild(modal);
+ modal.classList.add('open');
+ modal.style.display='flex';
+ modal.style.visibility='visible';
+ modal.style.zIndex='12000';
+}
+
+function marketStageClose(){const modal=document.getElementById('marketStageBackdrop');modal.classList.remove('open');modal.style.display='none';marketRender()}
+function marketStageSave(e){
+ e.preventDefault();const arr=marketTripLoad(),id=document.getElementById('marketStageTrip').value,t=arr.find(x=>x.id===id);if(!t)return;
+ const next=document.getElementById('marketStageNext').value,date=document.getElementById('marketStageDate').value;
+ if(!date)return alert('Date is required.');
+ if(next==='CANCELLED'&&!document.getElementById('marketStageReason').value.trim())return alert('Cancellation reason is required.');
+ const dates={LOADING:'loadingDate',RUNNING:'lrDate',REPORTING:'reportingDate',COMPLETED:'unloadingDate',CANCELLED:'cancelledDate'};
+ t[dates[next]]=date;
+ if(next==='RUNNING'){t.lr=document.getElementById('marketStageLR').value.trim();if(!t.lr)return alert('LR Number is required before RUNNING.');}
+ if(['RUNNING','REPORTING'].includes(next))t.currentLocation=document.getElementById('marketStageLocation').value.trim();
+ if(next==='CANCELLED')t.cancelReason=document.getElementById('marketStageReason').value.trim();
+ t.status=next;t.updatedAt=new Date().toISOString();
+ try{marketTripSaveAll(arr)}catch(err){return alert('Save failed: '+err.message)}
+ document.getElementById('marketStageBackdrop').classList.remove('open');document.getElementById('marketStageBackdrop').style.display='none';
+ marketRender(next==='COMPLETED'||next==='CANCELLED'?'COMPLETED / CANCELLED':next);
+}
+
+function marketLastUnloading(truckId){const a=marketTripLoad().filter(t=>t.truckId===truckId&&t.status==='COMPLETED').sort((a,b)=>String(b.unloadingDate||b.updatedAt||'').localeCompare(String(a.unloadingDate||a.updatedAt||'')));return a[0]?.to||'—'}
+function marketRender(status=marketActiveStatus){
+ marketActiveStatus=status;
+ const trips=marketTripLoad(),trucks=truckLoad(),active=trips.filter(t=>!['COMPLETED','CANCELLED'].includes(t.status)),free=trucks.filter(t=>!active.some(x=>x.truckId===t.id));
+ const counts={EMPTY:free.length,PROGRAM:trips.filter(t=>['PROGRAM','LOADING'].includes(t.status)).length,RUNNING:trips.filter(t=>t.status==='RUNNING').length,REPORTING:trips.filter(t=>t.status==='REPORTING').length,'NO DRIVER':free.filter(t=>!t.driver).length,'DELAYED TRIPS':0,'LIVE ALERTS':0,'COMPLETED / CANCELLED':trips.filter(t=>['COMPLETED','CANCELLED'].includes(t.status)).length};
+ document.querySelectorAll('.market-status-card').forEach(b=>{b.querySelector('strong').textContent=counts[b.dataset.status]??0;b.setAttribute('aria-pressed',String(b.dataset.status===status))});
+ const panel=document.querySelector('[data-market-panel="trips"] .mb');if(!panel)return;panel.replaceChildren();
+ const title=document.createElement('p');const bold=document.createElement('b');bold.textContent=status;title.append(bold,document.createTextNode(' — Market Trip Worksheet • Supabase'));panel.append(title);
+ const table=document.createElement('table');table.className='market-trip-grid';const cols=document.createElement('colgroup');for(let i=0;i<9;i++)cols.append(document.createElement('col'));table.append(cols);
+ const head=document.createElement('thead');head.innerHTML='<tr><th>Zone</th><th>Truck / Transport Name</th><th>Party</th><th>Party Status</th><th>From</th><th>To</th><th>Status / Action</th><th>Current Location</th><th>Last Update</th></tr>';table.append(head);
+ const body=document.createElement('tbody');
+ const rows=status==='EMPTY'?free.map(t=>({number:t.number,driver:t.driver,truckId:t.id,status:'EMPTY'})):status==='NO DRIVER'?[]:trips.filter(t=>status==='COMPLETED / CANCELLED'?['COMPLETED','CANCELLED'].includes(t.status):(status==='PROGRAM'?['PROGRAM','LOADING'].includes(t.status):t.status===status));
+ for(const t of rows){
+  const tr=document.createElement('tr'),vehicle=trucks.find(v=>v.id===t.truckId),owner=ownerLoad().find(o=>o.id===vehicle?.ownerId);
+  function cell(value,cls){const td=document.createElement('td');if(cls)td.className=cls;td.textContent=value||'—';tr.append(td);return td}
+  cell('—');
+  const truckCell=document.createElement('td'),truckNo=document.createElement('strong');truckNo.className='market-truck-number';truckNo.textContent=t.number||vehicle?.number||'—';const transport=document.createElement('span');transport.className='market-transport-inline';transport.textContent=owner?.transport||'Owner not found';truckCell.append(truckNo,transport);tr.append(truckCell);
+  cell(t.party,'market-party-name');cell(t.partyStatus||'—');cell(t.from);cell(t.to);
+  const action=document.createElement('td'),buttons=document.createElement('div');buttons.className='market-action-set';
+  const makeButton=(text,cls,fn,label)=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=text;b.title=label;b.setAttribute('aria-label',label);b.onclick=fn;buttons.append(b)};
+  if(t.status==='EMPTY')makeButton('+ Program','btn primary',()=>{marketProgramOpen();document.getElementById('mpTruck').value=t.truckId;document.getElementById('mpTruckSearch').value=t.number||'';marketProgramTruckChanged()},'New Program');
+  else {
+   if(!['COMPLETED','CANCELLED'].includes(t.status)){
+    if(t.status==='PROGRAM'||t.status==='LOADING')makeButton('✕','market-cancel',()=>marketSetStatus(t.id,'CANCELLED'),'Cancel trip');
+    else makeButton('🔧','market-edit-stage',()=>marketOpenManualLocation(t.id),'Update location');
+   }
+   const badge=document.createElement('span');badge.className='market-stage-badge '+t.status.toLowerCase();badge.textContent=t.status;buttons.append(badge);
+   const next={PROGRAM:'RUNNING',LOADING:'RUNNING',RUNNING:'REPORTING',REPORTING:'COMPLETED'}[t.status];
+   if(next)makeButton('➜','market-advance',()=>marketSetStatus(t.id,next),'Move to '+next);
+  }
+  action.append(buttons);tr.append(action);
+  const location=document.createElement('td'),value=document.createElement('div');value.className='market-location-value';value.textContent=t.currentLocation||'—';location.append(value);
+  if(t.status!=='EMPTY'&&!['COMPLETED','CANCELLED'].includes(t.status)){
+   const edit=document.createElement('button');edit.type='button';edit.className='market-location-edit';edit.textContent='✏️ Edit';edit.onclick=()=>marketOpenManualLocation(t.id);location.append(edit);
+  }tr.append(location);
+  const last=document.createElement('td');last.textContent=t.updatedAt?new Date(t.updatedAt).toLocaleString('en-IN'):'—';tr.append(last);body.append(tr);
+ }
+ if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=9;td.className='owner-empty';td.textContent='No records for this status.';tr.append(td);body.append(tr)}
+ table.append(body);const wrap=document.createElement('div');wrap.className='market-trip-scroll';wrap.append(table);panel.append(wrap);
+ const n=document.getElementById('marketStatusNote');if(n)n.textContent='Market Tracking • '+free.length+' available trucks • '+trips.length+' trips • Supabase';
+}
+function marketOpenManualLocation(id){
+ const t=marketTripLoad().find(x=>String(x.id)===String(id));if(!t)return alert('Trip not found');
+ document.getElementById('marketManualTrip').value=t.id;
+ document.getElementById('marketManualTruck').textContent=t.number||'Market Truck';
+ document.getElementById('marketManualValue').value=t.currentLocation||'';
+ document.getElementById('marketManualBackdrop').classList.add('open');
+ document.getElementById('marketManualValue').focus();
+}
+function marketCloseManualLocation(){document.getElementById('marketManualBackdrop').classList.remove('open')}
+function marketSaveManualLocation(e){e.preventDefault();alert('Supabase connection is not ready.');}
+
+marketStatus=function(button){marketTab('trips');marketRender(button.dataset.status)};
+marketExport=function(){const rows=marketTripLoad();if(!rows.length)return alert('No Market Trips to export.');const keys=['id','number','driver','party','from','to','date','loadingDate','lrDate','reportingDate','unloadingDate','status','lr','hire','freight'];const csv=[keys.join(','),...rows.map(r=>keys.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))].join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='Ekta_Market_Trips.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),500)};
+const _oldTruckSave=truckSave;truckSave=function(e){_oldTruckSave(e);marketRender()};
+marketRender('EMPTY');
+</script><div id="marketStageBackdrop" class="market-program-backdrop"><div class="market-program-box" style="max-width:530px" role="dialog" aria-modal="true"><div class="market-program-head"><b id="marketStageTitle">Update Market Trip</b><button type="button" class="btn red" onclick="marketStageClose()">✕ Close</button></div><form onsubmit="marketStageSave(event)"><input type="hidden" id="marketStageTrip"><input type="hidden" id="marketStageNext"><div class="market-program-fields" style="grid-template-columns:1fr"><div id="marketStageInfo" class="market-stage-info"><label>Truck<input id="marketStageTruckDisplay" readonly></label><label>Trip<input id="marketStageTripDisplay" readonly></label><label>Program Date<input id="marketStageProgramDisplay" readonly></label><label>Loading Point / From<input id="marketStageFromDisplay" readonly></label></div><label><span id="marketStageDateLabel">Stage Date *</span><input type="date" id="marketStageDate" required></label><label id="marketStageLRField">LR Number *<input id="marketStageLR"></label><label id="marketStageLocationField">Current Location<input id="marketStageLocation"></label><label id="marketStageReasonField">Cancellation Reason *<textarea id="marketStageReason"></textarea></label></div><div class="market-program-actions"><button type="button" class="btn" onclick="marketStageClose()">Cancel</button><button type="submit" class="btn primary">Confirm & Save</button></div></form></div></div><div id="marketManualBackdrop" class="market-program-backdrop"><div class="market-program-box" style="max-width:510px" role="dialog" aria-modal="true" aria-label="Update Market Truck Location"><div class="market-program-head"><b>Manual Location — <span id="marketManualTruck"></span></b><button type="button" class="btn red" onclick="marketCloseManualLocation()">✕ Close</button></div><form onsubmit="marketSaveManualLocation(event)"><input type="hidden" id="marketManualTrip"><div class="market-program-fields" style="grid-template-columns:1fr"><label>Current Location *<input id="marketManualValue" required placeholder="Enter location reported by driver" maxlength="250"></label><small style="color:#68758a">Driver Reported Location — not Live GPS. Saved to Supabase with updated time.</small></div><div class="market-program-actions"><button type="button" class="btn" onclick="marketCloseManualLocation()">Cancel</button><button type="submit" id="marketManualSave" class="btn primary">Save Location</button></div></form></div></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="db.js"></script><script src="market-supabase.js"></script>
+<script>
+/* Market keyboard parity: scoped to Market Program and worksheet only. */
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ function visible(el){return !!(el&&el.getClientRects().length)}
+ function optionsFor(id){return Array.from($(id)?.querySelectorAll('button')||[]).filter(visible)}
+ function keyboardSuggestions(inputId,menuId){
+  const input=$(inputId),menu=$(menuId);if(!input||!menu)return;
+  let index=-1;
+  input.addEventListener('input',()=>{index=-1});
+  input.addEventListener('keydown',e=>{
+   const items=optionsFor(menuId);if(!items.length||!['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key))return;
+   if(e.key==='Escape'){e.preventDefault();menu.classList.remove('show');menu.style.display='none';index=-1;return}
+   if(e.key==='Enter'&&index<0&&items.length===1)index=0;
+   if(e.key==='Enter'&&index<0)return;
+   e.preventDefault();
+   if(e.key==='Enter'){items[index]?.click();index=-1;return}
+   index=e.key==='ArrowDown'?Math.min(index+1,items.length-1):index<0?items.length-1:Math.max(index-1,0);
+   items.forEach((b,i)=>{b.style.background=i===index?'#eaf3ff':'';b.setAttribute('aria-selected',String(i===index))});
+   items[index]?.scrollIntoView({block:'nearest'});
+  });
+ }
+ keyboardSuggestions('mpTruckSearch','mpTruckSuggestions');
+ keyboardSuggestions('mpParty','mpPartyResults');
+ document.addEventListener('keydown',e=>{
+  const dialog=$('marketProgramBackdrop');
+  if(e.key==='Escape'&&dialog?.classList.contains('open')){
+   if(optionsFor('mpTruckSuggestions').length||optionsFor('mpPartyResults').length)return;
+   e.preventDefault();window.marketProgramClose?.();return;
+  }
+  if(!['ArrowDown','ArrowUp','ArrowLeft','ArrowRight'].includes(e.key)||e.altKey||e.ctrlKey||e.metaKey)return;
+  if(dialog?.classList.contains('open'))return;
+  const target=e.target;
+  if(target?.closest('input,textarea,select,button,[contenteditable="true"],[role="dialog"]'))return;
+  const wrap=target?.closest('.market-trip-scroll')||document.querySelector('.market-trip-scroll');
+  if(!wrap||!visible(wrap))return;
+  const amount=e.key==='ArrowDown'||e.key==='ArrowRight'?110:-110;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+   if(wrap.scrollWidth<=wrap.clientWidth)return;
+   e.preventDefault();wrap.scrollBy({left:amount,behavior:'auto'});
+  }else{
+   const scrollable=wrap.scrollHeight>wrap.clientHeight?wrap:document.scrollingElement;
+   if(!scrollable)return;
+   e.preventDefault();scrollable.scrollBy({top:amount,behavior:'auto'});
+  }
+ });
+})();
+</script>
+</body></html>
