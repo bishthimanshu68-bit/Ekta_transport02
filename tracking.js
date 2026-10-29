@@ -1345,12 +1345,42 @@ function searchQuickProgramParty(){
   .sort((a,b)=>partySearchRank(b,q)-partySearchRank(a,q)||clean(a.party_code).localeCompare(clean(b.party_code))||clean(a.city).localeCompare(clean(b.city))).slice(0,30);
  box.innerHTML=matches.map(p=>`<div class="suggestion" data-id="${esc(p.id)}"><b>${esc(p.party_code||"—")} — ${esc(p.name||"")}</b><span>${esc(p.party_type||"")} • ${esc(p.zone||"—")} • ${esc(p.city||"")}</span></div>`).join("");
  box.classList.toggle("show",matches.length>0);
+ box.dataset.activeIndex="-1";
  box.querySelectorAll(".suggestion").forEach(el=>el.addEventListener("click",()=>{
   const p=party(el.dataset.id);if(!p)return;
   quickProgramPartyId=p.id;
   input.value=`${p.party_code||""} — ${p.name||""}`;
   box.classList.remove("show");
  }));
+}
+// Keyboard navigation for EMPTY -> Add Program quick party search (distinct from etPParty).
+function quickProgramPartyKeydown(e){
+ if(!["ArrowDown","ArrowUp","Enter","Escape"].includes(e.key))return;
+ const box=$("etQuickPartySuggestions");
+ if(!box?.classList.contains("show"))return;
+ const items=Array.from(box.querySelectorAll(".suggestion"));
+ if(!items.length)return;
+ e.preventDefault();
+ e.stopImmediatePropagation();
+ if(e.key==="Escape"){
+  box.classList.remove("show");box.dataset.activeIndex="-1";return;
+ }
+ let index=Number.parseInt(box.dataset.activeIndex??"-1",10);
+ if(!Number.isInteger(index)||index< -1||index>=items.length)index=-1;
+ if(e.key==="Enter"){
+  items[index<0?0:index].click();return;
+ }
+ index=e.key==="ArrowDown"?Math.min(index+1,items.length-1):(index<0?items.length-1:Math.max(0,index-1));
+ box.dataset.activeIndex=String(index);
+ items.forEach((item,i)=>{
+  item.classList.toggle("et-key-active",i===index);
+  item.setAttribute("aria-selected",String(i===index));
+ });
+ const active=items[index];
+ const top=active.offsetTop-items[0].offsetTop;
+ if(top<box.scrollTop)box.scrollTop=top;
+ else if(top+active.offsetHeight>box.scrollTop+box.clientHeight)
+  box.scrollTop=top+active.offsetHeight-box.clientHeight;
 }
 function openQuickProgram(id){
  const t=truck(id);if(!t)return;
@@ -1481,13 +1511,23 @@ function openReporting(t){selectedTrip=t;const tr=truck(t.truck_id);$("etRTruck"
 async function confirmReporting(e){e.preventDefault();if(!selectedTrip)return false;const d=$("etRDate").value;if(!d)return alertUser("Reporting Date is required.");let notes=selectedTrip.notes||"";notes=putNote(notes,"REPORTING_DATE",d);notes=putNote(notes,"STAGE","REPORTING");const payload={tracking_status:"REPORTING",trip_status:"Delivered",reporting_date:d,current_location:selectedTrip.destination||selectedTrip.to_location||null,notes};try{const r=await S.from(T.trips).update(payload).eq("id",selectedTrip.id);if(r.error)throw r.error;await S.from(T.trucks).update({status:"REPORTING"}).eq("id",selectedTrip.truck_id);closeModal("etReportingModal");await loadAll();alertUser(`Trip ${selectedTrip.trip_number} moved to REPORTING.`)}catch(err){console.error(err);alertUser("Reporting update failed: "+err.message)}return false}
 
 /* ========================= 11. UNLOADING ==================== */
+// Unloading date default: before 11:00 IST use yesterday, otherwise today.
+// Existing saved unloading dates always take precedence.
+function defaultUnloadingDateIST(){
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+ const part=k=>parts.find(x=>x.type===k)?.value||"";
+ const iso=`${part("year")}-${part("month")}-${part("day")}`;
+ if(Number(part("hour"))>=11)return iso;
+ const d=new Date(`${iso}T00:00:00Z`);d.setUTCDate(d.getUTCDate()-1);
+ return d.toISOString().slice(0,10);
+}
 function openUnloading(t){
  selectedTrip=t;
  const tr=truck(t.truck_id);
  $("etUTruck").value=tr?.truck_number||"";
  $("etUTrip").value=t.trip_number||"";
  $("etUReporting").value=t.reporting_date||getNote(t.notes,"REPORTING_DATE")||"—";
- $("etUDate").value=dateOnly(t.unloading_date)||dateOnly(t.end_date)||dateOnly(t.reporting_date)||dateOnly(getNote(t.notes,"REPORTING_DATE"))||today();
+ $("etUDate").value=dateOnly(t.unloading_date)||dateOnly(t.end_date)||defaultUnloadingDateIST();
  $("etUDetention").value=unloadingDetentionCharge(t);
  $("etUUnload").value=t.unloading_charge??0;
  $("etUOther").value=t.other_charge??0;
@@ -1609,11 +1649,11 @@ async function undoTripStage(id){
  // Refuse when there is evidence of billing or POD processing. Cross-module
  // references may exist outside Tracking; never silently remove them.
  const notes=clean(t.notes);
- if(from==="EMPTY" && /\[TRACKING:(?:INVOICE|POD|BILL_GENERATED|BILL_SENT|BILLING_CONFIRMATION)=[^\]]+\]/i.test(notes)){
-  return alertUser("This trip has POD/Billing markers. Please verify its linked records before undoing completion.");
+ if(from==="EMPTY" && /\[TRACKING:(?:INVOICE|BILL_GENERATED|BILL_SENT|BILLING_CONFIRMATION)=[^\]]+\]/i.test(notes)){
+  return alertUser("This trip has billing/invoice markers. Verify linked accounting records before undoing completion.");
  }
  const vehicle=truck(t.truck_id)?.truck_number||"Truck";
- const message=`${vehicle} • ${t.trip_number||"Trip"}\n\n${from} → ${previous}\n\nOnly the incorrect stage dates/markers will be cleared. Original Program, LR, Party, Freight and other historical data remain.\n\nIf POD, invoice or ledger entries already exist, CANCEL and reconcile them first.\n\nConfirm BACK?`;
+ const message=`${vehicle} • ${t.trip_number||"Trip"}\n\n${from} → ${previous}\n\nOnly the incorrect stage dates/markers will be cleared. Original Program, LR, Party, Freight and other historical data remain.\n\nExisting POD records will remain untouched. If an invoice or ledger is linked, CANCEL and reconcile it first.\n\nConfirm BACK?`;
  if(!window.confirm(message))return;
  const latest=await S.from(T.trips).select("*").eq("id",t.id).single();
  if(latest.error||!latest.data)return alertUser("Could not verify current trip status. Please refresh.");
@@ -1623,7 +1663,9 @@ async function undoTripStage(id){
  const removeKeys=(raw,keys)=>keys.reduce((v,key)=>v.replace(new RegExp(`\\[TRACKING:${key}=[^\\]]*\\]`,"gi"),"").trim(),clean(raw));
  let cleaned=clean(current.notes),payload={},truckStatus="On Trip";
  if(from==="EMPTY"){
-  cleaned=removeKeys(cleaned,["UNLOADING_DETENTION_DAYS","UNLOADING_DETENTION_CHARGE","UNLOADING_DATE"]);
+  // Keep POD markers, charges and documents intact. Preserve old unloading dates
+  // in the existing notes audit before clearing the lifecycle dates.
+  cleaned=putNote(cleaned,"BACK_PREVIOUS_UNLOADING_DATE",dateOnly(current.unloading_date||current.end_date)||"NONE");
   payload={trip_status:"Delivered",tracking_status:"REPORTING",unloading_date:null,end_date:null};
  }else if(from==="REPORTING"){
   cleaned=removeKeys(cleaned,["REPORTING_DATE"]);
@@ -3852,6 +3894,8 @@ function setupEvents(){
  });
  $("etLDate")?.addEventListener("change",updateLoadingAttention);$("etUDate")?.addEventListener("change",updateUnloadingAttention);document.addEventListener("click",e=>{if(!e.target.closest("#trackingModule .typeahead")){document.querySelectorAll("#trackingModule .suggestions").forEach(x=>x.classList.remove("show"))}});document.addEventListener("keydown",e=>{
  if(e.key==="Escape")document.querySelector("#trackingModule .modal.show")?.classList.remove("show");
+ // Party dropdown owns its Arrow/Enter keys while selecting a Unit.
+ if(["etPParty","etQuickParty"].includes(e.target.id) && ["ArrowDown","ArrowUp","Enter"].includes(e.key))return;
  // Row keydown already handles arrows when a row is focused.
  if(e.target.closest("#etRows tr[tabindex]"))return;
  scrollTrackingByArrow(e);
@@ -3895,7 +3939,10 @@ function setupTypeaheads(){
    fillProgramLoadingPoint(selectedTruck.id);syncFleetProgramCategory();tb.classList.remove("show");suggestProgramFreight();
   });
  });
- pi?.addEventListener("keydown",programPartyKeydown);
+ // Bind directly to the actual party input for both New Program entry paths.
+ // Capture phase prevents higher-level worksheet arrow handlers from taking these keys.
+ pi?.addEventListener("keydown",programPartyKeydown,true);
+ $("etQuickParty")?.addEventListener("keydown",quickProgramPartyKeydown,true);
  pi?.addEventListener("input",()=>{
   selectedParty=null;
   const q=clean(pi.value);
@@ -3922,18 +3969,34 @@ function selectProgramPartySuggestion(item){
  loadProgramPartyRates();
 }
 function programPartyKeydown(e){
+ if(!["ArrowDown","ArrowUp","Enter","Escape"].includes(e.key))return;
  const pb=$("etPartySuggestions");
- if(!pb?.classList.contains("show"))return;
- const items=[...pb.querySelectorAll(".suggestion")];
- if(e.key==="Escape"){e.preventDefault();pb.classList.remove("show");return;}
- if(!items.length||!["ArrowDown","ArrowUp","Enter"].includes(e.key))return;
- e.preventDefault();e.stopPropagation();
- let index=Number(pb.dataset.activeIndex??-1);
- if(e.key==="Enter"){selectProgramPartySuggestion(items[index<0?0:index]);return;}
- index=e.key==="ArrowDown"?Math.min(index+1,items.length-1):index<0?items.length-1:Math.max(index-1,0);
+ if(!pb || !pb.classList.contains("show"))return;
+ const items=Array.from(pb.querySelectorAll(".suggestion"));
+ if(!items.length)return;
+ // Own the keyboard inside the Add Program party input, before any page scrolling.
+ e.preventDefault();
+ e.stopImmediatePropagation();
+ if(e.key==="Escape"){
+  pb.classList.remove("show");pb.dataset.activeIndex="-1";return;
+ }
+ let index=Number.parseInt(pb.dataset.activeIndex||"-1",10);
+ if(!Number.isInteger(index)||index < -1||index>=items.length)index=-1;
+ if(e.key==="Enter"){
+  selectProgramPartySuggestion(items[index<0?0:index]);return;
+ }
+ index=e.key==="ArrowDown"?Math.min(index+1,items.length-1):(index<0?items.length-1:Math.max(0,index-1));
  pb.dataset.activeIndex=String(index);
- items.forEach((item,i)=>{item.classList.toggle("et-key-active",i===index);item.setAttribute("aria-selected",String(i===index));});
- items[index].scrollIntoView({block:"nearest"});
+ items.forEach((item,i)=>{
+  item.classList.toggle("et-key-active",i===index);
+  item.setAttribute("aria-selected",String(i===index));
+ });
+ // Scroll the dropdown itself, including when the operator entered from EMPTY + Add Program.
+ const active=items[index];
+ const itemTop=active.offsetTop-items[0].offsetTop;
+ if(itemTop<pb.scrollTop)pb.scrollTop=itemTop;
+ else if(itemTop+active.offsetHeight>pb.scrollTop+pb.clientHeight)
+  pb.scrollTop=itemTop+active.offsetHeight-pb.clientHeight;
 }
 
 /* Edit a lifecycle date on the existing trip; never move its stage backwards. */
@@ -4062,7 +4125,7 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();

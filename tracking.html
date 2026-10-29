@@ -739,6 +739,7 @@
 #trackingModule .et-notify-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #trackingModule #etStatusNotifyBtn{white-space:nowrap;padding:7px 12px;min-height:32px}
 #etPartySuggestions .suggestion.et-key-active{background:#e3efff!important;outline:1px solid #87bafa;outline-offset:-1px}
+#etQuickPartySuggestions .suggestion.et-key-active{background:#e3efff!important;outline:1px solid #87bafa;outline-offset:-1px}
 #etProgramModal .flow .step{cursor:pointer}
 
 /* EMPTY only: compact last unloading point; ellipsis prevents column overlap. */
@@ -1184,7 +1185,7 @@
   <form class="mb" onsubmit="return window.EktaTracking.continueQuickProgram(event)">
    <div class="field typeahead" style="margin-bottom:15px">
     <div class="party-label-row"><label for="etQuickParty">Party (can complete later)</label><button type="button" class="party-add-btn" onclick="window.EktaTracking.openQuickParty()">＋ Add Party</button></div>
-    <input id="etQuickParty" placeholder="Type Party Code / Name" autocomplete="off" oninput="window.EktaTracking.searchQuickProgramParty()" onkeydown="if(event.key==='Enter' && document.querySelector('#etQuickPartySuggestions.show .suggestion')){event.preventDefault();document.querySelector('#etQuickPartySuggestions.show .suggestion').click()}">
+    <input id="etQuickParty" placeholder="Type Party Code / Name" autocomplete="off" oninput="window.EktaTracking.searchQuickProgramParty()">
     <div class="suggestions" id="etQuickPartySuggestions"></div>
    </div>
    <div class="et-quick-route">
