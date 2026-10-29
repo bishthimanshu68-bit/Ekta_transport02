@@ -833,6 +833,16 @@ function historicalRowsModel(date){
  });
 }
 function displayedRowsModel(){const d=selectedTrackingDate();return d===today()?rowsModel():historicalRowsModel(d)}
+// Allow correction only for the most recently completed trip on a currently EMPTY truck.
+// Never reopen an older trip while a newer program exists.
+function lastCompletedTripForUndo(truckId){
+ if(activeTrip(truckId))return null;
+ const all=trips.filter(t=>String(t.truck_id)===String(truckId))
+  .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+ const latest=all[0];
+ return latest&&clean(latest.trip_status).toLowerCase()==="completed"&&statusOf(latest)==="EMPTY"?latest:null;
+}
+
 
 function matchesFilter(r){
  const q=clean($("etSearch")?.value).toLowerCase(),pq=clean($("etPartySearch")?.value).toLowerCase();
@@ -1210,7 +1220,7 @@ function render(){
       </div>
     </td>
    <td><span class="et-gps-source">${esc(gps)}</span></td>
-   <td>${esc(last)}<div style="margin-top:5px">${action(r)}</div><div class="et-last-update-back">${r.trip&&["RUNNING","REPORTING","EMPTY"].includes(r.actualStage)?`<button type="button" class="et-stage-back" title="Undo last stage" onclick="event.stopPropagation();window.EktaTracking.undoTripStage('${esc(r.trip.id)}')">↶ BACK</button>`:""}</div></td>
+   <td>${esc(last)}<div style="margin-top:5px">${action(r)}</div><div class="et-last-update-back">${r.trip&&["RUNNING","REPORTING","EMPTY"].includes(r.actualStage)?`<button type="button" class="et-stage-back" title="Undo last stage" onclick="event.stopPropagation();window.EktaTracking.undoTripStage('${esc(r.trip.id)}')">↶ BACK</button>`:""}${!r.trip&&r.status==="EMPTY"&&selectedTrackingDate()===today()&&lastCompletedTripForUndo(r.t.id)?`<button type="button" class="et-stage-back" title="Return last completed trip to REPORTING" onclick="event.stopPropagation();window.EktaTracking.undoTripStage('${esc(lastCompletedTripForUndo(r.t.id).id)}')">↶ BACK TO REPORTING</button>`:""}</div></td>
    </tr>`;
  }).join(""):`<tr><td colspan="${emptyView?12:11}" style="padding:30px;text-align:center" class="muted">No Tracking records found.</td></tr>`;
  if(etScrollWrap){etScrollWrap.scrollTop=etSavedTop;etScrollWrap.scrollLeft=etSavedLeft;}
@@ -1595,6 +1605,7 @@ async function undoTripStage(id){
  if(!t)return alertUser("Trip not found. Refresh Tracking.");
  const from=statusOf(t),previous={EMPTY:"REPORTING",REPORTING:"RUNNING",RUNNING:"PROGRAM"}[from];
  if(!previous)return alertUser("Back is available only for EMPTY, REPORTING and RUNNING.");
+ if(from==="EMPTY"&&String(lastCompletedTripForUndo(t.truck_id)?.id)!==String(t.id))return alertUser("Only the latest completed trip of an available truck can be returned to REPORTING.");
  // Refuse when there is evidence of billing or POD processing. Cross-module
  // references may exist outside Tracking; never silently remove them.
  const notes=clean(t.notes);
@@ -1607,6 +1618,7 @@ async function undoTripStage(id){
  const latest=await S.from(T.trips).select("*").eq("id",t.id).single();
  if(latest.error||!latest.data)return alertUser("Could not verify current trip status. Please refresh.");
  if(statusOf(latest.data)!==from)return alertUser("Trip status changed. Refresh and try again.");
+ if(from==="EMPTY"&&String(lastCompletedTripForUndo(t.truck_id)?.id)!==String(t.id))return alertUser("A newer trip exists. Refresh and verify before undoing.");
  const current=latest.data;
  const removeKeys=(raw,keys)=>keys.reduce((v,key)=>v.replace(new RegExp(`\\[TRACKING:${key}=[^\\]]*\\]`,"gi"),"").trim(),clean(raw));
  let cleaned=clean(current.notes),payload={},truckStatus="On Trip";
