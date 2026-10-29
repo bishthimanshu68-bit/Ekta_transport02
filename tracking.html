@@ -627,7 +627,7 @@
 .et-add-program{display:inline-flex;align-items:center;justify-content:center;margin-top:7px;padding:6px 10px;border:1px solid #087a4b;background:#09995f;color:white;border-radius:8px;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px #09995f20}
 .et-add-program:hover{background:#087a4b}
 #etQuickProgramModal{z-index:100700;align-items:center;justify-content:center;background:#10233b80;backdrop-filter:blur(2px)}
-#etQuickProgramModal .box{width:min(465px,calc(100vw - 28px));max-height:calc(100vh - 32px);overflow:auto;border-radius:17px;box-shadow:0 24px 70px #10233b42}
+#etQuickProgramModal .box{width:min(600px,calc(100vw - 28px));max-height:calc(100vh - 32px);overflow:auto;border-radius:17px;box-shadow:0 24px 70px #10233b42}
 #etQuickProgramModal .mh{padding:17px 19px}
 #etQuickProgramModal .mb{padding:18px 19px 20px}
 .et-quick-route{display:grid;grid-template-columns:1fr 30px 1fr;align-items:end;gap:9px}
@@ -1182,10 +1182,15 @@
  <div class="box">
   <div class="mh"><b id="etQuickProgramTitle">Add Program · <span id="etQuickProgramTruck"></span></b><button type="button" class="x" onclick="window.EktaTracking.closeQuickProgram()" aria-label="Close">×</button></div>
   <form class="mb" onsubmit="return window.EktaTracking.continueQuickProgram(event)">
+   <div class="field typeahead" style="margin-bottom:15px">
+    <div class="party-label-row"><label for="etQuickParty">Party (can complete later)</label><button type="button" class="party-add-btn" onclick="window.EktaTracking.openQuickParty()">＋ Add Party</button></div>
+    <input id="etQuickParty" placeholder="Type Party Code / Name" autocomplete="off" oninput="window.EktaTracking.searchQuickProgramParty()" onkeydown="if(event.key==='Enter' && document.querySelector('#etQuickPartySuggestions.show .suggestion')){event.preventDefault();document.querySelector('#etQuickPartySuggestions.show .suggestion').click()}">
+    <div class="suggestions" id="etQuickPartySuggestions"></div>
+   </div>
    <div class="et-quick-route">
-    <div><label for="etQuickFrom">From *</label><input id="etQuickFrom" placeholder="Loading point" maxlength="160" required autocomplete="off"></div>
+    <div><label for="etQuickFrom">From (optional)</label><input id="etQuickFrom" placeholder="Loading point" maxlength="160" autocomplete="off"></div>
     <div class="et-quick-arrow">→</div>
-    <div><label for="etQuickTo">To *</label><input id="etQuickTo" placeholder="Destination" maxlength="160" required autocomplete="off"></div>
+    <div><label for="etQuickTo">To (optional)</label><input id="etQuickTo" placeholder="Destination" maxlength="160" autocomplete="off"></div>
    </div>
    <div class="et-quick-actions"><button type="button" onclick="window.EktaTracking.closeQuickProgram()">Cancel</button><button type="submit" class="save">Continue →</button></div>
   </form>
@@ -2153,7 +2158,7 @@
 
                 <div class="field">
                     <label>Party Code *</label>
-                    <input id="etQPCode" required autocomplete="off" placeholder="Enter Party Code">
+                    <input id="etQPCode" required autocomplete="off" placeholder="Auto-generated Party Code" title="Automatically generated; you may correct it before saving">
                 </div>
 
                 <div class="field">
