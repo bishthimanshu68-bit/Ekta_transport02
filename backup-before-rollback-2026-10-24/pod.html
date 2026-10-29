@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ekta Transport — POD</title>
+<style>
+:root{--navy:#173653;--blue:#3677b6;--green:#09995f;--orange:#d98900;--red:#d9293e;--purple:#7131c7;--line:#e4ebf4;--muted:#68758a;--bg:#f5f8fc}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:#1b2a3d;font-size:13px}
+#podModule{position:fixed;inset:0;z-index:99999;width:100vw;height:100vh;overflow:auto;background:var(--bg)}
+.wrap{padding:13px 18px 16px;max-width:1900px;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.title h1{margin:0;font-size:21px;line-height:1.12;color:var(--navy)}.title p{margin:3px 0 0;font-size:11px;color:var(--muted)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}.btn{border:1px solid #d6e0ec;background:#fff;color:var(--navy);border-radius:8px;padding:8px 11px;font-size:11px;min-height:36px;font-weight:800;cursor:pointer}
+.btn.green{background:var(--green);border-color:var(--green);color:#fff}.btn.red{background:#fff1f2;color:var(--red);border-color:#ffd0d5}
+.toolbar{display:flex;gap:7px;margin-bottom:9px;flex-wrap:wrap}.toolbar input,.toolbar select{border:1px solid #d7e2ef;background:#fff;border-radius:8px;padding:8px 10px;min-height:38px;font-size:11px;outline:none}
+.toolbar input[type="text"]{min-width:290px;flex:1 1 360px}.toolbar input[type="date"]{min-width:170px}.toolbar select{min-width:150px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:10px}.card{background:#fff;border:1px solid var(--line);border-radius:10px;min-height:72px;padding:9px 11px;box-shadow:0 2px 9px #1736530b}
+.card small{display:block;font-size:9px;color:var(--muted);font-weight:800}.card strong{display:block;font-size:21px;line-height:1;margin-top:5px}
+.c-total strong{color:var(--blue)}.c-pending strong{color:var(--orange)}.c-received strong{color:var(--green)}.c-verified strong{color:var(--purple)}
+.panel{background:#fff;border:1px solid var(--line);border-radius:11px;overflow:hidden}.ph{padding:10px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ph b{font-size:14px}.mini{font-size:10px;color:var(--muted)}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:3050px}
+th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap}th{font-size:11px;color:#5b6b82;background:#f8fafc}td{font-size:12px}
+.pod-trip-link{color:#1268df;font-weight:900;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.truck{color:#1268df;font-weight:900;cursor:pointer}.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:7px;font-size:10px;font-weight:900}
+.b-pending{background:#fff0d5;color:#c97900}.b-received{background:#dff8eb;color:#087a4b}.b-verified{background:#efe3ff;color:#7131c7}.b-na{background:#f1f3f6;color:#697586}
+.empty{padding:30px;text-align:center;color:#8a96a7}.sendbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef7ff;border:1px solid #cfe4fb;border-radius:9px;padding:8px 10px;margin-bottom:9px}
+.modal{position:fixed;inset:0;background:#10233b66;display:none;align-items:center;justify-content:center;padding:12px;z-index:100500}.modal.show{display:flex}
+.box{width:min(1350px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;background:#fff;border-radius:15px;box-shadow:0 20px 60px #10233b40}
+.mh{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.mh b{font-size:15px}.x{border:0;background:#f1f4f8;border-radius:50%;width:30px;height:30px;cursor:pointer}
+.mb{padding:12px 14px}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}.field label{display:block;font-size:9px;font-weight:900;color:#637188;margin-bottom:3px}
+.field input{width:100%;border:1px solid #d7e2ef;border-radius:8px;padding:8px 9px;background:#f6f8fb}.full{grid-column:1/-1}.footer{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.scrollctl{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:100400;display:flex;flex-direction:column;gap:7px}.scrollctl button{width:36px;height:36px;border-radius:9px;border:1px solid #cfdbe8;background:#fff;box-shadow:0 5px 16px #17365325;color:#173653;font-size:16px;font-weight:900;cursor:pointer}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.wrap{padding:12px}.grid2{grid-template-columns:1fr}.full{grid-column:auto}}
+
+/* POD FINAL 03 — compact actions + inline edit */
+.pod-actions{display:flex;align-items:center;gap:5px;justify-content:center}
+.pod-icon{
+    width:31px;height:31px;border-radius:50%;border:1px solid #cfdae7;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:#fff;color:#173653;font-size:14px;font-weight:900;cursor:pointer
+}
+.pod-icon.upload{background:#e9f8f1;color:#087a4b;border-color:#bfe8d4}
+.pod-icon.view{background:#eef6ff;color:#1768b4;border-color:#cfe2f7}
+.pod-icon.download{background:#f2ecff;color:#7131c7;border-color:#ddd0f8}
+.pod-icon:disabled{opacity:.35;cursor:not-allowed;background:#f4f5f7;color:#8a95a5;border-color:#e2e6ec}
+.pod-edit-input,.pod-edit-select{
+    width:100%;min-width:92px;border:1px solid #b8cbe0;border-radius:6px;
+    padding:6px 7px;font-size:10px;background:#fff
+}
+.pod-inline-edit-row{background:#fffdf4}
+.pod-money{font-variant-numeric:tabular-nums}
+
+
+/* POD FINAL 04 — direct working fields */
+.pod-direct-field{
+    width:118px;border:1px solid #c9d8e7;border-radius:6px;
+    padding:6px 7px;font-size:10px;background:#fff
+}
+.pod-direct-field.lrno{width:130px}
+.pod-direct-field:focus{outline:none;box-shadow:0 0 0 1px #3677b6;border-color:#8eb7df}
+.pod-save-flash{animation:podSaveFlash .65s ease}
+@keyframes podSaveFlash{0%{background:#dff8eb}100%{background:#fff}}
+
+
+/* Billing-party-only printed OCR preview */
+.pod-ocr-table{overflow:auto;margin-top:9px}.pod-ocr-table table{min-width:600px;width:100%}
+.pod-ocr-table th,.pod-ocr-table td{white-space:normal;padding:7px;font-size:11px}
+.pod-ocr-check{width:18px;height:18px;accent-color:#09995f;cursor:pointer}#podOcrSave{margin-top:10px}
+.pod-ocr-raw{white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;background:#f5f8fc;padding:10px}
+#podOcrArea{margin-top:12px;border:1px solid #d7e2ef;padding:12px;border-radius:9px}
+#podOcrArea[hidden],#podOcrPanel[hidden]{display:none}
+/* POD FINAL 05 — courier master fields + double-click row editing */
+#podRows tr:not(.pod-inline-edit-row){cursor:default}
+#podRows tr:not(.pod-inline-edit-row):hover{background:#fbfdff}
+.pod-dbl-hint{font-size:9px;color:#8390a2}
+
+#podExistingDocs .pod-doc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px;border:1px solid #e4ebf4;border-radius:8px;margin:5px 0}#podExistingDocs .pod-doc b{flex:1;min-width:150px}
+.pod-mini-grid{display:flex;gap:8px;overflow-x:auto;padding:8px 0}.pod-mini-card{display:flex;flex:0 0 205px;align-items:center;gap:6px;padding:9px;border:1px solid #cbd8e7;border-radius:9px;background:#f8fbff}.pod-mini-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}.pod-mini-card b{white-space:nowrap}.pod-mini-card .btn{padding:3px 8px;min-height:28px}
+/* POD rate controls */
+.toolbar input[type="text"]{min-width:200px;flex:1 1 260px}.date-label{display:flex;align-items:center;gap:5px;color:#61728a;font-size:11px;font-weight:700}.date-label input{min-width:145px!important;width:145px}.ngt-trigger{background:#e9f8f1;border-color:#bfe8d4;color:#087a4b;white-space:nowrap}.ngt-help{font-size:11px;line-height:1.6;color:#68758a;margin-top:9px}.ngt-rate-input{width:100%;padding:10px;border:1px solid #cbd8e7;border-radius:8px;font-size:15px}.tablewrap{max-width:100%;overflow:auto}
+.pod-mini-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:9px}.pod-mini-card{border:1px solid #d7e2ef;background:#f8fafc;border-radius:8px;padding:7px;display:flex;align-items:center;gap:5px;min-width:0}.pod-mini-card b{white-space:nowrap;font-size:11px}.pod-mini-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-size:10px}.pod-mini-card .btn{min-height:25px;padding:3px 7px}@media(max-width:650px){.pod-mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Trip-linked manual fields in existing POD popup */
+.pod-extra-form{margin-top:18px;border-top:1px solid #dce5ef;padding-top:12px}
+.pod-extra-form h3{font-size:13px;color:#173653;margin:18px 0 9px;padding:8px 10px;background:#eef5fc;border-radius:7px}
+.pod-extra-hint{color:#61728a;font-size:11px;margin:0 0 10px}
+.pod-extra-form .field input.pod-extra-input,.pod-extra-form .field textarea.pod-extra-input{background:#fff;font-size:12px;min-height:37px;resize:vertical}
+.pod-extra-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:15px;flex-wrap:wrap}
+/* Popup-only editing; worksheet remains a normal list */
+.pod-popup-edit{border:1px solid #d6e5f2;border-radius:10px;padding:12px;background:#fbfdff}
+.pod-popup-edit h3{margin:0 0 8px;font-size:14px;color:#173653}
+.pod-popup-edit .field input,.pod-popup-edit .field select{width:100%;min-height:39px;background:white;border:1px solid #c9d8e7;border-radius:8px;padding:8px;font-size:12px}
+.pod-popup-readonly{display:block;padding:11px;background:#f1f5f9;border-radius:8px}
+</style>
+</head>
+<body>
+<section id="podModule">
+<div class="wrap">
+<div class="top">
+<div class="title"><h1>EKTA TRANSPORT — POD</h1><p>Proof of Delivery • All PODs in one worksheet • Date range and truck search</p></div>
+<div class="actions"><button class="btn green" onclick="window.EktaPOD.refresh()">↻ Refresh</button><button class="btn red" onclick="window.EktaPOD.closePOD()">← Dashboard</button></div>
+</div>
+
+<div class="toolbar">
+<input id="podSearch" type="text" placeholder="Search truck / trip / party / route..." oninput="window.EktaPOD.render()">
+<label class="date-label">From <input id="podFromDate" type="date" onchange="window.EktaPOD.render()"></label>
+<label class="date-label">To <input id="podToDate" type="date" onchange="window.EktaPOD.render()"></label>
+<button class="btn" onclick="window.EktaPOD.showAllDates()">All Dates</button>
+<select id="podStatus" onchange="window.EktaPOD.render()">
+<option value="">All POD Status</option><option value="PENDING">Pending</option><option value="RECEIVED">Received</option><option value="VERIFIED">Verified</option>
+</select>
+<button class="btn ngt-trigger" onclick="window.EktaPOD.openNGTRate()">₹ Add NGT Rate</button>
+</div>
+
+<div class="cards">
+<div class="card c-total"><small>TOTAL SENT TO POD</small><strong id="podNTotal">0</strong></div>
+<div class="card c-pending"><small>POD PENDING</small><strong id="podNPending">0</strong></div>
+<div class="card c-received"><small>POD RECEIVED</small><strong id="podNReceived">0</strong></div>
+<div class="card c-verified"><small>POD VERIFIED</small><strong id="podNVerified">0</strong></div>
+</div>
+
+<div class="sendbar">
+<div><b id="podDateText">Selected Loading Date</b><div class="mini">Trips sent from Final Report remain linked by the same Trip ID.</div></div>
+<div class="mini" id="podCountText">0 record(s)</div>
+</div>
+
+<section class="panel">
+<div class="ph"><b>POD Worksheet</b><span class="mini">All PODs • Date range and truck / trip search</span></div>
+<div class="tablewrap">
+<table>
+<thead><tr>
+<th>Trip No.</th>
+<th>Truck</th>
+<th>Loading Date</th>
+<th>LR Date</th>
+<th>Party / Client</th>
+<th>Party Type</th>
+<th>Party Zone</th>
+<th>From</th>
+<th>To</th>
+<th>Reporting Date</th>
+<th>Unloading Date</th>
+<th>Load Det. Days</th>
+<th>Load Det. ₹</th>
+<th>Unload Det. Days</th>
+<th>Unload Det. ₹</th>
+<th>Unloading ₹</th>
+<th>Other ₹</th>
+<th>NGT ₹</th>
+<th>POD Status</th>
+<th>POD Actions</th>
+<th>POD Received Date</th>
+<th>LR Number</th>
+<th>Courier Name</th>
+<th>AWB / Tracking No.</th>
+<th>Courier Date</th>
+<th>Courier Delivered Date</th>
+<th>Edit</th>
+</tr></thead>
+<tbody id="podRows"><tr><td colspan="27" class="empty">Loading POD records...</td></tr></tbody>
+</table>
+</div>
+</section>
+</div>
+</section>
+
+
+<div class="modal" id="podUploadModal">
+    <div class="box">
+        <div class="mh">
+            <b id="podUploadTitle">UPLOAD POD</b>
+            <button class="x" onclick="window.EktaPOD.closeModal('podUploadModal')">×</button>
+        </div>
+
+        <form class="mb" onsubmit="return window.EktaPOD.savePODDocument(event)">
+            <input type="hidden" id="podUploadTripId">
+
+            <div class="grid2">
+                <div class="field">
+                    <label>Trip No.</label>
+                    <input id="podUploadTripNo" readonly>
+                </div>
+
+                <div class="field">
+                    <label>Truck No.</label>
+                    <input id="podUploadTruckNo" readonly>
+                </div>
+
+                <div class="field full">
+                    <label>Add POD Document / Photo / PDF</label> <button type="button" class="btn green" onclick="window.EktaPOD.chooseMorePOD()">＋ Add POD</button>
+                    <input id="podUploadFile" type="file" accept="image/*,application/pdf" onchange="window.EktaPOD.queuePODFiles()">
+                </div>
+            </div>
+
+            <div id="podQueuedDocs" style="margin-top:10px"></div>
+             <div id="podExistingDocs" style="margin-top:10px"></div>
+            <div id="podOcrArea" hidden>
+                <b>Billing Parties — Printed POD OCR</b>
+                <p class="mini">Every PDF page is read separately. Review LR number, date, quantity, consignee, vehicle size and truck before saving. Handwriting requires manual correction.</p>
+                <button id="podOcrRead" class="btn" type="button" onclick="window.EktaPOD.readAllPODOCR()">🔍 Read All OCR — Preview LR-wise</button>
+                <div id="podOcrNote" class="mini" style="margin-top:8px">Add POD files, then Read All OCR before saving.</div>
+                <div id="podOcrPanel" hidden style="margin-top:10px"></div>
+            </div>
+            <div class="sendbar" style="margin-top:10px">
+                <div>
+                    <b>Supabase Storage</b>
+                    <div class="mini">Files are stored separately in private bucket: pod-documents</div>
+                </div>
+                <div class="mini" id="podUploadNote">No file selected.</div>
+            </div>
+
+            <div class="footer">
+                <button type="button" class="btn" onclick="window.EktaPOD.closeModal('podUploadModal')">Cancel</button>
+                <button class="btn green" id="podSaveAll" type="submit">Save All PODs</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="podTripModal">
+<div class="box"><div class="mh"><b id="podTripTitle">POD Trip Details</b><button class="x" onclick="window.EktaPOD.closeModal('podTripModal')">×</button></div><div class="mb" id="podTripBody"></div></div>
+</div>
+
+<div class="modal" id="podNGTModal"><div class="box" style="max-width:440px"><div class="mh"><b>NGT Rate Settings</b><button class="x" onclick="window.EktaPOD.closeModal('podNGTModal')">×</button></div><div class="mb"><label for="podNGTRate" style="display:block;margin-bottom:7px;font-weight:800">NGT Charge per Eligible Trip (₹)</label><input id="podNGTRate" class="ngt-rate-input" type="number" min="0" step="0.01" placeholder="Enter your fixed rate"><p class="ngt-help">Set your rate once. For trips with DELHI as From or To, the charge is applied automatically without confirmation. Existing manually edited charges are protected. You can edit the amount in the POD worksheet.</p><p class="mini" id="podNGTMessage"></p><div class="footer"><button class="btn" onclick="window.EktaPOD.closeModal('podNGTModal')">Cancel</button><button class="btn green" id="podNGTSave" onclick="window.EktaPOD.saveNGTRate()">Save Rate</button></div></div></div></div>
+<script src="pod.js"></script>
+</body>
+</html>

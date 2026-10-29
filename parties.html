@@ -232,13 +232,19 @@
     <label class="party-label">Party Code *</label>
     <input
         id="partyCode"
+        oninput="window.EktaParties.checkExistingPartyCode()"
         type="text"
         required
         autocomplete="off"
         placeholder="Enter or correct Party Code"
         class="party-field font-mono uppercase bg-slate-50 text-slate-500"
     >
-    <div class="text-[9px] text-slate-400 mt-1">Company code is shared across units. Use + Add Unit for another branch; each unit keeps its own Party ID.</div>
+    <div class="text-[9px] text-slate-400 mt-1">Enter an existing Billing Party code to add a new branch. Each branch keeps a separate Party ID.</div>
+    <div id="partyExistingCodePanel" class="hidden mt-2 p-3 rounded-lg border border-emerald-200 bg-emerald-50">
+      <div class="text-xs font-bold text-emerald-800">Existing Billing Party: <span id="partyExistingCompanyName"></span></div>
+      <div class="text-[10px] text-slate-600 mt-1">Current Units: <span id="partyExistingUnitNames"></span></div>
+      <button id="partyAddBranchButton" type="button" class="mt-2 px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg">+ Add Branch / Unit</button>
+    </div>
 </div>
 
                     <div>

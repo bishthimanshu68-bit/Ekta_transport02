@@ -798,6 +798,40 @@
 #etEwayPage .et-market-eway-tag{display:inline-block;font-size:8px;font-weight:700;color:#6846a0;background:#e0d3fa;border-radius:4px;padding:1px 4px;vertical-align:middle}
 #etEwayPage .et-market-eway-owner{display:block;font-size:9px;line-height:1.2;color:#675784;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0}
 #etEwayPage .et-market-eway-row .eway-truck-cell{max-width:250px}
+
+/* Compact three-part search: same overall footprint as the original single field. */
+#trackingModule .toolbar .et-search-three{display:flex;flex:0 1 520px;min-width:285px;max-width:520px;gap:5px;align-items:stretch}
+#trackingModule .toolbar .et-search-three input{flex:1 1 0;width:0;min-width:0;max-width:none;height:38px;min-height:38px;padding:8px 9px;border:1px solid #d7e2ef;border-radius:8px;background:#fff;font-size:11px;outline:none}
+#trackingModule .toolbar .et-search-three input:first-child{flex:1 1 0;min-width:0;max-width:none}
+#trackingModule .toolbar .et-search-three input:focus{border-color:#3677b6}
+@media(max-width:650px){#trackingModule .toolbar .et-search-three{flex:1 1 100%;max-width:none;min-width:0}}
+
+/* EMPTY available From: editable independently of completed-trip unloading point */
+#trackingModule .et-empty-from-input{width:125px;max-width:100%;min-height:34px;border:1px solid #d6e0ec;border-radius:7px;padding:6px 8px;background:#fff;color:#173653;font:700 12px Inter,Segoe UI,Arial,sans-serif}
+#trackingModule .et-empty-from-input:focus{outline:2px solid #93c5fd;outline-offset:1px}
+
+/* TRACKING HEADER — ONE ROW; only action strip scrolls on narrow screens */
+#trackingModule > .wrap > .top{display:flex;flex-direction:row;align-items:center;flex-wrap:nowrap;gap:8px;min-width:0;margin-bottom:9px}
+#trackingModule > .wrap > .top > .title{flex:0 0 auto;min-width:0}
+#trackingModule > .wrap > .top > .title h1{font-size:clamp(13px,1.1vw,19px);white-space:nowrap}
+#trackingModule > .wrap > .top > .title p{display:none}
+#trackingModule > .wrap > .top > .actions{display:flex;flex:1 1 auto;min-width:0;gap:5px;flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:3px 0}
+#trackingModule > .wrap > .top > .actions > *{flex-shrink:0}
+#trackingModule > .wrap > .top > .actions .btn{font-size:10px;min-height:34px;padding:7px 8px;white-space:nowrap}
+#trackingModule > .wrap > .top > .actions > div{flex-wrap:nowrap!important;gap:4px!important}
+#trackingModule > .wrap > .top > .actions > div select{min-width:126px!important;width:126px;height:34px!important;font-size:10px}
+#trackingModule > .wrap > .top > .actions > div input[type=date]{width:116px!important;height:34px!important;font-size:10px}
+#trackingModule > .wrap > .top > .actions > div label{font-size:10px!important}
+#trackingModule > .wrap > .top > .et-head-tools{flex:0 0 auto;margin-left:0}
+#trackingModule > .wrap > .top > .et-head-tools .et-head-btn{font-size:10px;min-height:34px;padding:6px 8px}
+#trackingModule > .wrap > .top > .et-dashboard-last{flex:0 0 auto;font-size:10px;min-height:34px;padding:7px 8px;white-space:nowrap}
+@media(max-width:900px){#trackingModule > .wrap > .top > .title h1{font-size:12px}#trackingModule > .wrap > .top > .et-head-tools{gap:3px}#trackingModule > .wrap > .top > .et-head-tools .et-head-btn{padding:6px}}
+
+
+/* One-step status correction, compact action beside stage badge */
+.et-stage-back{border:1px solid #bcd2ed;background:#eef6ff;color:#19578c;border-radius:6px;padding:4px 7px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
+.et-stage-back:hover{background:#dcecff}
+.et-last-update-back{margin-top:7px}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -862,27 +896,6 @@
             <p>Operational Tracking • PROGRAM → RUNNING → REPORTING → EMPTY</p>
         </div>
 
-        <div class="et-head-tools" id="etHeaderTools">
-          <button type="button" class="et-head-btn" id="etBellBtn" aria-expanded="false" aria-controls="etBellPanel" onclick="window.EktaTracking.toggleHeaderPanel('bell')">🔔 <span class="et-head-count" id="etBellCount">0</span></button>
-          <button type="button" class="et-head-btn" id="etAIBtn" aria-expanded="false" aria-controls="etAIPanel" onclick="window.EktaTracking.toggleHeaderPanel('ai')">✦ AI Assistant</button>
-          <section class="et-head-panel" id="etBellPanel" aria-label="Tracking notifications">
-            <div class="et-head-panel-title"><b>🔔 Notifications</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
-            <div id="etBellItems" class="et-head-notices">Loading notifications...</div>
-          </section>
-          <section class="et-head-panel" id="etAIPanel" aria-label="Tracking assistant">
-            <div class="et-head-panel-title"><b>✦ Ekta Tracking Assistant</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
-            <div class="et-upload-group">
-              <b>📋 Program File Upload</b>
-              <p class="muted">Excel, CSV, PDF या Photo चुनें। एक बार में एक File।</p>
-              <input type="file" id="etProgramUpload" accept=".xlsx,.xls,.csv,.pdf,image/*" onchange="window.EktaTracking.previewAIUpload('program')">
-              <div class="et-upload-status" id="etProgramUploadStatus" aria-live="polite">No file selected</div>
-              <button type="button" class="et-ai-send" onclick="window.EktaTracking.prepareProgramUpload()">Review Program File</button>
-            </div>
-            <div class="et-upload-status" id="etAIUploadMessage" aria-live="polite">AI extraction requires the existing Gemini backend connection. No data will be saved without confirmation.</div>
-          <div style="margin-top:8px"><label style="font-size:11px;font-weight:700">Or paste Excel rows here</label><textarea id="etProgramPaste" rows="3" placeholder="Paste copied Excel cells (tab-separated)" style="width:100%;font-size:11px;border:1px solid #ccd9e9;border-radius:7px;padding:8px"></textarea></div>
-            <div id="etAIProgramPreview" style="max-height:310px;overflow:auto"></div>
-          </section>
-        </div>
 
         <div class="actions">
 
@@ -922,16 +935,45 @@
                     <option value="RUNNING">Running Status</option>
                     <option value="REPORTING">Reporting Status</option>
                     <option value="EMPTY">Empty / MT Status</option>
+                    <option value="DATE_PROGRAM">Program Date Wise</option>
+                    <option value="DATE_LOADING">Loading Date Wise</option>
+                    <option value="DATE_REPORTING">Reporting Date Wise</option>
+                    <option value="DATE_UNLOADING">Unloading Date Wise</option>
                 </select>
+                <label for="etExcelDate" style="font-size:11px;font-weight:700">From</label>
+                <input id="etExcelDate" type="date" aria-label="Excel report from date" title="From date (inclusive)" style="height:36px;width:142px;border:1px solid #cbd5e1;border-radius:8px;padding:0 7px;background:#fff;color:#172033">
+                <label for="etExcelToDate" style="font-size:11px;font-weight:700">To</label>
+                <input id="etExcelToDate" type="date" aria-label="Excel report to date" title="To date (inclusive); leave blank for a single date" style="height:36px;width:142px;border:1px solid #cbd5e1;border-radius:8px;padding:0 7px;background:#fff;color:#172033">
                 <button class="btn" onclick="window.EktaTracking.exportTracking()">Export Excel</button>
             </div>
 
-            <button class="btn red"
-                    onclick="window.EktaTracking.closeTracking()">
-                ← Dashboard
-            </button>
+
 
         </div>
+
+        <div class="et-head-tools" id="etHeaderTools">
+          <button type="button" class="et-head-btn" id="etBellBtn" aria-expanded="false" aria-controls="etBellPanel" onclick="window.EktaTracking.toggleHeaderPanel('bell')">🔔 <span class="et-head-count" id="etBellCount">0</span></button>
+          <button type="button" class="et-head-btn" id="etAIBtn" aria-expanded="false" aria-controls="etAIPanel" onclick="window.EktaTracking.toggleHeaderPanel('ai')">✦ AI Assistant</button>
+          <section class="et-head-panel" id="etBellPanel" aria-label="Tracking notifications">
+            <div class="et-head-panel-title"><b>🔔 Notifications</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
+            <div id="etBellItems" class="et-head-notices">Loading notifications...</div>
+          </section>
+          <section class="et-head-panel" id="etAIPanel" aria-label="Tracking assistant">
+            <div class="et-head-panel-title"><b>✦ Ekta Tracking Assistant</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
+            <div class="et-upload-group">
+              <b>📋 Program File Upload</b>
+              <p class="muted">Excel, CSV, PDF या Photo चुनें। एक बार में एक File।</p>
+              <input type="file" id="etProgramUpload" accept=".xlsx,.xls,.csv,.pdf,image/*" onchange="window.EktaTracking.previewAIUpload('program')">
+              <div class="et-upload-status" id="etProgramUploadStatus" aria-live="polite">No file selected</div>
+              <button type="button" class="et-ai-send" onclick="window.EktaTracking.prepareProgramUpload()">Review Program File</button>
+            </div>
+            <div class="et-upload-status" id="etAIUploadMessage" aria-live="polite">AI extraction requires the existing Gemini backend connection. No data will be saved without confirmation.</div>
+          <div style="margin-top:8px"><label style="font-size:11px;font-weight:700">Or paste Excel rows here</label><textarea id="etProgramPaste" rows="3" placeholder="Paste copied Excel cells (tab-separated)" style="width:100%;font-size:11px;border:1px solid #ccd9e9;border-radius:7px;padding:8px"></textarea></div>
+            <div id="etAIProgramPreview" style="max-height:310px;overflow:auto"></div>
+          </section>
+        </div>
+
+        <button class="btn red et-dashboard-last" onclick="window.EktaTracking.closeTracking()">← Dashboard</button>
 
     </div>
 
@@ -942,15 +984,12 @@
     ====================================================== -->
     <div class="toolbar">
 
-        <input id="etSearch"
-               type="search"
-               name="ekta_tracking_lookup_no_history"
-               autocomplete="off"
-               autocorrect="off"
-               autocapitalize="off"
-               spellcheck="false"
-               placeholder="Search truck / trip / party / location..."
-               oninput="window.EktaTracking.render()">
+        <div class="et-search-three" role="search" aria-label="Tracking filters">
+            <input id="etSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Vehicle No." aria-label="Search vehicle number" oninput="window.EktaTracking.render()">
+            <input id="etPartySearch" type="search" autocomplete="off" spellcheck="false" placeholder="Party Name" aria-label="Search party" oninput="window.EktaTracking.render()">
+            <input id="etFromSearch" type="search" autocomplete="off" spellcheck="false" placeholder="From" aria-label="Search origin" oninput="window.EktaTracking.render()">
+            <input id="etToSearch" type="search" autocomplete="off" spellcheck="false" placeholder="To" aria-label="Search destination" oninput="window.EktaTracking.render()">
+        </div>
 
         <button class="btn"
                 onclick="window.EktaTracking.viewAllTracking()">
