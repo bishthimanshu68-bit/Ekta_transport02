@@ -443,7 +443,10 @@
             </div>
 
 
-            <div class="overflow-x-auto">
+            <div id="fleetDocsFloatingHeader" class="fleet-doc-floating-header" aria-label="Document column headings"><div id="fleetDocsFloatingHeaderInner"></div><div id="fleetDocsFloatingHeaderPinned"></div><button type="button" id="fleetDocsFixedOCRButton" onclick="window.EktaFleet.openAI('document')" title="OCR Smart Upload"><i class="fa-solid fa-wand-magic-sparkles"></i> OCR Smart Upload</button></div>
+            <div class="fleet-doc-floating-scroll" id="fleetDocsFloatingScroll" aria-label="Always available horizontal document scrollbar"><div id="fleetDocsFloatingScrollTrack"></div></div>
+            <div class="fleet-doc-top-scroll" id="fleetDocsTopScroll" aria-label="Scroll document columns horizontally" title="Slide to RC and other documents"><div id="fleetDocsTopScrollTrack"></div></div>
+            <div class="overflow-x-auto" id="fleetDocsTableScroll">
 
                 <table class="w-full text-left border-collapse">
 
@@ -617,7 +620,9 @@
         </div>
 
 
-        <div class="p-4 space-y-3">
+        <div class="p-4 space-y-3 ekta-ocr-workspace">
+<div class="ekta-ocr-left">
+<div class="ekta-ocr-heading" data-ekta-ocr-only><span class="ekta-ocr-step">1</span> Document Details & Upload</div>
 
             <!-- DOCUMENT TYPE -->
             <div id="fleetAIDocTypeBox" class="hidden">
@@ -640,6 +645,17 @@
 
             </div>
 
+
+            <!-- DOCUMENT UPLOAD MODE -->
+            <div id="fleetOCRModeBox" class="hidden">
+                <label class="block font-bold text-slate-700 mb-1">Upload Mode</label>
+                <select id="fleetOCRMode" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                        onchange="window.EktaFleet.updateOCRMode()">
+                    <option value="single">Single — one document per file</option>
+                    <option value="bulk">Bulk — multiple RC cards in one PDF</option>
+                </select>
+                <p id="fleetOCRModeHelp" class="text-[10px] text-slate-500 mt-1">One RC, insurance or permit per file.</p>
+            </div>
 
             <!-- FILE -->
             <div>
@@ -682,6 +698,14 @@
             </div>
 
 
+<div id="ektaOCRFiles" class="ekta-ocr-file-list" data-ekta-ocr-only></div>
+<div data-ekta-ocr-only>
+  <div class="ekta-ocr-heading"><span class="ekta-ocr-step">2</span> Original Document Preview</div>
+  <div class="ekta-ocr-document-preview" id="ektaOCRDocumentPreview"><div class="ekta-ocr-preview-hint">Upload a PDF or image to preview it here. Select a result to inspect its source.</div></div>
+  <div class="ekta-ocr-preview-hint">Review the original scan before saving. The current OCR engine remains unchanged.</div>
+</div>
+</div><div class="ekta-ocr-right">
+<div class="ekta-ocr-heading" data-ekta-ocr-only><span class="ekta-ocr-step">3</span> OCR Results — Review & Edit <span id="ektaOCRCount" style="margin-left:auto;font-size:11px;color:#087d4d"></span></div>
             <!-- PREVIEW -->
             <div
                 id="fleetAIPreview"
@@ -708,6 +732,7 @@
             ></div>
 
 
+</div><div class="ekta-ocr-footer">
             <!-- FOOTER -->
             <div class="flex justify-end gap-2 pt-2">
 
@@ -732,11 +757,78 @@
             </div>
 
         </div>
+        </div>
 
     </div>
 
 </div>
 
+
+
+<style id="ekta-ocr-side-by-side-layout">
+/* Scoped to document OCR only: truck import and other fleet screens are unchanged. */
+#fleetAIModal.ekta-ocr-review-mode{padding:18px!important;align-items:center!important;justify-content:center!important;overflow:hidden}
+#fleetAIModal.ekta-ocr-review-mode > div{width:min(1480px,calc(100vw - 36px))!important;max-width:none!important;height:min(850px,calc(100dvh - 36px))!important;max-height:calc(100dvh - 36px)!important;display:flex!important;flex-direction:column!important;border-radius:15px!important}
+#fleetAIModal.ekta-ocr-review-mode > div > .h-10{height:52px!important;min-height:52px!important;padding:0 20px!important}
+#fleetAIModal.ekta-ocr-review-mode #fleetAITitle{font-size:15px!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-workspace{display:grid!important;grid-template-columns:minmax(0,42%) minmax(0,58%)!important;grid-template-rows:minmax(0,1fr) auto!important;gap:0!important;padding:0!important;min-height:0!important;flex:1!important;overflow:hidden!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-left,#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-right{min-width:0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:17px 19px!important;align-content:start}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-left{border-right:1px solid #dfe6f0;background:#fff}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-right{background:#f8fafc}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-heading{display:flex;align-items:center;gap:9px;font-weight:800;font-size:13px;color:#1e304b;margin:0 0 13px}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-step{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:#5146e9;color:#fff;font-size:12px;flex:none}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIDocTypeBox,#fleetAIModal.ekta-ocr-review-mode #fleetOCRModeBox{margin-bottom:13px}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIDocTypeBox select,#fleetAIModal.ekta-ocr-review-mode #fleetOCRMode{width:100%;min-height:40px;font-size:12px}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-file-list{margin:10px 0 17px;color:#44556d;font-size:11px;overflow-wrap:anywhere}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-document-preview{height:clamp(220px,37vh,400px);width:100%;overflow:auto;border:1px solid #cbd7e6;border-radius:9px;background:#f1f5f9;display:flex;align-items:stretch;justify-content:center}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-document-preview iframe{width:100%!important;height:100%!important;min-height:100%!important;border:0!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-document-preview img{max-width:100%;height:auto;object-fit:contain}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-hint{padding:10px;font-size:11px;color:#64748b}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIPreview{display:block!important;background:#fff!important;border:1px solid #dbe4f0!important;padding:10px!important;margin:0!important;min-width:0}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIPreview.hidden{display:none!important}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIPreviewContent{width:100%;overflow-x:auto;max-height:calc(100dvh - 245px);overflow-y:auto}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIPreviewContent table{min-width:650px;width:100%;border-collapse:collapse}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIPreviewContent th,#fleetAIModal.ekta-ocr-review-mode #fleetAIPreviewContent td{padding:8px!important;border-bottom:1px solid #e6ebf3;vertical-align:middle}
+#fleetAIModal.ekta-ocr-review-mode #fleetAIPreviewContent input{min-width:115px;max-width:190px;border:1px solid #d4deeb;border-radius:6px;padding:7px;font-size:12px}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-footer{grid-column:1/-1;border-top:1px solid #dce5ef;background:#fff;padding:10px 19px;min-height:60px}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-footer > div{padding:0!important}
+#fleetAIModal:not(.ekta-ocr-review-mode) [data-ekta-ocr-only]{display:none!important}
+#fleetAIModal:not(.ekta-ocr-review-mode) .ekta-ocr-workspace{display:block!important}
+#fleetAIModal:not(.ekta-ocr-review-mode) .ekta-ocr-left,#fleetAIModal:not(.ekta-ocr-review-mode) .ekta-ocr-right{display:contents}
+@media(max-width:800px){
+#fleetAIModal.ekta-ocr-review-mode{padding:8px!important}
+#fleetAIModal.ekta-ocr-review-mode > div{width:calc(100vw - 16px)!important;height:calc(100dvh - 16px)!important;max-height:none!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-workspace{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr) auto!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-left{border-right:0;border-bottom:1px solid #dfe6f0}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-footer{grid-column:1}
+}
+
+/* Navigation reliability: prevent closed OCR modal from leaking its Close button. */
+#fleetAIModal.hidden, #fleetAIModal[hidden],
+#fleetDocumentModal.hidden, #fleetMediaModal.hidden {display:none !important;}
+#fleetModule #fleetSectionDocuments #fleetDocsFixedOCRButton {
+  position:absolute;right:10px;top:9px;z-index:3;pointer-events:auto;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+  padding:9px 12px;border:0;border-radius:9px;background:#4f46e5;
+  color:white;font-size:11px;font-weight:800;box-shadow:0 2px 7px #0f172a20;
+}
+#fleetModule #fleetSectionDocuments #fleetDocsFixedOCRButton:hover {background:#4338ca;}
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-header {height:58px;}
+@media(max-width:720px) {
+ #fleetModule #fleetSectionDocuments #fleetDocsFixedOCRButton {padding:9px;font-size:10px;}
+}
+</style>
+<style id="ekta-ocr-preview-fit-fix">
+/* Only the original OCR preview: preserve the two-column workspace and results. */
+#fleetAIModal.ekta-ocr-review-mode #ektaOCRDocumentPreview{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:stretch!important;overflow:hidden!important;height:clamp(280px,46vh,510px)!important;min-width:0!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-tools{flex:none;display:flex;gap:6px;align-items:center;min-height:38px;padding:5px 8px;background:#fff;border-bottom:1px solid #dce5ef;font-size:11px}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-tools span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#40516b}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-tools button{flex:none;border:1px solid #d3deec;background:#f7faff;color:#253d60;padding:5px 8px;border-radius:6px;cursor:pointer;font-weight:700}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-tools b{min-width:34px;text-align:right;font-size:10px}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-viewport{flex:1;min-height:0;width:100%;overflow:auto!important;display:block!important;text-align:center;background:#eef2f7}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-viewport img{display:block!important;width:100%;max-width:none!important;height:auto!important;min-height:0!important;object-fit:contain!important;margin:0 auto!important}
+#fleetAIModal.ekta-ocr-review-mode .ekta-ocr-preview-viewport iframe{display:block;width:100%!important;height:100%!important;min-height:0!important;border:0!important}
+</style>
 
 <!-- =============================================================
      EXCEL PREVIEW MODAL
@@ -2736,8 +2828,162 @@ async function deleteTruck(id) {
             body.appendChild(row);
         });
         setupDocumentTableKeyboard();
+        syncFleetDocumentsTopScrollbar();
     }
 
+    // Top scrollbar avoids scrolling down through the entire fleet to reach RC.
+    function syncFleetDocumentsTopScrollbar() {
+        const top = qs('fleetDocsTopScroll');
+        const track = qs('fleetDocsTopScrollTrack');
+        const bottom = qs('fleetDocsTableScroll');
+        const floating = qs('fleetDocsFloatingScroll');
+        const floatingTrack = qs('fleetDocsFloatingScrollTrack');
+        const section = qs('fleetSectionDocuments');
+        const floatingHeader = qs('fleetDocsFloatingHeader');
+        const headerInner = qs('fleetDocsFloatingHeaderInner');
+        const headerPinned = qs('fleetDocsFloatingHeaderPinned');
+        if (!top || !track || !bottom || !floating || !floatingTrack || !section) return;
+        // Keep one authoritative scroll position during a native mouse-thumb drag.
+        // The previous update() forced the table's older scrollLeft back into the
+        // dragged bar, making the thumb jump all the way back unexpectedly.
+        let draggingSource = null;
+        let syncing = false;
+        const syncFrom = (source) => {
+            if (syncing || (draggingSource && source !== draggingSource)) return;
+            syncing = true;
+            try {
+                const sourceRange = Math.max(0, source.scrollWidth - source.clientWidth);
+                const fraction = sourceRange ? source.scrollLeft / sourceRange : 0;
+                for (const el of [top, bottom, floating]) {
+                    if (el === source) continue;
+                    const targetRange = Math.max(0, el.scrollWidth - el.clientWidth);
+                    const targetX = Math.max(0, Math.min(targetRange, fraction * targetRange));
+                    if (Math.abs(el.scrollLeft - targetX) > 0.5) el.scrollLeft = targetX;
+                }
+                if (headerInner && floatingHeader?.classList.contains('fleet-doc-header-visible'))
+                    headerInner.style.transform = `translateX(${-bottom.scrollLeft}px)`;
+            } finally { syncing = false; }
+        };
+        const update = () => {
+            const width = bottom.scrollWidth;
+            track.style.width = width+'px';
+            floatingTrack.style.width = width+'px';
+            const hasOverflow = width > bottom.clientWidth+2;
+            top.style.display = hasOverflow?'block':'none';
+            const sectionRect=section.getBoundingClientRect();
+            const topRect=top.getBoundingClientRect();
+            const tableRect=bottom.getBoundingClientRect();
+            const visible=hasOverflow && !section.classList.contains('hidden') &&
+                sectionRect.bottom>85 && sectionRect.top<window.innerHeight-30 &&
+                topRect.bottom<85 && tableRect.bottom>window.innerHeight-32;
+            floating.classList.toggle('fleet-doc-floating-visible',visible);
+            if(visible){
+                const rect=bottom.getBoundingClientRect();
+                floating.style.left=Math.max(8,rect.left)+'px';
+                floating.style.width=Math.min(rect.width,window.innerWidth-Math.max(8,rect.left)-8)+'px';
+            }
+            // Fixed, scroll-synchronized header stays readable while moving down the truck list.
+            if (floatingHeader && headerInner && headerPinned) {
+                const thead = bottom.querySelector('thead');
+                const headers = thead ? [...thead.querySelectorAll('th')] : [];
+                const tableBounds = bottom.getBoundingClientRect();
+                const actualHeaderBounds = thead?.getBoundingClientRect();
+                const appHeader = document.querySelector('#fleetModule header, #ownerHeader, .owner-header');
+                const appBottom = appHeader?.getBoundingClientRect()?.bottom;
+                const fixedTop = (appBottom > 0 && appBottom < 160) ? appBottom : 94;
+                const showHeader = headers.length > 2 && !section.classList.contains('hidden') &&
+                    actualHeaderBounds && actualHeaderBounds.bottom < fixedTop &&
+                    tableBounds.bottom > fixedTop + 60 && tableBounds.top < window.innerHeight;
+                floatingHeader.classList.toggle('fleet-doc-header-visible', !!showHeader);
+                if (showHeader) {
+                    floatingHeader.style.top = fixedTop + 'px';
+                    floatingHeader.style.left = tableBounds.left + 'px';
+                    floatingHeader.style.width = tableBounds.width + 'px';
+                    const widths = headers.map(h => h.getBoundingClientRect().width);
+                    const signature = widths.map(Math.round).join(',') + ':' + headers.map(h=>h.textContent.trim()).join('|');
+                    if (headerInner.dataset.signature !== signature) {
+                        headerInner.dataset.signature = signature;
+                        headerInner.innerHTML = '';
+                        headerPinned.innerHTML = '';
+                        headers.forEach((h,i) => {
+                            const el = document.createElement('div');
+                            el.className = 'fleet-doc-fh-cell';
+                            el.style.width = widths[i]+'px';
+                            el.style.minWidth = widths[i]+'px';
+                            el.textContent = h.textContent.trim();
+                            headerInner.appendChild(el);
+                            if (i < 2) {
+                                const pin=el.cloneNode(true);
+                                pin.classList.add('fleet-doc-fh-pinned-cell');
+                                headerPinned.appendChild(pin);
+                            }
+                        });
+                    }
+                    headerInner.style.width = bottom.scrollWidth + 'px';
+                    headerInner.style.transform = `translateX(${-bottom.scrollLeft}px)`;
+                }
+            }
+            syncFrom(draggingSource || bottom);
+        };
+        if (top.dataset.linked !== '1') {
+            top.dataset.linked='1';
+            // Native scrollbar thumbs retain ownership until the mouse is released.
+            // Do not let ResizeObserver or scroll events from another bar reset it.
+            [top, bottom, floating].forEach(el => {
+                el.addEventListener('pointerdown', e => {
+                    if (e.pointerType === 'mouse' || e.pointerType === 'pen') draggingSource = el;
+                }, {passive:true});
+            });
+            const endThumbDrag = () => {
+                if (!draggingSource) return;
+                const source = draggingSource;
+                syncFrom(source);
+                draggingSource = null;
+            };
+            window.addEventListener('pointerup', endThumbDrag, {passive:true});
+            window.addEventListener('pointercancel', endThumbDrag, {passive:true});
+            window.addEventListener('blur', endThumbDrag);
+
+            top.addEventListener('scroll',()=>syncFrom(top),{passive:true});
+            bottom.addEventListener('scroll',()=>syncFrom(bottom),{passive:true});
+            floating.addEventListener('scroll',()=>syncFrom(floating),{passive:true});
+            // Shift + mouse wheel or touchpad horizontal gesture over headings.
+            if (floatingHeader) floatingHeader.addEventListener('wheel', (e) => {
+                if (e.target.closest('#fleetDocsFixedOCRButton')) return;
+                const dx = Math.abs(e.deltaX)>Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+                if (!dx) return;
+                e.preventDefault();
+                bottom.scrollLeft += dx;
+                syncFrom(bottom);
+            }, {passive:false});
+            // Leave native scrollbar thumb dragging to the browser. Custom pointer
+            // capture here prevented reliable mouse movement of the scrollbar.
+            // Ordinary mouse wheels over the floating bar also move columns.
+            floating.addEventListener('wheel', e => {
+                const amount = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+                if (!amount) return;
+                e.preventDefault();
+                bottom.scrollLeft += amount;
+                syncFrom(bottom);
+            }, {passive:false});
+            top.addEventListener('wheel', e => {
+                const amount = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+                if (!amount) return;
+                e.preventDefault();
+                bottom.scrollLeft += amount;
+                syncFrom(bottom);
+            }, {passive:false});
+            window.addEventListener('scroll',update,{passive:true,capture:true});
+            window.addEventListener('resize',update,{passive:true});
+            if(typeof ResizeObserver!=='undefined'){
+                const ro=new ResizeObserver(update);
+                ro.observe(bottom);
+                const table=bottom.querySelector('table');
+                if(table)ro.observe(table);
+            }
+        }
+        requestAnimationFrame(update);
+    }
 
     function setupDocumentTableKeyboard() {
         const body = qs("fleetDocumentsBody");
@@ -4708,6 +4954,12 @@ async function downloadDocument(truckId, docKey) {
             qs("fleetAIFileInput");
 
 
+        modal.classList.toggle('ekta-ocr-review-mode', currentAIMode === 'document');
+        if (currentAIMode === 'document') {
+            const filesEl=qs('ektaOCRFiles');if(filesEl) filesEl.textContent='No files selected yet';
+            const docPreview=qs('ektaOCRDocumentPreview');if(docPreview) docPreview.innerHTML='<div class="ekta-ocr-preview-hint">Upload a PDF or image to preview it here.</div>';
+            const count=qs('ektaOCRCount');if(count)count.textContent='';
+        }
         if (currentAIMode === "truck") {
 
             title.innerHTML = `
@@ -4729,6 +4981,7 @@ async function downloadDocument(truckId, docKey) {
 
 
             docBox.classList.add("hidden");
+            qs("fleetOCRModeBox")?.classList.add("hidden");
 
 
             input.accept =
@@ -4738,7 +4991,7 @@ async function downloadDocument(truckId, docKey) {
 
             title.innerHTML = `
                 <i class="fa-solid fa-file-shield text-blue-300 mr-2"></i>
-                OCR Smart Document Upload
+                OCR Smart Document Upload & Review
             `;
 
 
@@ -4755,6 +5008,8 @@ async function downloadDocument(truckId, docKey) {
 
 
             docBox.classList.remove("hidden");
+            qs("fleetOCRModeBox")?.classList.remove("hidden");
+            updateOCRMode();
 
 
             input.accept =
@@ -4824,6 +5079,7 @@ async function downloadDocument(truckId, docKey) {
 
 
         currentAIResult = null;
+        if(typeof ektaOCRPreviewUrl !== 'undefined' && ektaOCRPreviewUrl){URL.revokeObjectURL(ektaOCRPreviewUrl);ektaOCRPreviewUrl=null;}
 
 
         if (
@@ -6127,44 +6383,307 @@ async function downloadDocument(truckId, docKey) {
         const confident = top && top.score >= 65 && (!candidates[1] || top.date === candidates[1].date || top.score-candidates[1].score >= 12);
         return {truckNo, expiry: confident ? top.date : ''};
     }
+    // Read the registration-number zone at high resolution before whole-card OCR.
+    // RC sheet layout: number is near the upper-left corner of each card.
+    async function readRCNumberFocused(file) {
+        const bitmap = await createImageBitmap(file);
+        try {
+            const crop = document.createElement('canvas');
+            const ctx = crop.getContext('2d', {willReadFrequently:true});
+            const x = Math.round(bitmap.width * 0.015);
+            const y = Math.round(bitmap.height * 0.005);
+            const w = Math.round(bitmap.width * 0.68);
+            const h = Math.round(bitmap.height * 0.38);
+            const factor = Math.max(2, Math.min(4, Math.ceil(1600 / Math.max(w, 1))));
+            crop.width = w * factor;
+            crop.height = h * factor;
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(bitmap,x,y,w,h,0,0,crop.width,crop.height);
+            const first = await runImageOCR(crop);
+            const pixels = ctx.getImageData(0,0,crop.width,crop.height);
+            const d = pixels.data;
+            for(let i=0;i<d.length;i+=4) {
+                const gray = Math.round(.299*d[i]+.587*d[i+1]+.114*d[i+2]);
+                const v = gray > 165 ? 255 : 0;
+                d[i]=d[i+1]=d[i+2]=v;
+            }
+            ctx.putImageData(pixels,0,0);
+            const second = await runImageOCR(crop);
+            crop.width=crop.height=0;
+            return first+'\n'+second;
+        } finally { bitmap.close(); }
+    }
+    function findRCNumberCandidates(text) {
+        const upper=String(text||'').toUpperCase();
+        // Prefer explicit RC registration labels. Do not interpret chassis/engine numbers as registrations.
+        const lines=upper.split(/\n|\|/).map(v=>v.trim()).filter(Boolean);
+        const sources=[...lines.filter(v=>/REG(?:N|ISTRATION)?[.\s]*(?:NO|NUMBER)?|VEHICLE\s*(?:NO|NUMBER)/.test(v)),...lines];
+        const candidates=[];
+        for(const line of sources) {
+            const compact=line.replace(/[^A-Z0-9]/g,'');
+            for(const fleetTruck of fleetData) {
+                const number=normalizeTruckNumber(fleetTruck.truckNo);
+                if(number.length<8 || number.length>12) continue;
+                for(let i=0;i+number.length<=compact.length;i++){
+                    const piece=compact.slice(i,i+number.length);
+                    let errors=0;
+                    for(let j=0;j<number.length;j++){
+                        if(piece[j]===number[j]) continue;
+                        if(!['8B','B8','0O','O0','1I','I1','5S','S5','2Z','Z2'].includes(piece[j]+number[j])) {errors=99;break;}
+                        errors++;
+                    }
+                    if(errors<=2) candidates.push({number:fleetTruck.truckNo,errors});
+                }
+            }
+        }
+        const best=new Map();
+        for(const c of candidates) best.set(c.number,Math.min(best.get(c.number)??99,c.errors));
+        const ranked=[...best].sort((a,b)=>a[1]-b[1]);
+        // Never guess when two trucks are equally plausible.
+        return ranked.length && (!ranked[1] || ranked[0][1]<ranked[1][1]) ? ranked[0][0] : '';
+    }
+    function updateOCRMode() {
+        const bulk = qs('fleetOCRMode')?.value === 'bulk';
+        const help = qs('fleetOCRModeHelp');
+        if (help) help.textContent = bulk
+            ? 'For scanned sheets arranged in 2 columns × 5 rows (like the sample RC PDF). Review every result before saving.'
+            : 'One document per PDF/image file. You may select multiple separate files.';
+    }
+    function smartFleetMatch(reading) {
+        const raw = normalizeTruckNumber(reading);
+        if (!raw) return '';
+        const candidates = fleetData.filter(t => {
+            const ref = normalizeTruckNumber(t.truckNo);
+            if (ref.length !== raw.length) return false;
+            let changes = 0;
+            for (let i = 0; i < ref.length; i++) {
+                if (ref[i] === raw[i]) continue;
+                const pair = ref[i] + raw[i];
+                if (!['B8','8B','O0','0O','I1','1I','S5','5S','Z2','2Z'].includes(pair)) return false;
+                changes++;
+            }
+            return changes <= 2;
+        });
+        return candidates.length === 1 ? candidates[0].truckNo : '';
+    }
+    // Detect the actual occupied RC-sheet area, rather than dividing the full PDF
+    // page into five equal slices (which cuts cards whenever a scanner leaves margins).
+    function ektaDetectRCCardBands(canvas) {
+        const w=canvas.width,h=canvas.height;
+        const scale=Math.min(1,900/Math.max(w,h));
+        const sample=document.createElement('canvas');
+        sample.width=Math.max(1,Math.round(w*scale));
+        sample.height=Math.max(1,Math.round(h*scale));
+        const ctx=sample.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(canvas,0,0,sample.width,sample.height);
+        const sw=sample.width,sh=sample.height;
+        const data=ctx.getImageData(0,0,sw,sh).data;
+        const rows=new Float32Array(sh),cols=new Float32Array(sw);
+        // Count dark pixels, ignoring isolated scan noise near the sheet edges.
+        for(let y=0;y<sh;y++) for(let x=0;x<sw;x++) {
+            const i=(y*sw+x)*4;
+            const gray=(data[i]*.299+data[i+1]*.587+data[i+2]*.114);
+            if(gray<190) {rows[y]++;cols[x]++;}
+        }
+        const activeRows=[];
+        for(let y=0;y<sh;y++) if(rows[y]>sw*.025) activeRows.push(y);
+        const activeCols=[];
+        for(let x=0;x<sw;x++) if(cols[x]>sh*.025) activeCols.push(x);
+        if(activeRows.length<sh*.3 || activeCols.length<sw*.35) {
+            sample.width=sample.height=0;
+            throw new Error('RC card boundaries could not be detected. Please use Single upload for this scan.');
+        }
+        const top=Math.max(0,activeRows[0]-3);
+        const bottom=Math.min(sh,activeRows[activeRows.length-1]+4);
+        const left=Math.max(0,activeCols[0]-3);
+        const right=Math.min(sw,activeCols[activeCols.length-1]+4);
+        const mid=(left+right)/2;
+        // A scanned RC sheet has 5 rows; use the detected CONTENT extent, not page height.
+        // Look for a low-ink valley close to each expected card boundary.
+        const cuts=[top];
+        const step=(bottom-top)/5;
+        for(let n=1;n<5;n++) {
+            const target=top+n*step;
+            const radius=Math.max(3,Math.round(step*.12));
+            let best=Math.round(target),score=Infinity;
+            for(let y=Math.max(cuts[n-1]+Math.round(step*.65),Math.round(target-radius));y<=Math.min(bottom-1,Math.round(target+radius));y++) {
+                const density=(rows[Math.max(0,y-1)]+rows[y]+rows[Math.min(sh-1,y+1)])/3;
+                const value=density+Math.abs(y-target)*sw*.003;
+                if(value<score){score=value;best=y;}
+            }
+            cuts.push(best);
+        }
+        cuts.push(bottom);
+        // Scan each column independently: cards can be shifted left/right on a scan.
+        const split=Math.round(mid);
+        const bounds=[[left,split],[split,right]];
+        sample.width=sample.height=0;
+        return {cuts:cuts.map(v=>Math.round(v/scale)), bounds:bounds.map(b=>b.map(v=>Math.round(v/scale)))};
+    }
+    async function cropBulkRCPdf(file) {
+        await loadOCRLibrary('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', () => !!window.pdfjsLib);
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const doc=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+        const results=[];
+        for(let p=1;p<=doc.numPages;p++) {
+            const page=await doc.getPage(p);
+            const viewport=page.getViewport({scale:2.5});
+            const canvas=document.createElement('canvas');
+            canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+            await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+            const {cuts,bounds}=ektaDetectRCCardBands(canvas);
+            for(let r=0;r<5;r++)for(let c=0;c<2;c++) {
+                const x=Math.max(0,bounds[c][0]);
+                const y=Math.max(0,cuts[r]);
+                const width=Math.min(canvas.width-x,Math.max(1,bounds[c][1]-x));
+                const height=Math.min(canvas.height-y,Math.max(1,cuts[r+1]-y));
+                const cut=document.createElement('canvas');
+                cut.width=width;cut.height=height;
+                cut.getContext('2d').drawImage(canvas,x,y,width,height,0,0,width,height);
+                const blob=await new Promise(resolve=>cut.toBlob(resolve,'image/png'));
+                if(blob)results.push({file:new File([blob],`RC_Page_${p}_Row_${r+1}_${c?'Right':'Left'}.png`,{type:'image/png'}),page:p,row:r+1,column:c+1});
+                cut.width=cut.height=0;
+            }
+            canvas.width=canvas.height=0;
+        }
+        return results;
+    }
     async function processOCRDocuments(event) {
         if (ocrBusy) return;
         const files=Array.from(event.target.files || []);
         if (!files.length) return;
         const docKey=qs('fleetAIDocType')?.value;
         if (!DOC_TYPES.some(x=>x.key===docKey)) return showAIError('Choose document type first.');
+        const bulk=qs('fleetOCRMode')?.value==='bulk';
+        if (bulk && docKey!=='rc') return showAIError('Bulk sheet splitting currently supports RC only. Use Single for other documents.');
+        if (bulk && files.some(f=>!(/\\.pdf$/i.test(f.name)||f.type==='application/pdf'))) return showAIError('Bulk sheet upload requires PDF.');
         ocrBusy=true; ocrRows=[]; showAIError('');
+        const fileList=qs('ektaOCRFiles');if(fileList)fileList.textContent=files.map(f=>f.name).join(' • ');
+        if(files[0])ektaShowOCRSource({file:files[0]});
         const content=qs('fleetAIPreviewContent'), preview=qs('fleetAIPreview'), saveBtn=qs('fleetAISaveBtn');
         preview?.classList.remove('hidden');
         if (saveBtn) {saveBtn.disabled=true; saveBtn.classList.add('opacity-50');}
-        for (let i=0;i<files.length;i++) {
-            if(content) content.textContent=`Reading ${i+1} / ${files.length}: ${files[i].name}`;
+        let work=[];
+        try {
+            for (const file of files) {
+                if (bulk) {
+                    if(content) content.textContent=`Splitting ${file.name} into individual RC cards...`;
+                    work.push(...await cropBulkRCPdf(file));
+                } else work.push({file});
+            }
+        } catch(e) {ocrBusy=false; return showAIError('PDF splitting failed: '+(e.message||e));}
+        for (let i=0;i<work.length;i++) {
+            if(content) content.textContent=`Reading registration number ${i+1} / ${work.length}: ${work[i].file.name}`;
             try {
-                const raw=await ocrTextFromFile(files[i]);
-                const found=parseOCRFields(raw,docKey);
-                ocrRows.push({file:files[i],docKey,...found,error:''});
-            } catch(e) { ocrRows.push({file:files[i],docKey,truckNo:'',expiry:'',error:e.message}); }
+                const focused = bulk && docKey === 'rc' ? await readRCNumberFocused(work[i].file) : '';
+                const raw=await ocrTextFromFile(work[i].file);
+                const found=parseOCRFields(focused+'\n'+raw,docKey);
+                const matched=findRCNumberCandidates(focused) || findRCNumberCandidates(raw) || smartFleetMatch(found.truckNo);
+                ocrRows.push({...work[i],docKey,...found,truckNo:matched||found.truckNo,error:'',selected:true});
+            } catch(e) { ocrRows.push({...work[i],docKey,truckNo:'',expiry:'',error:e.message,selected:false}); }
         }
         ocrBusy=false;
         renderOCRPreview();
     }
+    let ektaOCRPreviewUrl = null;
+    let ektaOCRZoom = 1;
+    function ektaOCRSetZoom(mode) {
+        const stage=qs('ektaOCRDocumentPreview');
+        const img=stage?.querySelector('img[data-ekta-ocr-source-image]');
+        if (!img) return;
+        if(mode==='fit') ektaOCRZoom=1;
+        else ektaOCRZoom=Math.min(4,Math.max(.5,ektaOCRZoom+(mode==='in'?.25:-.25)));
+        img.style.width=ektaOCRZoom===1?'100%':(ektaOCRZoom*100)+'%';
+        img.style.maxWidth='none';
+        img.style.height='auto';
+        img.style.objectFit='contain';
+        const label=stage.querySelector('[data-ekta-ocr-zoom]');
+        if(label)label.textContent=Math.round(ektaOCRZoom*100)+'%';
+    }
+    function ektaShowOCRSource(row) {
+        const stage=qs('ektaOCRDocumentPreview');if(!stage||!row?.file)return;
+        if(ektaOCRPreviewUrl){URL.revokeObjectURL(ektaOCRPreviewUrl);ektaOCRPreviewUrl=null;}
+        ektaOCRPreviewUrl=URL.createObjectURL(row.file);
+        stage.replaceChildren();
+        const pdf=/\.pdf$/i.test(row.file.name)||row.file.type==='application/pdf';
+        const bar=document.createElement('div');bar.className='ekta-ocr-preview-tools';
+        const title=document.createElement('span');title.textContent=row.file.name;title.title=row.file.name;bar.appendChild(title);
+        if(!pdf){
+            [['−','out'],['Fit to Page','fit'],['+','in']].forEach(([label,mode])=>{
+                const btn=document.createElement('button');btn.type='button';btn.textContent=label;
+                btn.onclick=()=>ektaOCRSetZoom(mode);bar.appendChild(btn);
+            });
+            const zoom=document.createElement('b');zoom.dataset.ektaOcrZoom='';zoom.textContent='100%';bar.appendChild(zoom);
+        }
+        const viewport=document.createElement('div');viewport.className='ekta-ocr-preview-viewport';
+        const viewer=document.createElement(pdf?'iframe':'img');viewer.src=ektaOCRPreviewUrl;
+        viewer.title='Original document: '+row.file.name;
+        if(pdf){viewer.setAttribute('loading','lazy');}
+        else {viewer.dataset.ektaOcrSourceImage='';viewer.alt='Full original scanned document';}
+        viewport.appendChild(viewer);stage.append(bar,viewport);
+        ektaOCRZoom=1;
+    }
     function renderOCRPreview() {
         const content=qs('fleetAIPreviewContent'), saveBtn=qs('fleetAISaveBtn');
-        if(!content) return;
-        content.innerHTML='<div class="text-[10px] text-slate-500 mb-2">Verify truck number' + (ocrRows[0]?.docKey === 'rc' ? '. RC has no expiry date.' : ' and expiry date.') + ' Unmatched rows will not save.</div>' +
-            ocrRows.map((r,i)=>`<div class="border rounded-lg p-2 mb-2 space-y-1"><div class="font-bold break-all">${escapeHTML(r.file.name)}</div><label class="block">Truck Number <input data-ocr-row="${i}" data-ocr-field="truckNo" class="w-full border rounded p-1 uppercase" value="${escapeAttr(r.truckNo)}"></label>${r.docKey === 'rc' ? '<div class="text-[10px] text-slate-500">RC — No expiry date required</div>' : `<label class="block">Expiry Date <input type="date" data-ocr-row="${i}" data-ocr-field="expiry" class="w-full border rounded p-1" value="${escapeAttr(r.expiry)}"></label>`}<div class="text-[10px] ${findTruckByNumber(r.truckNo)?'text-green-700':'text-red-600'}">${escapeHTML(r.error || (findTruckByNumber(r.truckNo)?'Truck matched — verify before saving':'Truck not matched; correct number'))}</div></div>`).join('');
+        if(!content)return;
+        const count=qs('ektaOCRCount');if(count)count.textContent=ocrRows.length+' documents detected';
+        const rc=ocrRows[0]?.docKey==='rc';
+        content.innerHTML='<div style="background:#eaf8ef;color:#17643e;border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px">OCR completed. Check every vehicle number against the original document. Unmatched records will not save.</div>'+
+        '<div style="margin:8px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><label style="font-weight:700"><input type="checkbox" id="ektaOCRSelectAll"> Select eligible</label><button type="button" id="ektaOCRClearSelection" style="border:1px solid #d7e2ef;border-radius:6px;padding:5px 10px;background:#fff">Clear selection</button><span id="ektaOCRSelectionCount"></span></div><div style="overflow:auto;max-height:58vh"><table class="ekta-ocr-result-table"><thead><tr><th>Save</th><th>#</th><th>Source / Preview</th><th>Vehicle Number</th>'+(rc?'':'<th>Valid Upto</th>')+'<th>Status</th></tr></thead><tbody>'+
+        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error || findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.file.name)}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="date" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(r.expiry||'')}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
+        function updateOCRSelection(){
+            let eligible=0, selected=0, existing=0;
+            ocrRows.forEach((r,i)=>{
+                const t=findTruckByNumber(r.truckNo);
+                const blocked=!!t?.docs?.[r.docKey]?.file;
+                const allowed=!!t && !r.error && !blocked && (r.docKey==='rc'||/^\\d{4}-\\d{2}-\\d{2}$/.test(r.expiry));
+                const cb=content.querySelector(`[data-ekta-ocr-select="${i}"]`);
+                if(cb){cb.disabled=!allowed;if(!allowed)cb.checked=false;r.selected=cb.checked;}
+                if(allowed)eligible++;
+                if(allowed && r.selected)selected++;
+                if(blocked)existing++;
+                const status=content.querySelector(`[data-ekta-ocr-status="${i}"]`);
+                if(status){
+                    status.textContent=r.error|| (blocked?'Already exists — skipped':t?'Matched':'Needs review');
+                    status.className='ekta-ocr-status '+(allowed?'ok':'bad');
+                }
+            });
+            const label=qs('ektaOCRSelectionCount');
+            if(label)label.textContent=`${selected} selected / ${eligible} eligible`+(existing?` • ${existing} existing skipped`:'');
+            const all=qs('ektaOCRSelectAll');
+            if(all){all.checked=eligible>0&&selected===eligible;all.indeterminate=selected>0&&selected<eligible;}
+            if(saveBtn){saveBtn.disabled=selected===0;saveBtn.textContent=`Confirm & Save Selected (${selected})`;}
+        }
+        content.querySelectorAll('[data-ekta-ocr-select]').forEach(el=>el.addEventListener('change',()=>{ocrRows[Number(el.dataset.ektaOcrSelect)].selected=el.checked;updateOCRSelection();}));
+        qs('ektaOCRSelectAll')?.addEventListener('change',e=>{content.querySelectorAll('[data-ekta-ocr-select]:not(:disabled)').forEach(cb=>{cb.checked=e.target.checked;ocrRows[Number(cb.dataset.ektaOcrSelect)].selected=cb.checked;});updateOCRSelection();});
+        qs('ektaOCRClearSelection')?.addEventListener('click',()=>{content.querySelectorAll('[data-ekta-ocr-select]').forEach(cb=>cb.checked=false);updateOCRSelection();});
         content.querySelectorAll('[data-ocr-field]').forEach(el=>el.addEventListener('input',()=>{
-            const row=ocrRows[Number(el.dataset.ocrRow)];
-            row[el.dataset.ocrField]=el.value;
+            const row=ocrRows[Number(el.dataset.ocrRow)];row[el.dataset.ocrField]=el.value;
+            const status=content.querySelector(`[data-ekta-ocr-status="${el.dataset.ocrRow}"]`);
+            updateOCRSelection();
         }));
-        if(saveBtn){saveBtn.disabled=false;saveBtn.classList.remove('opacity-50','cursor-not-allowed');saveBtn.textContent='Confirm & Save Documents';}
+        content.querySelectorAll('[data-ekta-ocr-source]').forEach(el=>el.addEventListener('click',()=>{
+            const i=Number(el.dataset.ektaOcrSource);ektaShowOCRSource(ocrRows[i]);
+            content.querySelectorAll('[data-ekta-ocr-tr]').forEach(tr=>tr.classList.toggle('ekta-ocr-selected',Number(tr.dataset.ektaOcrTr)===i));
+        }));
+        if(ocrRows.length)ektaShowOCRSource(ocrRows[0]);
+        if(saveBtn){saveBtn.classList.remove('opacity-50','cursor-not-allowed');}
+        updateOCRSelection();
     }
     async function saveOCRDocuments() {
         if(ocrBusy || !ocrRows.length) return;
         if(!window.supabaseClient) return showAIError('Supabase connection required.');
-        const valid=ocrRows.filter(r=>findTruckByNumber(r.truckNo) && (r.docKey === 'rc' || /^\d{4}-\d{2}-\d{2}$/.test(r.expiry)) && !r.error);
+        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file && (r.docKey === 'rc' || /^\d{4}-\d{2}-\d{2}$/.test(r.expiry)) && !r.error);
+        if(new Set(valid.map(r=>normalizeTruckNumber(r.truckNo))).size!==valid.length) return showAIError('Duplicate vehicle numbers in preview. Correct duplicates before saving.');
         if(!valid.length) return showAIError('No eligible documents. Check truck number and (except RC) expiry date in preview.');
-        if(!confirm(`Save ${valid.length} document(s) to matching trucks? Existing document files will be replaced after successful save.`)) return;
+        const existing = [];
+        for (const row of valid) {
+            const t = findTruckByNumber(row.truckNo);
+            if (t?.docs?.[row.docKey]?.file) existing.push(t.truckNo);
+        }
+        if (existing.length) return showAIError('Some selected documents already exist: '+existing.join(', ')+'. Deselect them and save the others.');
+        if(!confirm(`Save ${valid.length} document(s) to matching trucks? Please verify each vehicle number before confirming.`)) return;
         ocrBusy=true;
         const btn=qs('fleetAISaveBtn'); if(btn) btn.disabled=true;
         let done=0; const errors=[];
@@ -6173,6 +6692,7 @@ async function downloadDocument(truckId, docKey) {
             let path='';
             try {
                 const previous=await getLatestDocumentRecord(truck.id,row.docKey);
+                if(previous?.file_url) {errors.push(`${row.truckNo}: document already exists, skipped`);continue;}
                 const safeName=row.file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
                 path=`${truck.id}/${row.docKey}/${crypto.randomUUID()}-${safeName}`;
                 const bucket=window.supabaseClient.storage.from('truck-documents');
@@ -6195,7 +6715,7 @@ async function downloadDocument(truckId, docKey) {
         }
         saveData();renderDocuments();renderAlerts();updateCardSummaries();
         ocrBusy=false; if(btn) btn.disabled=false;
-        if(errors.length) showAIError(`${done} saved. ${errors.length} failed: ${errors.join(' | ')}`);
+        if(errors.length) {showAIError(`${done} saved. ${errors.length} skipped/failed: ${errors.join(' | ')}`);ocrRows.forEach(r=>{if(findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file)r.selected=false;});renderOCRPreview();}
         else {alert(`${done} document(s) saved successfully.`);closeAI();}
     }
 
@@ -6260,6 +6780,7 @@ async function downloadDocument(truckId, docKey) {
         closeAI,
 
         processAIFile,
+        updateOCRMode,
 
         applyAIResult: function () {
             if (currentAIMode === "document") return saveOCRDocuments();
@@ -6716,6 +7237,50 @@ async function downloadDocument(truckId, docKey) {
 }
 
 
+
+/* Easy-access horizontal navigation directly above document table. */
+#fleetModule #fleetSectionDocuments .fleet-doc-top-scroll {
+  display:block; overflow-x:auto; overflow-y:hidden; height:20px;
+  background:#eef3fa; border-bottom:1px solid #d8e2f0;
+  scrollbar-width:auto; scrollbar-color:#64748b #e2e8f0;
+}
+#fleetModule #fleetSectionDocuments .fleet-doc-top-scroll > div {height:1px; pointer-events:none;}
+#fleetModule #fleetSectionDocuments .fleet-doc-top-scroll::-webkit-scrollbar {height:13px;}
+#fleetModule #fleetSectionDocuments .fleet-doc-top-scroll::-webkit-scrollbar-thumb {background:#64748b;border-radius:9px;border:2px solid #e2e8f0;}
+#fleetModule #fleetSectionDocuments .fleet-doc-top-scroll::-webkit-scrollbar-track {background:#e2e8f0;}
+/* Floating horizontal navigation remains in view while scrolling through trucks. */
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-scroll {
+ display:none; position:fixed; bottom:12px; height:22px; z-index:9990;
+ overflow-x:auto; overflow-y:hidden; background:#e5ecf5;
+ border:1px solid #cbd5e1; border-radius:8px;
+ box-shadow:0 4px 18px rgba(15,23,42,.23);
+ scrollbar-color:#64748b #e5ecf5;
+}
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-scroll.fleet-doc-floating-visible {display:block;}
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-scroll>div {height:1px;pointer-events:none;}
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-scroll::-webkit-scrollbar {height:15px;}
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-scroll::-webkit-scrollbar-thumb {background:#64748b;border:2px solid #e5ecf5;border-radius:10px;}
+#fleetDocumentModal.hidden, #fleetMediaModal.hidden {display:none !important;}
+/* Ekta Fleet Documents: keep vehicle identity visible while horizontally scrolling. */
+#fleetModule #fleetSectionDocuments .overflow-x-auto {position:relative; isolation:isolate; overscroll-behavior-x:contain;}
+#fleetModule #fleetSectionDocuments table {width:max-content; min-width:100%; border-collapse:separate; border-spacing:0;}
+#fleetModule #fleetSectionDocuments thead th:nth-child(1),
+#fleetModule #fleetSectionDocuments tbody tr.fleet-doc-row > td:nth-child(1) {
+ position:sticky !important; left:0 !important; z-index:12; width:58px; min-width:58px; max-width:58px;
+ background:#fff !important; box-shadow:none;
+}
+#fleetModule #fleetSectionDocuments thead th:nth-child(2),
+#fleetModule #fleetSectionDocuments tbody tr.fleet-doc-row > td:nth-child(2) {
+ position:sticky !important; left:58px !important; z-index:13; width:190px; min-width:190px; max-width:190px;
+ background:#fff !important; box-shadow:5px 0 10px -7px rgba(15,23,42,.32);
+}
+#fleetModule #fleetSectionDocuments thead th:nth-child(1),
+#fleetModule #fleetSectionDocuments thead th:nth-child(2) {background:#f7f9fc !important; z-index:18;}
+#fleetModule #fleetSectionDocuments tbody tr.fleet-doc-row:hover > td:nth-child(-n+2) {background:#f7faff !important;}
+#fleetModule #fleetSectionDocuments tbody tr.fleet-doc-row > td:nth-child(2) {padding-left:10px !important;padding-right:8px !important;}
+#fleetModule #fleetSectionDocuments .fleet-truck-pill {white-space:nowrap; max-width:100%; padding:10px 9px; font-size:11px; gap:6px;}
+#fleetModule #fleetSectionDocuments .fleet-doc-nav-cell {scroll-margin-left:260px;}
+
 /* Collapsible registration panel — presentation only, original save/edit functions intact. */
 #fleetSectionDetails .fleet-form-slide {
     max-height: 0;
@@ -6777,3 +7342,13 @@ async function downloadDocument(truckId, docKey) {
   else boot();
 })();
 </script>
+
+<style id="fleetDocHeaderFixStyle">
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-header {display:none;position:fixed;z-index:9980;height:58px;overflow:hidden;background:#f6f8fc;border:1px solid #dce5f1;box-shadow:0 3px 9px rgba(15,23,42,.13);pointer-events:none;}
+#fleetModule #fleetSectionDocuments .fleet-doc-floating-header.fleet-doc-header-visible {display:block;}
+#fleetModule #fleetSectionDocuments #fleetDocsFloatingHeaderInner {display:flex;height:100%;align-items:stretch;will-change:transform;}
+#fleetModule #fleetSectionDocuments .fleet-doc-fh-cell {flex-shrink:0;box-sizing:border-box;display:flex;align-items:center;padding:9px 12px;font-size:12px;font-weight:800;color:#53647b;text-transform:uppercase;white-space:normal;line-height:1.25;border-bottom:1px solid #e2e8f0;}
+#fleetModule #fleetSectionDocuments #fleetDocsFloatingHeaderPinned {position:absolute;left:0;top:0;height:100%;display:flex;background:#f6f8fc;box-shadow:5px 0 10px -7px rgba(15,23,42,.35);}
+#fleetModule #fleetSectionDocuments .fleet-doc-fh-pinned-cell {background:#f6f8fc;}
+#fleetDocumentModal.hidden, #fleetMediaModal.hidden {display:none !important;}
+</style>
