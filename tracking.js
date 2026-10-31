@@ -211,16 +211,30 @@ function lastUnloadingPoint(truckId){
  const last=completed[0];
  return last?clean(last.destination||last.to_location)||"—":"—";
 }
-// EMPTY-only available-from entry. Kept separate from historical trip destinations.
-// Browser-local draft until a dedicated Supabase field is approved/verified.
-function emptyFromKey(id){return "ekta_empty_from_"+String(id)}
+// EMPTY-only available-from entry: saved per truck in Supabase, never in historical trips.
 function emptyFromValue(id){
- try{const saved=clean(localStorage.getItem(emptyFromKey(id)));if(saved)return saved}catch(e){}
+ const saved=clean(truck(id)?.empty_from_location);
+ if(saved)return saved;
  const point=lastUnloadingPoint(id);return point==="—"?"":point;
 }
-function saveEmptyFrom(id,value){
- const v=clean(value);
- try{if(v)localStorage.setItem(emptyFromKey(id),v);else localStorage.removeItem(emptyFromKey(id))}catch(e){console.warn("EMPTY From draft could not be stored",e)}
+async function saveEmptyFrom(id,value){
+ const tr=truck(id),v=clean(value);
+ if(!tr)return alertUser("Truck not found. Location was not saved.");
+ if(activeTrip(id))return alertUser("Only EMPTY vehicles can change Available From.");
+ const previous=emptyFromValue(id);
+ const input=Array.from(document.querySelectorAll(".et-empty-from-input")).find(el=>el.getAttribute("data-truck-id")===String(id));
+ if(input){input.disabled=true;input.title="Saving to Supabase...";}
+ try{
+  const result=await S.from(T.trucks).update({empty_from_location:v||null}).eq("id",id).select("id,empty_from_location").single();
+  if(result.error)throw result.error;
+  if(!result.data||String(result.data.id)!==String(id))throw new Error("Truck update not confirmed");
+  tr.empty_from_location=result.data.empty_from_location;
+  if(input){input.value=emptyFromValue(id);input.title="Saved in Supabase";}
+ }catch(e){
+  console.error("[EKTA TRACKING] EMPTY From Supabase save failed:",e);
+  if(input){input.value=previous;input.title="Save failed";}
+  alertUser("EMPTY From was NOT saved in Supabase: "+(e.message||"Database error"));
+ }finally{if(input)input.disabled=false;}
 }
 function latestLocation(truckId){
  const tr=truck(truckId),vehicle=clean(tr?.truck_number).toUpperCase();
@@ -421,7 +435,7 @@ async function loadAll(){
  if(!dbOK()){renderError("Supabase client not available. Make sure db.js loads before Tracking.");return}
  try{
   const core=await Promise.all([
-   S.from(T.trucks).select("id,truck_number,vehicle_type,capacity_ton,owner_name,status"),
+   S.from(T.trucks).select("id,truck_number,vehicle_type,capacity_ton,owner_name,status,empty_from_location"),
    S.from(T.drivers).select("*"),
    S.from(T.assignments).select("id,truck_id,driver_id,assigned_from,assigned_until,status,notes,created_at"),
    S.from(T.parties).select("id,party_code,name,party_type,city,zone,status"),
@@ -429,6 +443,16 @@ async function loadAll(){
   ]);
   for(const r of core)if(r.error)throw r.error;
   trucks=core[0].data||[];drivers=core[1].data||[];assignments=core[2].data||[];parties=core[3].data||[];trips=core[4].data||[];
+   // Recheck EMPTY From directly in Supabase before painting the worksheet.
+   // Read-only reconciliation: no changes to historical trips or unloading data.
+   const emptyFromRead=await S.from(T.trucks).select("id,empty_from_location");
+   if(emptyFromRead.error){
+    console.warn("[EKTA TRACKING] EMPTY From recheck failed:",emptyFromRead.error.message);
+   }else{
+    const savedById=new Map((emptyFromRead.data||[]).map(x=>[String(x.id),x.empty_from_location]));
+    trucks.forEach(t=>{if(savedById.has(String(t.id)))t.empty_from_location=savedById.get(String(t.id));});
+   }
+
   const opt=await Promise.all([
    optionalTable(T.locations),
    optionalTable(T.gps),
@@ -1210,7 +1234,7 @@ function render(){
    <td class="et-trip-internal">${esc(r.trip?.trip_number||"—")}</td>
    <td class="et-party-cell">${esc(r.p?.name||"—")}${r.trip?`<div class="et-party-pending"><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.openPendingProgram('${esc(r.trip.id)}')">✎ Edit Pending</button></div>`:""}</td>
    <td><span class="et-party-kind ${r.p?(isBillingClient(r.p)?"billing":"transporter"):""}">${r.p?(isBillingClient(r.p)?"BILLING":"TRANSPORTER"):"—"}</span></td>
-   <td class="et-route-cell">${r.status==="EMPTY"?`<input class="et-empty-from-input" aria-label="Available From for ${esc(r.t.truck_number)}" value="${esc(emptyFromValue(r.t.id))}" placeholder="Enter From" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onchange="window.EktaTracking.saveEmptyFrom('${esc(r.t.id)}',this.value)" />`: `${esc(r.trip?.from_location||r.trip?.loading_point||"—")}${r.trip?.to_location||r.trip?.destination?'<span class="et-route-arrow" aria-hidden="true">→</span>':''}`}</td>
+   <td class="et-route-cell">${r.status==="EMPTY"?`<input class="et-empty-from-input" data-truck-id="${esc(r.t.id)}" aria-label="Available From for ${esc(r.t.truck_number)}" value="${esc(emptyFromValue(r.t.id))}" placeholder="Enter From" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onchange="window.EktaTracking.saveEmptyFrom('${esc(r.t.id)}',this.value)" />`: `${esc(r.trip?.from_location||r.trip?.loading_point||"—")}${r.trip?.to_location||r.trip?.destination?'<span class="et-route-arrow" aria-hidden="true">→</span>':''}`}</td>
    <td class="et-route-cell">${esc(r.trip?.to_location||r.trip?.destination||"—")}</td>
    <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}${r.trip&&["RUNNING","REPORTING"].includes(r.actualStage)?`<button type="button" class="et-breakdown-btn ${activeBreakdown(r.trip)?"et-breakdown-active":""}" title="${activeBreakdown(r.trip)?"Breakdown active — see Live Alerts":"Report Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startBreakdown('${esc(r.trip.id)}')">🔧</button>`:""}${badge(r.status,activeBreakdown(r.trip)?false:r.alert,!!activeBreakdown(r.trip))}${!r.d?`<button type="button" class="et-assign-driver-btn" onclick="event.stopPropagation();window.EktaTracking.openAssignDriver('${esc(r.t.id)}')">＋ Assign Driver</button>`:""}${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
    <td>
