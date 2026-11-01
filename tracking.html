@@ -869,6 +869,12 @@
 @media (prefers-reduced-motion:reduce){#trackingModule .et-truck-driver-avatar img{transition:none}}
 
 
+
+/* Multi-destination: blue add action aligned with Destination 1 label */
+.et-destination-label-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+.et-destination-label-row label{margin-bottom:0!important}
+.et-add-destination-btn{background:#2563eb!important;color:#fff!important;border:1px solid #2563eb!important;border-radius:8px;padding:7px 11px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.et-add-destination-btn:hover{background:#1d4ed8!important;border-color:#1d4ed8!important}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -1259,7 +1265,7 @@
    <div class="et-quick-route">
     <div><label for="etQuickFrom">From (optional)</label><input id="etQuickFrom" placeholder="Loading point" maxlength="160" autocomplete="off"></div>
     <div class="et-quick-arrow">→</div>
-    <div><label for="etQuickTo">To (optional)</label><input id="etQuickTo" placeholder="Destination" maxlength="160" autocomplete="off"></div>
+    <div><div class="et-destination-label-row"><label for="etQuickTo">Destination 1 (optional)</label><button type="button" class="et-add-destination-btn" onclick="window.EktaTracking.toggleSecondDestination('quick')">＋ Add Destination 2</button></div><input id="etQuickTo" placeholder="First / only destination" maxlength="160" autocomplete="off"><div id="etQuickSecondWrap" style="display:none;margin-top:8px"><label for="etQuickSecond">Destination 2 (Final)</label><input id="etQuickSecond" maxlength="160" autocomplete="off" placeholder="Final destination"><button type="button" class="btn" onclick="window.EktaTracking.toggleSecondDestination('quick')" style="margin-top:5px">Remove Destination 2</button></div></div>
    </div>
    <div class="et-quick-actions"><button type="button" onclick="window.EktaTracking.closeQuickProgram()">Cancel</button><button type="submit" class="save">Continue →</button></div>
   </form>
@@ -1336,9 +1342,9 @@
                 </div>
 
                 <div class="field">
-                    <label>Destination / To (optional)</label>
+                    <div class="et-destination-label-row"><label>Destination 1 / To (optional)</label><button type="button" class="et-add-destination-btn" onclick="window.EktaTracking.toggleSecondDestination('program')">＋ Add Destination 2</button></div>
                     <input id="etPTo" autocomplete="off"
-                           placeholder="e.g. PUNE">
+                           placeholder="First / only destination"><div id="etPSecondWrap" style="display:none;margin-top:7px"><label>Destination 2 (Final)</label><input id="etPSecond" autocomplete="off" placeholder="Final destination"><button type="button" class="btn" style="margin-top:5px" onclick="window.EktaTracking.toggleSecondDestination('program')">Remove Destination 2</button></div>
                 </div>
 
                 <div class="field" id="etProgramCategoryWrap" style="display:none"><label>Rate List Category (optional)</label><select id="etProgramCategory"><option value="">Select later</option></select><div id="etProgramVehicleHint" style="font-size:11px;color:#176a55;margin-top:5px"></div></div>

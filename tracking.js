@@ -1416,6 +1416,31 @@ function viewAllTracking(){
 }
 
 /* ========================= 8. PROGRAM ======================= */
+// Optional multi-stop destinations. Existing single-stop trips remain unchanged.
+function toggleSecondDestination(mode){
+ const wrap=$(mode==="quick"?"etQuickSecondWrap":"etPSecondWrap");
+ if(!wrap)return;
+ const opening=wrap.style.display==="none";
+ wrap.style.display=opening?"block":"none";
+ if(!opening){const field=$(mode==="quick"?"etQuickSecond":"etPSecond");if(field)field.value="";}
+}
+function secondDestination(mode){
+ const wrap=$(mode==="quick"?"etQuickSecondWrap":"etPSecondWrap");
+ return wrap?.style.display!=="none"?clean($(mode==="quick"?"etQuickSecond":"etPSecond")?.value):"";
+}
+async function saveTripStops(tripId,stops){
+ // No freight, POD or E-Way data is duplicated here. Existing LR/POD workflow stays intact.
+ const rows=stops.map((destination,i)=>({trip_id:tripId,stop_number:i+1,destination}));
+ const existing=await S.from("trip_destinations").select("id,stop_number").eq("trip_id",tripId);
+ if(existing.error)throw existing.error;
+ for(const row of rows){
+  const old=(existing.data||[]).find(x=>x.stop_number===row.stop_number);
+  const result=old?await S.from("trip_destinations").update({destination:row.destination}).eq("id",old.id):await S.from("trip_destinations").insert(row);
+  if(result.error)throw result.error;
+ }
+ // Do not delete stop rows automatically: they may already be linked to LR/POD.
+ if((existing.data||[]).some(x=>x.stop_number>rows.length))throw new Error("Extra existing stops were retained for safety. Review them before removing any destination.");
+}
 let quickProgramTruckId=null;
 let quickProgramPartyId=null;
 function searchQuickProgramParty(){
@@ -1474,14 +1499,15 @@ function openQuickProgram(id){
  $("etQuickParty").value="";
  $("etQuickPartySuggestions").classList.remove("show");
  $("etQuickProgramTruck").textContent=t.truck_number||"Truck";
- $("etQuickFrom").value=emptyFromValue(id);$("etQuickTo").value="";
+ $("etQuickFrom").value=emptyFromValue(id);$("etQuickTo").value="";$("etQuickSecond").value="";$("etQuickSecondWrap").style.display="none";
  $("etQuickProgramModal").classList.add("show");
  setTimeout(()=>$('etQuickParty')?.focus(),50);
 }
 function closeQuickProgram(){quickProgramTruckId=null;$("etQuickProgramModal")?.classList.remove("show")}
 function continueQuickProgram(e){
  e?.preventDefault();
- const id=quickProgramTruckId,from=clean($("etQuickFrom")?.value),to=clean($("etQuickTo")?.value);
+ const id=quickProgramTruckId,from=clean($("etQuickFrom")?.value),to=clean($("etQuickTo")?.value),second=secondDestination("quick");
+ if(second&&!to)return alertUser("Enter Destination 1 before Destination 2.");
  const chosenParty=quickProgramPartyId?party(quickProgramPartyId):null;
  if(!id)return false;
  closeQuickProgram();
@@ -1489,6 +1515,7 @@ function continueQuickProgram(e){
  openProgramForTruck(id);
  if(!$("etProgramModal")?.classList.contains("show"))return false;
  $("etPLoad").value=from;$("etPTo").value=to;
+ if(second){$("etPSecondWrap").style.display="block";$("etPSecond").value=second;}
  if(chosenParty){
   selectedParty=chosenParty;
   $("etPParty").value=`${chosenParty.party_code||""} — ${chosenParty.name||""}`;
@@ -1509,7 +1536,7 @@ function fillProgramLoadingPoint(truckId){
 }
 function openProgram(){setProgramRequestContext(null);resetProgram();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPTruck')?.focus(),50)}
 function openProgramForTruck(id){const t=truck(id);if(!t)return;if(activeTrip(id))return alertUser("This truck already has an active trip.");resetProgram();selectedTruck=t;$("etPTruck").value=t.truck_number||"";fillProgramLoadingPoint(t.id);syncFleetProgramCategory();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPParty')?.focus(),50)}
-function resetProgram(){programEditTripId=null;selectedTruck=null;selectedParty=null;$("etPTruck").value="";$("etPDate").value=today();$("etPParty").value="";$("etPPartyType").value="";$("etPLoad").value="";$("etPTo").value="";$("etPRevenue").value="";$("etPRemark").value="";["etProgramCategory","etProgramHaier","etProgramWeight"].forEach(id=>{if($(id))$(id).value=""});programRates=[];updateProgramPartyFields();syncFleetProgramCategory();$("etTruckSuggestions").classList.remove("show");$("etPartySuggestions").classList.remove("show")}
+function resetProgram(){programEditTripId=null;selectedTruck=null;selectedParty=null;$("etPTruck").value="";$("etPDate").value=today();$("etPParty").value="";$("etPPartyType").value="";$("etPLoad").value="";$("etPTo").value="";$("etPSecond").value="";$("etPSecondWrap").style.display="none";$("etPRevenue").value="";$("etPRemark").value="";["etProgramCategory","etProgramHaier","etProgramWeight"].forEach(id=>{if($(id))$(id).value=""});programRates=[];updateProgramPartyFields();syncFleetProgramCategory();$("etTruckSuggestions").classList.remove("show");$("etPartySuggestions").classList.remove("show")}
 let etProgramSaving=false;
 async function saveProgram(e){
  e.preventDefault();
@@ -1519,7 +1546,8 @@ async function saveProgram(e){
  const d=activeDriver(selectedTruck.id);
  if(!d&&!programEditTripId)console.warn("[EKTA] Saving Program with driver pending");
  // Party may be assigned later; the Program remains pending until completed.
- const lp=clean($("etPLoad").value),to=clean($("etPTo").value),pd=$("etPDate").value||today(),a=activeAssignment(selectedTruck.id);
+ const lp=clean($("etPLoad").value),firstTo=clean($("etPTo").value),secondTo=secondDestination("program"),to=secondTo||firstTo,pd=$("etPDate").value||today(),a=activeAssignment(selectedTruck.id);
+ if(secondTo&&!firstTo)return alertUser("Enter Destination 1 before Destination 2.");
  let revInput=clean($("etPRevenue").value);
  if(!revInput&&selectedParty&&isBillingClient(selectedParty)&&!isHaierBillingParty(selectedParty)){
   const rate=await findProgramRate(selectedParty,selectedTruck,lp,to,pd);
@@ -1554,6 +1582,11 @@ async function saveProgram(e){
    r=await S.from(T.trips).insert(payload).select().single();
   }
   if(r.error)throw r.error;
+  let destinationWarning="";
+  if(firstTo){
+   try{await saveTripStops(r.data.id,secondTo?[firstTo,secondTo]:[firstTo]);}
+   catch(stopError){console.error("[EKTA] Destination save incomplete",stopError);destinationWarning="\nWARNING: Trip saved, but destination records were not fully saved: "+stopError.message;}
+  }
   if(!programEditTripId){const tu=await S.from(T.trucks).update({status:"On Trip"}).eq("id",selectedTruck.id);
   if(tu.error)console.warn("[EKTA TRACKING] Truck PROGRAM status warning:",tu.error);}
 
@@ -1570,7 +1603,7 @@ async function saveProgram(e){
   closeModal("etProgramModal");
   clearTrackingSearchAfterSave();
   await loadAll();
-  alertUser(programEditTripId?"Program updated successfully.":`Program saved to Programming List${getNote(notes,"PROGRAM_DETAILS_PENDING")==="YES"?" — PENDING":""}.\nTrip: ${base.trip_number}${requestWarning}`);
+  alertUser(programEditTripId?"Program updated successfully.":`Program saved to Programming List${getNote(notes,"PROGRAM_DETAILS_PENDING")==="YES"?" — PENDING":""}.\nTrip: ${base.trip_number}${requestWarning}${destinationWarning}`);
  }catch(err){
   console.error("[EKTA TRACKING] Program save failed:",err);
   alertUser("Program save failed: "+(err.message||"Database error"));
@@ -3674,6 +3707,12 @@ function openPendingProgram(id){
  $("etPTruck").value=selectedTruck?.truck_number||"";$("etPDate").value=dateOnly(t.program_date)||today();
  $("etPParty").value=selectedParty?`${selectedParty.party_code||""} — ${selectedParty.name||""}`:"";
  $("etPPartyType").value=selectedParty?.party_type||"";$("etPLoad").value=t.from_location||t.loading_point||"";$("etPTo").value=t.to_location||t.destination||"";
+ // Load previously saved stops before allowing an edited Program to overwrite them.
+ S.from("trip_destinations").select("stop_number,destination").eq("trip_id",t.id).order("stop_number").then(({data,error})=>{
+  if(error){console.warn("Destination read unavailable",error);return;}
+  if(programEditTripId!==t.id)return;
+  if(data?.length){$("etPTo").value=data[0].destination||"";if(data[1]){$("etPSecondWrap").style.display="block";$("etPSecond").value=data[1].destination||"";}}
+ });
  $("etPRevenue").value=getNote(t.notes,"FREIGHT_ENTERED_AT_PROGRAM")==="NO"?"":(t.freight_amount??"");$("etPRemark").value=clean(t.notes).replace(/\[[^\]]+\]/g,"").trim();
  $("etProgramModal").classList.add("show");
  loadProgramPartyRates().then(()=>{if(programEditTripId!==t.id)return;$("etProgramHaier").value=getNote(t.notes,"HAIER_BILLING_ARRANGEMENT")==="PENDING"?"":getNote(t.notes,"HAIER_BILLING_ARRANGEMENT");$("etProgramWeight").value=getNote(t.notes,"TRANSPORTER_WEIGHT_TON")==="PENDING"?"":getNote(t.notes,"TRANSPORTER_WEIGHT_TON");const cat=getNote(t.notes,"PROGRAM_RATE_CATEGORY");if([...$("etProgramCategory").options].some(x=>x.value===cat))$("etProgramCategory").value=cat});
@@ -4333,7 +4372,7 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
