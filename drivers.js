@@ -83,6 +83,18 @@
         });
     };
 
+
+    // Date-time is stored in Supabase as timestamptz (UTC instant).
+    const localDateTime = (value) => {
+        const d = value ? new Date(value) : new Date();
+        if (Number.isNaN(d.getTime())) return "";
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    const localDay = value => String(value || localDateTime()).slice(0,10);
+    const toTimestamp = value => value ? new Date(value).toISOString() : null;
+    const isActive = value => String(value || "").toLowerCase() === "active";
+
     const statusBadge = function (status) {
         const normalized = String(status || "").toLowerCase();
 
@@ -655,7 +667,7 @@
         const result = await window.supabaseClient
             .from(ASSIGNMENT_TABLE)
             .select(
-                "id,truck_id,driver_id,assigned_from,assigned_until,status,notes,created_at"
+                "id,truck_id,driver_id,assigned_from,assigned_until,assigned_at,unassigned_at,status,notes,created_at"
             )
             .order("created_at", { ascending: false });
 
@@ -875,7 +887,34 @@
             status: status
         };
 
+        // Closing a driver's master status must also release the truck.
+        // Keep the assignment row for history; never delete it.
+        const oldDriver = editId ? findDriverById(editId) : null;
+        const needsRelease = !!editId && String(status).toLowerCase() === "inactive";
+        const activeLinks = needsRelease ? assignments.filter(a =>
+            String(a.driver_id) === String(editId) &&
+            String(a.status || "").toLowerCase() === "active"
+        ) : [];
+        if (activeLinks.length) {
+            const vehicleNames = activeLinks.map(a => getTruckNumber(a.truck_id)).join(", ");
+            if (!confirm(`Make this driver Inactive and release truck(s): ${vehicleNames}?\n\nThe assignment history will be retained.`)) return;
+        }
+
+        const closedLinks = [];
         try {
+            // Date-only field in the existing UI; use local date rather than UTC.
+            const now = new Date();
+            const releaseDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+            for (const link of activeLinks) {
+                const endDate = link.assigned_from && releaseDate < String(link.assigned_from).slice(0,10)
+                    ? String(link.assigned_from).slice(0,10) : releaseDate;
+                const closed = await window.supabaseClient.from(ASSIGNMENT_TABLE)
+                    .update({ status: "Inactive", assigned_until: endDate, unassigned_at: new Date().toISOString() })
+                    .eq("id", link.id).eq("status", "Active").select("id");
+                if (closed.error || !closed.data?.length) throw closed.error || new Error("Assignment was changed by another session. Refresh and retry.");
+                closedLinks.push(link);
+            }
+
             let result;
 
             if (editId) {
@@ -915,6 +954,16 @@
             await refresh();
 
         } catch (error) {
+            // Best-effort compensation if the driver update fails after closing links.
+            // If compensation fails, surface the issue rather than hiding a mismatch.
+            let restoreErrors = [];
+            for (const link of closedLinks.reverse()) {
+                const restored = await window.supabaseClient.from(ASSIGNMENT_TABLE)
+                    .update({status: link.status, assigned_until: link.assigned_until, unassigned_at: link.unassigned_at})
+                    .eq("id", link.id).eq("status", "Inactive");
+                if (restored.error) restoreErrors.push(restored.error.message);
+            }
+            if (restoreErrors.length) alert("Assignment rollback needs manual verification: " + restoreErrors.join("; "));
             console.error("[EKTA DRIVERS] Save driver error:", error);
 
             alert(
@@ -1266,7 +1315,7 @@ const displayStatus =
                 
 
             const truckNumber =
-                assignment
+                driverIsActive && assignment
                     ? getTruckNumber(assignment.truck_id)
                     : "-";
 
@@ -1856,14 +1905,30 @@ function closeTruckPickerOutside(event) {
             }
         }
 
+        const chosenDriver = findDriverById(driverId);
+        if (status === "Active" && (!chosenDriver || !isActive(chosenDriver.status))) {
+            alert("Inactive drivers cannot be assigned. Activate the driver first.");
+            return;
+        }
+        const previous = editId ? assignments.find(a => String(a.id) === String(editId)) : null;
+        const effectiveUntil = status === "Inactive" ? (assignedUntil || localDateTime()) : assignedUntil;
+        if (effectiveUntil && effectiveUntil < assignedFrom) {
+            alert("Unassignment date/time cannot be before assignment date/time.");
+            return;
+        }
         const payload = {
             truck_id: truckId,
             driver_id: driverId,
-            assigned_from: assignedFrom,
-            assigned_until: assignedUntil || null,
+            assigned_from: localDay(assignedFrom),
+            assigned_until: effectiveUntil ? localDay(effectiveUntil) : null,
+            assigned_at: toTimestamp(assignedFrom),
+            unassigned_at: effectiveUntil ? toTimestamp(effectiveUntil) : null,
             status: status,
             notes: notes || null
         };
+        // Preserve the original start instant when editing an old record solely to close it.
+        if (previous && !previous.assigned_at && assignedFrom === (previous.assigned_from + "T00:00")) delete payload.assigned_at;
+        if (previous && !previous.unassigned_at && effectiveUntil === (previous.assigned_until + "T00:00")) delete payload.unassigned_at;
 
         try {
 
@@ -1939,8 +2004,8 @@ function closeTruckPickerOutside(event) {
         $("assignmentDriver").value = assignment.driver_id;
         $("assignmentTruck").value = assignment.truck_id;
         syncTruckPickerFromValue();
-        $("assignedFrom").value = assignment.assigned_from || "";
-        $("assignedUntil").value = assignment.assigned_until || "";
+        $("assignedFrom").value = assignment.assigned_at ? localDateTime(assignment.assigned_at) : (assignment.assigned_from ? assignment.assigned_from + "T00:00" : localDateTime());
+        $("assignedUntil").value = assignment.unassigned_at ? localDateTime(assignment.unassigned_at) : (assignment.assigned_until ? assignment.assigned_until + "T00:00" : "");
         $("assignmentStatus").value = assignment.status || "Active";
         $("assignmentNotes").value = assignment.notes || "";
 
@@ -1955,60 +2020,22 @@ function closeTruckPickerOutside(event) {
     }
 
     async function deleteAssignment(id) {
-        const assignment =
-            assignments.find(function (item) {
-                return String(item.id) === String(id);
-            });
-
-        if (!assignment) {
-            alert("Assignment record not found.");
-            return;
-        }
-
-        const driverName =
-            getDriverName(assignment.driver_id);
-
-        const truckNumber =
-            getTruckNumber(assignment.truck_id);
-
-        if (
-            !confirm(
-                `Delete assignment?\n\nDriver: ${driverName}\nTruck: ${truckNumber}`
-            )
-        ) {
-            return;
-        }
-
+        const assignment = assignments.find(a => String(a.id) === String(id));
+        if (!assignment) return alert("Assignment not found.");
+        if (!isActive(assignment.status)) return alert("This assignment is already closed. Use Edit to correct its dates.");
+        if (!confirm(`Unassign ${getDriverName(assignment.driver_id)} from ${getTruckNumber(assignment.truck_id)}?\nThe history will be kept.`)) return;
+        const when = new Date();
+        const startTime = assignment.assigned_at ? new Date(assignment.assigned_at) : null;
+        if (startTime && when < startTime) return alert("Unassignment cannot precede assignment.");
+        const endDay = localDay(localDateTime(when));
+        const date = assignment.assigned_from && endDay < assignment.assigned_from ? assignment.assigned_from : endDay;
         try {
-
-            const result =
-                await window.supabaseClient
-                    .from(ASSIGNMENT_TABLE)
-                    .delete()
-                    .eq("id", assignment.id);
-
-            if (result.error) {
-                throw result.error;
-            }
-
-            alert("Assignment deleted successfully.");
-
+            const result = await window.supabaseClient.from(ASSIGNMENT_TABLE)
+                .update({status:"Inactive",assigned_until:date,unassigned_at:when.toISOString()})
+                .eq("id",id).eq("status","Active").select("id");
+            if (result.error || !result.data?.length) throw result.error || new Error("Assignment changed. Refresh and retry.");
             await refresh();
-
-            switchSection("assignment");
-
-        } catch (error) {
-
-            console.error(
-                "[EKTA DRIVERS] Delete assignment error:",
-                error
-            );
-
-            alert(
-                "Assignment could not be deleted from Supabase.\n\n" +
-                "Please check the browser console."
-            );
-        }
+        } catch (error) { console.error(error); alert("Unable to unassign. Please check console."); }
     }
 
     function resetAssignmentForm() {
@@ -2019,7 +2046,7 @@ function closeTruckPickerOutside(event) {
         }
 
         $("editAssignmentId").value = "";
-        $("assignedFrom").value = todayISO();
+        $("assignedFrom").value = localDateTime();
         $("assignmentStatus").value = "Active";
 
         const saveBtn = $("assignmentSaveBtn");
@@ -2072,11 +2099,11 @@ function closeTruckPickerOutside(event) {
                     </td>
 
                     <td class="py-2.5 px-3 font-mono">
-                        ${formatDate(assignment.assigned_from)}
+                        ${assignment.assigned_at ? formatDateTime(assignment.assigned_at) : formatDate(assignment.assigned_from)}
                     </td>
 
                     <td class="py-2.5 px-3 font-mono">
-                        ${formatDate(assignment.assigned_until)}
+                        ${assignment.unassigned_at ? formatDateTime(assignment.unassigned_at) : formatDate(assignment.assigned_until)}
                     </td>
 
                     <td class="py-2.5 px-3">
@@ -2102,7 +2129,7 @@ function closeTruckPickerOutside(event) {
                             type="button"
                             onclick="window.EktaDrivers.deleteAssignment('${esc(assignment.id)}')"
                             class="px-1.5 py-0.5 bg-red-50 text-red-600 rounded hover:bg-red-600 hover:text-white"
-                            title="Delete Assignment"
+                            title="Unassign Driver (keeps history)"
                         >
                             <i class="fa-solid fa-trash-can text-[9px]"></i>
                         </button>
@@ -2180,11 +2207,11 @@ function closeTruckPickerOutside(event) {
                         </td>
 
                         <td class="py-2.5 px-3 font-mono">
-                            ${formatDate(assignment.assigned_from)}
+                            ${assignment.assigned_at ? formatDateTime(assignment.assigned_at) : formatDate(assignment.assigned_from)}
                         </td>
 
                         <td class="py-2.5 px-3 font-mono">
-                            ${formatDate(assignment.assigned_until)}
+                            ${assignment.unassigned_at ? formatDateTime(assignment.unassigned_at) : formatDate(assignment.assigned_until)}
                         </td>
 
                         <td class="py-2.5 px-3">
