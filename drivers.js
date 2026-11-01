@@ -1261,19 +1261,25 @@ if(passBtn)passBtn.addEventListener("click", async function(){
         const statusFilter =
             $("driverStatusFilter")?.value || "";
 
-        const filtered = drivers.filter(function (driver) {
+        // Driver Master search: name, code, mobile, licence and CURRENT truck.
+        // Normalization allows searches like 922, 0179, HR-38-AH-0179.
+        const normalizeTruck = value => String(value || "")
+            .toUpperCase().replace(/[^A-Z0-9]/g, "");
+        const truckQuery = normalizeTruck(search);
 
+        const filtered = drivers.filter(function (driver) {
+            const driverIsActive = String(driver.status || "").toLowerCase() === "active";
+            const assignment = driverIsActive ? getActiveAssignmentForDriver(driver.id) : null;
+            const truckNumber = assignment ? getTruckNumber(assignment.truck_id) : "";
             const searchable = [
                 driver.driver_code,
                 driver.name,
                 driver.phone,
                 driver.license_number
-            ]
-                .join(" ")
-                .toLowerCase();
+            ].join(" ").toLowerCase();
 
-            const matchesSearch =
-                !search || searchable.includes(search);
+            const matchesSearch = !search || searchable.includes(search) ||
+                (!!truckQuery && normalizeTruck(truckNumber).includes(truckQuery));
 
             const matchesStatus =
                 !statusFilter ||
@@ -2064,17 +2070,27 @@ function closeTruckPickerOutside(event) {
 
         if (!body) return;
 
-        const current =
-            assignments.filter(function (assignment) {
-                return String(assignment.status || "").toLowerCase() === "active";
-            });
+        const search = String($("assignmentListSearch")?.value || "").trim().toLowerCase();
+        const statusFilter = String($("assignmentListStatus")?.value || "active").toLowerCase();
+        const current = assignments.filter(function (assignment) {
+            const status = String(assignment.status || "").toLowerCase();
+            if (statusFilter !== "all" && status !== statusFilter) return false;
+            if (!search) return true;
+            const driver = findDriverById(assignment.driver_id);
+            const truckNumber = getTruckNumber(assignment.truck_id);
+            const haystack = [driver?.name, driver?.driver_code, truckNumber]
+                .map(v => String(v || "").toLowerCase()).join(" ");
+            // Vehicle numbers may be entered with spaces, hyphens or mixed case.
+            const compact = value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            return haystack.includes(search) || compact(haystack).includes(compact(search));
+        });
 
         if (current.length === 0) {
             body.innerHTML = `
                 <tr>
                     <td colspan="8" class="py-8 text-center text-slate-400">
                         <i class="fa-solid fa-link-slash text-2xl mb-2"></i>
-                        <div class="font-bold">No active driver assignments.</div>
+                        <div class="font-bold">No matching driver assignments.</div>
                     </td>
                 </tr>
             `;
@@ -2695,6 +2711,7 @@ function closeTruckPickerOutside(event) {
         focusAssignmentForDriver: focusAssignmentForDriver,
 
         renderDriverTable: renderDriverTable,
+        renderAssignments: renderAssignments,
         renderHistory: renderHistory,
         reportSearchChanged: reportSearchChanged,
         reportSearchKey: reportSearchKey,
