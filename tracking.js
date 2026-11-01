@@ -405,11 +405,26 @@ function hasAlert(trip){const notes=clean(trip?.notes).replace(/\[TRACKING:BREAK
 function breakdownEvents(t){
  try{const raw=getNote(t?.notes,"BREAKDOWN_EVENTS");return raw?JSON.parse(decodeURIComponent(raw)):[]}catch(e){return []}
 }
+// For EMPTY trucks, use the latest completed trip's notes as the existing
+// persistent maintenance log. No trip lifecycle fields are modified.
+function breakdownRecordForTruck(truckId){
+ const current=activeTrip(truckId);
+ if(current)return current;
+ return trips.filter(t=>String(t.truck_id)===String(truckId)&&clean(t.trip_status).toLowerCase()==="completed")
+  .sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0))[0]||null;
+}
+function truckBreakdown(truckId){return activeBreakdown(breakdownRecordForTruck(truckId))}
 function activeBreakdown(t){return breakdownEvents(t).findLast?.(x=>!x.ended_at)||breakdownEvents(t).slice().reverse().find(x=>!x.ended_at)||null}
 function breakdownDuration(start){const ms=Math.max(0,Date.now()-new Date(start).getTime());if(!Number.isFinite(ms))return "—";const m=Math.floor(ms/60000);return `${Math.floor(m/1440)}d ${Math.floor(m%1440/60)}h ${m%60}m`}
+function startTruckBreakdown(truckId){
+ const record=breakdownRecordForTruck(truckId);
+ if(!record)return alertUser("This EMPTY vehicle has no completed trip to store its repair history. No changes were saved. A truck-level maintenance record is needed for this vehicle.");
+ if(truckBreakdown(truckId))return alertUser("Breakdown is already active for this vehicle. Use Mark Repaired in alerts.");
+ return startBreakdown(record.id);
+}
 async function startBreakdown(id){
  const t=trips.find(x=>String(x.id)===String(id));if(!t)return alertUser("Trip not found");
- if(!["RUNNING","REPORTING"].includes(statusOf(t)))return alertUser("Breakdown is only available in Running and Reporting.");
+  if(!["PROGRAM","LOADING","RUNNING","REPORTING","EMPTY"].includes(statusOf(t)))return alertUser("Breakdown is unavailable for this trip status.");
  if(activeBreakdown(t))return alertUser("Breakdown is already active for this trip.");
  if(!window.confirm("Mark this vehicle as broken down? Its trip and status will remain unchanged."))return;
  const reason=(window.prompt("Breakdown reason (optional):","")||"").trim().slice(0,250);
@@ -931,7 +946,7 @@ function matchesFilter(r){
  if(!filterStatus)return true;
  if(filterStatus==="NO_DRIVER")return !r.d;
  if(filterStatus==="DELAY")return r.delay;
- if(filterStatus==="ALERT")return !!activeBreakdown(r.trip);
+ if(filterStatus==="ALERT")return !!truckBreakdown(r.t.id);
  return r.status===filterStatus;
 }
 
@@ -1251,8 +1266,8 @@ function render(){
  const body=$("etRows");if(!body)return;
  if(alertView){
   body.innerHTML=data.length?data.map(r=>{
-   const event=activeBreakdown(r.trip);
-   return `<tr><td><span class="zone et-zone-${esc(clean(r.truckZone).toLowerCase())}">${esc(r.truckZone||"—")}</span></td><td><span class="et-truck">${esc(r.t.truck_number||"—")}</span></td><td>${esc(r.trip?.trip_number||"—")}</td><td>${esc(r.p?.name||"—")}</td><td>${esc(r.trip?.from_location||"—")} → ${esc(r.trip?.to_location||r.trip?.destination||"—")}</td><td>${badge(r.status,false,true)}</td><td>${esc(fmtDT(event.started_at))}</td><td><strong data-breakdown-start="${esc(event.started_at)}">${esc(breakdownDuration(event.started_at))}</strong></td><td>${esc(event.reason||"—")}</td><td><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.resolveBreakdown('${esc(r.trip.id)}')">✓ Mark Repaired</button></td></tr>`;
+   const record=breakdownRecordForTruck(r.t.id),event=activeBreakdown(record);
+   return `<tr><td><span class="zone et-zone-${esc(clean(r.truckZone).toLowerCase())}">${esc(r.truckZone||"—")}</span></td><td><span class="et-truck">${esc(r.t.truck_number||"—")}</span></td><td>${esc(r.trip?.trip_number||"—")}</td><td>${esc(r.p?.name||"—")}</td><td>${esc(r.trip?.from_location||"—")} → ${esc(r.trip?.to_location||r.trip?.destination||"—")}</td><td>${badge(r.status,false,true)}</td><td>${esc(fmtDT(event.started_at))}</td><td><strong data-breakdown-start="${esc(event.started_at)}">${esc(breakdownDuration(event.started_at))}</strong></td><td>${esc(event.reason||"—")}</td><td><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.resolveBreakdown('${esc(record.id)}')">✓ Mark Repaired</button></td></tr>`;
   }).join(""):'<tr><td colspan="10" class="empty">No active vehicle breakdowns.</td></tr>';
   if(etScrollWrap){etScrollWrap.scrollTop=etSavedTop;etScrollWrap.scrollLeft=etSavedLeft;}
   cards();alerts();updateBreakdownTimers();return;
@@ -1279,7 +1294,7 @@ function render(){
    <td><span class="et-party-kind ${r.p?(isBillingClient(r.p)?"billing":"transporter"):""}">${r.p?(isBillingClient(r.p)?"BILLING":"TRANSPORTER"):"—"}</span></td>
    <td class="et-route-cell">${r.status==="EMPTY"?`<input class="et-empty-from-input" data-truck-id="${esc(r.t.id)}" aria-label="Available From for ${esc(r.t.truck_number)}" value="${esc(emptyFromValue(r.t.id))}" placeholder="Enter From" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onchange="window.EktaTracking.saveEmptyFrom('${esc(r.t.id)}',this.value)" />`: `${esc(r.trip?.from_location||r.trip?.loading_point||"—")}${r.trip?.to_location||r.trip?.destination?'<span class="et-route-arrow" aria-hidden="true">→</span>':''}`}</td>
    <td class="et-route-cell">${esc(r.trip?.to_location||r.trip?.destination||"—")}</td>
-   <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}${r.trip&&["RUNNING","REPORTING"].includes(r.actualStage)?`<button type="button" class="et-breakdown-btn ${activeBreakdown(r.trip)?"et-breakdown-active":""}" title="${activeBreakdown(r.trip)?"Breakdown active — see Live Alerts":"Report Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startBreakdown('${esc(r.trip.id)}')">🔧</button>`:""}${badge(r.status,activeBreakdown(r.trip)?false:r.alert,!!activeBreakdown(r.trip))}${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
+   <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}<button type="button" class="et-breakdown-btn ${truckBreakdown(r.t.id)?"et-breakdown-active":""}" title="${truckBreakdown(r.t.id)?"Breakdown active — see Live Alerts":"Work / Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startTruckBreakdown('${esc(r.t.id)}')">🔧</button>${badge(r.status,truckBreakdown(r.t.id)?false:r.alert,!!truckBreakdown(r.t.id))}${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
    <td>
       <div class="et-location-wrap">
         <span class="et-location-text">${esc(current)}</span>
@@ -1374,7 +1389,7 @@ function alerts(){
  const bellItems=$("etBellItems"),bellCount=$("etBellCount");
  if(bellItems){bellItems.dataset.allAlerts=a.join("");bellItems.dataset.breakdownAlerts=a.filter(x=>x.includes("et-breakdown-alert")).join("");bellItems.innerHTML=bellItems.dataset.allAlerts||'<div class="muted">No active notifications.</div>';}
  if(bellCount)bellCount.textContent=String(a.length);
- if($("etNAlerts"))$("etNAlerts").textContent=String(trips.filter(t=>!!activeBreakdown(t)).length);
+ if($("etNAlerts"))$("etNAlerts").textContent=String(new Set(trips.filter(t=>!!activeBreakdown(t)).map(t=>String(t.truck_id))).size);
  updateBreakdownTimers();
 
 }
@@ -4316,7 +4331,7 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
