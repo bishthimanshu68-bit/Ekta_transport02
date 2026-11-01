@@ -437,7 +437,7 @@ async function loadAll(){
   const core=await Promise.all([
    S.from(T.trucks).select("id,truck_number,vehicle_type,capacity_ton,owner_name,status,empty_from_location"),
    S.from(T.drivers).select("*"),
-   S.from(T.assignments).select("id,truck_id,driver_id,assigned_from,assigned_until,status,notes,created_at"),
+   S.from(T.assignments).select("id,truck_id,driver_id,assigned_from,assigned_until,assigned_at,unassigned_at,status,notes,created_at"),
    S.from(T.parties).select("id,party_code,name,party_type,city,zone,status"),
    S.from(T.trips).select("*").order("created_at",{ascending:false})
   ]);
@@ -471,6 +471,8 @@ async function loadAll(){
    try{await loadLatestFastagLocations();}
    catch(e){console.warn("[EKTA] FASTag table locations unavailable",e);}
    render();
+   // Fetch uploaded Driver Master photos without blocking the tracking table.
+   loadTrackingDriverPhotos();
    // GPS address enrichment is optional and preserves the existing mapping logic.
    hydrateGPSPlaces();
  }catch(e){console.error("[EKTA TRACKING] Load error:",e);renderError("Tracking data could not be loaded: "+(e.message||"Database error"))}
@@ -662,9 +664,50 @@ async function approveDriverRequest(requestId,btn){
 function renderError(m){if($("etRows"))$("etRows").innerHTML=`<tr><td colspan="14" style="padding:25px;color:#c52b3d">⚠ ${esc(m)}</td></tr>`;if($("etCountText"))$("etCountText").textContent="Database / schema issue"}
 
 
-function driverPhotoUrl(d){
- return clean(d?.photo_url||d?.profile_photo_url||d?.photo||d?.image_url||"");
+// Driver Master photo source: driver_documents / private driver-documents bucket.
+const etDriverPhotoCache=new Map();
+let etDriverPhotoLoading=false;
+async function loadTrackingDriverPhotos(){
+ if(etDriverPhotoLoading||!dbOK())return;
+ etDriverPhotoLoading=true;
+ try{
+  const ids=new Set(assignments.filter(a=>clean(a.status).toLowerCase()==="active").map(a=>String(a.driver_id)));
+  if(!ids.size)return;
+  const result=await S.from("driver_documents")
+   .select("driver_id,storage_path,created_at")
+   .eq("document_type","photo")
+   .in("driver_id",Array.from(ids))
+   .order("created_at",{ascending:false});
+  if(result.error)throw result.error;
+  const latest=new Map();
+  for(const doc of result.data||[]){
+   const id=String(doc.driver_id);
+   if(!latest.has(id)&&doc.storage_path)latest.set(id,doc.storage_path);
+  }
+  const now=Date.now();
+  await Promise.all(Array.from(latest,async([id,path])=>{
+   const cached=etDriverPhotoCache.get(id);
+   if(cached&&cached.path===path&&cached.expires>now)return;
+   const signed=await S.storage.from("driver-documents").createSignedUrl(path,3600);
+   if(signed.error){console.warn("[EKTA TRACKING] Driver photo URL:",signed.error.message);return;}
+   if(signed.data?.signedUrl)etDriverPhotoCache.set(id,{path,url:signed.data.signedUrl,expires:now+50*60*1000});
+  }));
+  render();
+ }catch(e){console.warn("[EKTA TRACKING] Driver photos unavailable:",e.message)}
+ finally{etDriverPhotoLoading=false}
 }
+function driverPhotoUrl(d){
+ return clean((d&&etDriverPhotoCache.get(String(d.id))?.url)||d?.photo_url||d?.profile_photo_url||d?.photo||d?.image_url||"");
+}
+function trackingTruckDriverAvatar(r){
+ const d=r.d,tid=esc(r.t.id),name=d?clean(d.name):"No Driver";
+ const photo=d?driverPhotoUrl(d):"";
+ const safePhoto=/^https:\/\//i.test(photo)?photo:"";
+ const visual=safePhoto?`<img src="${esc(safePhoto)}" alt="${esc(name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><span class="et-truck-avatar-fallback" style="display:none">${esc(driverInitials(d))}</span>`:`<span class="et-truck-avatar-fallback">${d?esc(driverInitials(d)):"👤"}</span>`;
+ const target=d?"openDriverAction":"openAssignDriver";
+ return `<div class="et-truck-driver-stack"><button type="button" class="et-truck-driver-avatar ${d?'assigned':'unassigned'}" title="${esc(name)} — ${d?'Change / Remove Driver':'Assign Driver'}" aria-label="${esc(name)} — Driver actions" onclick="event.stopPropagation();window.EktaTracking.${target}('${tid}')">${visual}</button><span class="et-truck et-truck-under-avatar" onclick="event.stopPropagation();window.EktaTracking.openTruck('${tid}')">${esc(r.t.truck_number||'—')}</span></div>`;
+}
+
 function driverInitials(d){
  const s=clean(d?.name||"Driver").split(/\s+/).filter(Boolean);
  return ((s[0]?.[0]||"D")+(s[1]?.[0]||"")).toUpperCase();
@@ -1230,13 +1273,13 @@ function render(){
    return `<tr tabindex="0" data-id="${esc(r.t.id)}" onclick="window.EktaTracking.selectTruck('${esc(r.t.id)}')" ondblclick="window.EktaTracking.openTruck('${esc(r.t.id)}')" onkeydown="window.EktaTracking.rowKey(event,'${esc(r.t.id)}')">
    <td><span class="zone et-zone-${esc(clean(r.truckZone).toLowerCase())}">${esc(r.truckZone||"—")}</span></td>
    ${emptyView?`<td class="et-last-unload" title="${esc(lastUnloadingPoint(r.t.id))}"><span>${esc(lastUnloadingPoint(r.t.id))}</span></td>`:""}
-   <td><span class="et-truck" onclick="event.stopPropagation();window.EktaTracking.openTruck('${esc(r.t.id)}')">${esc(r.t.truck_number||"—")}</span></td>
+   <td class="et-truck-avatar-cell">${trackingTruckDriverAvatar(r)}</td>
    <td class="et-trip-internal">${esc(r.trip?.trip_number||"—")}</td>
    <td class="et-party-cell">${esc(r.p?.name||"—")}${r.trip?`<div class="et-party-pending"><button type="button" class="et-billing-edit" onclick="event.stopPropagation();window.EktaTracking.openPendingProgram('${esc(r.trip.id)}')">✎ Edit Pending</button></div>`:""}</td>
    <td><span class="et-party-kind ${r.p?(isBillingClient(r.p)?"billing":"transporter"):""}">${r.p?(isBillingClient(r.p)?"BILLING":"TRANSPORTER"):"—"}</span></td>
    <td class="et-route-cell">${r.status==="EMPTY"?`<input class="et-empty-from-input" data-truck-id="${esc(r.t.id)}" aria-label="Available From for ${esc(r.t.truck_number)}" value="${esc(emptyFromValue(r.t.id))}" placeholder="Enter From" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onchange="window.EktaTracking.saveEmptyFrom('${esc(r.t.id)}',this.value)" />`: `${esc(r.trip?.from_location||r.trip?.loading_point||"—")}${r.trip?.to_location||r.trip?.destination?'<span class="et-route-arrow" aria-hidden="true">→</span>':''}`}</td>
    <td class="et-route-cell">${esc(r.trip?.to_location||r.trip?.destination||"—")}</td>
-   <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}${r.trip&&["RUNNING","REPORTING"].includes(r.actualStage)?`<button type="button" class="et-breakdown-btn ${activeBreakdown(r.trip)?"et-breakdown-active":""}" title="${activeBreakdown(r.trip)?"Breakdown active — see Live Alerts":"Report Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startBreakdown('${esc(r.trip.id)}')">🔧</button>`:""}${badge(r.status,activeBreakdown(r.trip)?false:r.alert,!!activeBreakdown(r.trip))}${!r.d?`<button type="button" class="et-assign-driver-btn" onclick="event.stopPropagation();window.EktaTracking.openAssignDriver('${esc(r.t.id)}')">＋ Assign Driver</button>`:""}${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
+   <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}${r.trip&&["RUNNING","REPORTING"].includes(r.actualStage)?`<button type="button" class="et-breakdown-btn ${activeBreakdown(r.trip)?"et-breakdown-active":""}" title="${activeBreakdown(r.trip)?"Breakdown active — see Live Alerts":"Report Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startBreakdown('${esc(r.trip.id)}')">🔧</button>`:""}${badge(r.status,activeBreakdown(r.trip)?false:r.alert,!!activeBreakdown(r.trip))}${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
    <td>
       <div class="et-location-wrap">
         <span class="et-location-text">${esc(current)}</span>
@@ -3795,6 +3838,26 @@ function exportFinal(){
  ],`ekta-final-report-${today()}.csv`);
 }
 
+
+/* Driver popup: keyboard arrows scroll the popup, never the Tracking worksheet.
+   Inputs, select dropdowns, and text editing retain their native arrow behavior. */
+document.addEventListener("keydown",function(e){
+ if(!["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"].includes(e.key))return;
+ const modal=[document.getElementById("etDriverActionModal"),document.getElementById("etAssignDriverModal")]
+  .find(el=>el?.classList.contains("show"));
+ if(!modal)return;
+ const target=e.target;
+ if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||
+    (target instanceof Element&&target.closest("input,textarea,select,[contenteditable='true'],[role='combobox']")))return;
+ const pane=modal.querySelector(".box");if(!pane)return;
+ const step=e.key==="ArrowDown"?100:e.key==="ArrowUp"?-100:
+  e.key==="PageDown"?pane.clientHeight*.8:e.key==="PageUp"?-pane.clientHeight*.8:0;
+ if(e.key==="Home")pane.scrollTop=0;
+ else if(e.key==="End")pane.scrollTop=pane.scrollHeight;
+ else pane.scrollTop+=step;
+ e.preventDefault();e.stopImmediatePropagation();
+},true);
+
 /* Final Report worksheet: arrows scroll its own table, not the underlying Tracking page.
    Never intercept keyboard editing, date fields, dropdowns, dialogs, or modifiers. */
 document.addEventListener("keydown",function(e){
@@ -4072,19 +4135,43 @@ async function closeTracking(){
 function refresh(){selectedMap=null;loadAll()}
 
 
+function driverProfileMarkup(d,truckNumber){
+ const name=clean(d?.name)||"No Driver",photo=driverPhotoUrl(d);
+ const safe=/^https:\/\//i.test(photo)?photo:"";
+ const visual=safe?`<img class="et-dm-photo" src="${esc(safe)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="et-dm-photo" style="display:none;align-items:center;justify-content:center;font-size:24px;font-weight:900">${esc(driverInitials(d))}</span>`:`<span class="et-dm-photo" style="display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900">${esc(driverInitials(d))}</span>`;
+ return `${visual}<div style="flex:1;min-width:0"><b>${esc(name)} (${esc(d?.driver_code||"—")})</b><p>📞 ${esc(d?.phone||"—")} &nbsp; | &nbsp; 🪪 DL: ${esc(d?.license_number||"—")}</p>${truckNumber?`<span class="et-dm-chip">🚚 ${esc(truckNumber)}</span>`:""}</div>`;
+}
+function previewNewDriver(){const d=driver(clean($("etDriverActionNew")?.value));$("etDriverActionPreview").innerHTML=d?`<div class="et-dm-profile">${driverProfileMarkup(d,"")}</div>`:"";}
+function toggleNewDriverForm(){$("etDriverActionCreate")?.classList.toggle("show");}
+async function createDriverForChange(){
+ const name=clean($("etDriverCreateName").value),phone=clean($("etDriverCreatePhone").value).replace(/\D/g,""),license=clean($("etDriverCreateLicense").value);
+ if(!name||!/^\d{10}$/.test(phone))return alertUser("Enter name and valid 10-digit mobile number.");
+ const btn=$("etDriverCreateBtn");if(btn.disabled)return;btn.disabled=true;
+ try{
+  const result=await S.from(T.drivers).select("id,driver_code,name,phone,license_number,status");if(result.error)throw result.error;
+  const all=result.data||[];
+  if(all.some(d=>clean(d.phone).replace(/\D/g,"").slice(-10)===phone))throw new Error("Mobile already exists in Driver Master. Select that driver instead.");
+  const code=nextQuickDriverCode(all);
+  const ins=await S.from(T.drivers).insert({driver_code:code,name,phone,license_number:license||null,status:"Active"}).select("id,driver_code,name,phone,license_number,status").single();if(ins.error)throw ins.error;
+  drivers.push(ins.data);
+  const sel=$("etDriverActionNew");sel.add(new Option(`${code} — ${name} (${phone})`,String(ins.data.id)));sel.value=String(ins.data.id);previewNewDriver();$("etDriverActionCreate").classList.remove("show");
+  alertUser(`${name} (${code}) saved in Driver Master. Click Change Driver to assign.`);
+ }catch(e){alertUser("Could not create driver: "+e.message)}finally{btn.disabled=false;}
+}
+
 /* =============== QUICK DRIVER ASSIGNMENT (Driver Master compatible) =============== */
 function quickDriverPhoneChanged(){
  const phone=clean($("etAssignPhone")?.value).replace(/\D/g,"");
  const found=drivers.find(d=>clean(d.phone).replace(/\D/g,"").slice(-10)===phone&&phone.length===10);
  const name=$("etAssignName"),hint=$("etAssignHint");
- if(found){name.value=found.name||"";name.readOnly=true;if(hint)hint.textContent=`Existing Driver Master: ${found.driver_code||""} — will assign without creating a duplicate.`;}
- else{name.readOnly=false;if(hint)hint.textContent="New driver: next DRV number will be generated using Driver Master numbering.";}
+ if(found){name.value=found.name||"";name.readOnly=true;$("etAssignLicense").value=found.license_number||"";$("etAssignLicense").readOnly=true;$("etAssignDriverPreview").innerHTML=`<div class="et-dm-profile">${driverProfileMarkup(found,"")}</div>`;if(hint)hint.textContent=`Existing Driver Master: ${found.driver_code||""} — will assign without creating a duplicate.`;}
+ else{name.readOnly=false;$("etAssignLicense").readOnly=false;$("etAssignDriverPreview").textContent="New Driver — will be added to Driver Master.";if(hint)hint.textContent="New driver: next DRV number will be generated using Driver Master numbering.";}
 }
 function openAssignDriver(truckId){
  const t=truck(truckId);if(!t)return alertUser("Truck not found.");
  if(activeAssignment(truckId))return alertUser("This truck already has an active driver.");
  $("etAssignTruckId").value=t.id;$("etAssignTruckNumber").value=t.truck_number||"";
- $("etAssignPhone").value="";$("etAssignName").value="";$("etAssignName").readOnly=false;
+ $("etAssignPhone").value="";$("etAssignName").value="";$("etAssignName").readOnly=false;$("etAssignLicense").value="";$("etAssignLicense").readOnly=false;$("etAssignTime").value=driverLocalNow();$("etAssignTruckNumberDisplay").textContent="🚚 "+(t.truck_number||"");$("etAssignDriverPreview").textContent="Enter a mobile number to check Driver Master.";
  $("etAssignHint").textContent="Existing mobile number will reuse the Driver Master record. New drivers receive the next DRV code.";
  $("etAssignDriverModal").classList.add("show");$("etAssignPhone").focus();
 }
@@ -4094,7 +4181,8 @@ function nextQuickDriverCode(list){
 }
 async function saveQuickDriverAssignment(e){
  e?.preventDefault();
- const truckId=clean($("etAssignTruckId")?.value),name=clean($("etAssignName")?.value),phone=clean($("etAssignPhone")?.value);
+ const truckId=clean($("etAssignTruckId")?.value),name=clean($("etAssignName")?.value),phone=clean($("etAssignPhone")?.value),license=clean($("etAssignLicense")?.value);
+ const localTime=clean($("etAssignTime")?.value);const when=new Date(localTime);if(!localTime||!Number.isFinite(when.getTime())||when.getTime()>Date.now()+60000)return alertUser("Enter a valid effective date/time (not in the future).");
  if(!truck(truckId))return false;
  if(!/^\d{10}$/.test(phone)){alertUser("Enter a valid 10-digit mobile number.");return false;}
  if(!name){alertUser("Enter driver name.");return false;}
@@ -4103,7 +4191,7 @@ async function saveQuickDriverAssignment(e){
  try{
   // Recheck from the database immediately before saving, not only the page cache.
   const [driverResult,assignmentResult]=await Promise.all([
-   S.from(T.drivers).select("id,driver_code,name,phone,status"),
+   S.from(T.drivers).select("id,driver_code,name,phone,license_number,status"),
    S.from(T.assignments).select("id,truck_id,driver_id,status")
   ]);
   if(driverResult.error)throw driverResult.error;
@@ -4116,11 +4204,11 @@ async function saveQuickDriverAssignment(e){
   if(d&&allAssignments.some(a=>String(a.driver_id)===String(d.id)&&clean(a.status).toLowerCase()==="active"))throw new Error("This driver is already assigned to another truck.");
   if(!d){
    const code=nextQuickDriverCode(allDrivers);
-   const ins=await S.from(T.drivers).insert({driver_code:code,name,phone,status:"Active"}).select("id,driver_code,name,phone,status").single();
+   const ins=await S.from(T.drivers).insert({driver_code:code,name,phone,license_number:license||null,status:"Active"}).select("id,driver_code,name,phone,license_number,status").single();
    if(ins.error)throw new Error("Driver Master save failed: "+ins.error.message);
    d=ins.data;
   }
-  const assigned=await S.from(T.assignments).insert({truck_id:truckId,driver_id:d.id,assigned_from:today(),assigned_until:null,status:"Active",notes:null}).select("id").single();
+  const assigned=await S.from(T.assignments).insert({truck_id:truckId,driver_id:d.id,assigned_from:localTime.slice(0,10),assigned_at:when.toISOString(),assigned_until:null,unassigned_at:null,status:"Active",notes:null}).select("id").single();
   if(assigned.error)throw new Error("Assignment failed: "+assigned.error.message+". If a new driver was created, it remains in Driver Master; retry assignment without creating another driver.");
   closeModal("etAssignDriverModal");
   await loadAll();
@@ -4128,6 +4216,71 @@ async function saveQuickDriverAssignment(e){
  }catch(err){console.error("[EKTA TRACKING] Quick driver assignment:",err);alertUser(err.message||"Driver assignment failed.");}
  finally{if(btn)btn.disabled=false;}
  return false;
+}
+
+
+/* TRACKING DRIVER ACTION — close old assignment without altering Driver Master status. */
+function driverLocalNow(){
+ const d=new Date(),p=n=>String(n).padStart(2,"0");
+ return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function driverActionTime(){
+ const value=clean($("etDriverActionTime")?.value);
+ if(!value)throw new Error("Select the assignment date and time.");
+ const d=new Date(value);
+ if(!Number.isFinite(d.getTime()))throw new Error("Invalid date and time.");
+ if(d.getTime()>Date.now()+60000)throw new Error("Future date/time is not allowed.");
+ return {iso:d.toISOString(),date:value.slice(0,10)};
+}
+function openDriverAction(truckId){
+ const t=truck(truckId),a=activeAssignment(truckId),d=a?driver(a.driver_id):null;
+ if(!t||!a||!d)return alertUser("No active assignment found. Refresh Tracking.");
+ $("etDriverActionTruckId").value=t.id;
+ $("etDriverActionInfo").textContent=`${t.truck_number} — ${d.name} (${d.driver_code||""})`;$("etDriverActionProfile").innerHTML=driverProfileMarkup(d,t.truck_number);$("etDriverActionCreate").classList.remove("show");$("etDriverActionPreview").innerHTML="";
+ $("etDriverActionTime").value=driverLocalNow();
+ const options=drivers.filter(x=>clean(x.status).toLowerCase()==="active"&&String(x.id)!==String(d.id)&&!assignments.some(a=>String(a.driver_id)===String(x.id)&&clean(a.status).toLowerCase()==="active"));
+ $("etDriverActionNew").innerHTML='<option value="">Select available driver</option>'+options.map(x=>`<option value="${esc(x.id)}">${esc(x.driver_code||"")} — ${esc(x.name)} (${esc(x.phone||"")})</option>`).join("");
+ $("etDriverActionModal").classList.add("show");loadTrackingDriverPhotos().then(()=>{if($("etDriverActionModal")?.classList.contains("show"))$("etDriverActionProfile").innerHTML=driverProfileMarkup(d,t.truck_number)});
+}
+async function saveDriverAction(mode){
+ const btn1=$("etDriverRemoveBtn"),btn2=$("etDriverChangeBtn");
+ if(btn1?.disabled||btn2?.disabled)return;
+ const truckId=clean($("etDriverActionTruckId")?.value),t=truck(truckId);
+ if(!t)return alertUser("Truck not found.");
+ let when;try{when=driverActionTime()}catch(e){return alertUser(e.message)}
+ const newId=clean($("etDriverActionNew")?.value);
+ if(mode==="change"&&!newId)return alertUser("Choose the new driver.");
+ if(!window.confirm(`${mode==="remove"?"Remove driver from":"Change driver on"} ${t.truck_number}?\nDate/time: ${$("etDriverActionTime").value.replace("T"," ")}`))return;
+ if(btn1)btn1.disabled=true;if(btn2)btn2.disabled=true;
+ try{
+  const [ar,dr]=await Promise.all([S.from(T.assignments).select("id,truck_id,driver_id,status,assigned_from,assigned_until,assigned_at,unassigned_at"),S.from(T.drivers).select("id,name,status")]);
+  if(ar.error)throw ar.error;if(dr.error)throw dr.error;
+  const active=(ar.data||[]).filter(a=>clean(a.status).toLowerCase()==="active");
+  const old=active.filter(a=>String(a.truck_id)===String(truckId));
+  if(old.length!==1)throw new Error("Expected exactly one active assignment on this truck. No changes made.");
+  if(old[0].assigned_at&&new Date(old[0].assigned_at).getTime()>new Date(when.iso).getTime())throw new Error("Removal time is before assignment time.");
+  let next=null;
+  if(mode==="change"){
+   next=(dr.data||[]).find(d=>String(d.id)===String(newId));
+   if(!next||clean(next.status).toLowerCase()!=="active")throw new Error("New driver is not Active in Driver Master.");
+   if(active.some(a=>String(a.driver_id)===String(newId)))throw new Error("New driver is already assigned to another truck.");
+  }
+  const closed=await S.from(T.assignments).update({status:"Inactive",assigned_until:when.date,unassigned_at:when.iso}).eq("id",old[0].id).eq("status","Active").select("id");
+  if(closed.error)throw closed.error;
+  if((closed.data||[]).length!==1)throw new Error("Assignment changed during save. Refresh before retrying.");
+  if(next){
+   const ins=await S.from(T.assignments).insert({truck_id:truckId,driver_id:newId,assigned_from:when.date,assigned_at:when.iso,assigned_until:null,unassigned_at:null,status:"Active",notes:null}).select("id");
+   if(ins.error){
+    // Compensate if new assignment fails. Report any rollback failure explicitly.
+    const rb=await S.from(T.assignments).update({status:"Active",assigned_until:old[0].assigned_until,unassigned_at:old[0].unassigned_at}).eq("id",old[0].id).eq("status","Inactive").select("id");
+    if(rb.error||(rb.data||[]).length!==1)throw new Error("New assignment failed and old assignment could not be restored. Check Driver Master immediately: "+ins.error.message);
+    throw new Error("New assignment failed; previous assignment restored: "+ins.error.message);
+   }
+  }
+  closeModal("etDriverActionModal");await loadAll();
+  alertUser(next?`Driver changed successfully to ${next.name}.`:`Driver removed from ${t.truck_number}. Driver Master remains Active.`);
+ }catch(e){console.error("[Tracking driver action]",e);alertUser("Driver action not completed: "+(e.message||e))}
+ finally{if(btn1)btn1.disabled=false;if(btn2)btn2.disabled=false;}
 }
 
 /* ========================= 21. PUBLIC API =================== */
@@ -4149,7 +4302,7 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
