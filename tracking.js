@@ -386,8 +386,10 @@ function statusOf(trip){
  const rel=clean(trip.trip_status).toLowerCase();
  const noteStage=clean(getNote(trip.notes,"STAGE")).toUpperCase();
  if(rel==="cancelled"||ts==="CANCELLED")return "CANCELLED";
+ // Approved driver REPORTING takes priority over a stale trip_status="In Transit".
+ if(ts==="REPORTING")return "REPORTING";
  if(ts==="RUNNING"||rel==="in transit")return "RUNNING";
- if(ts==="REPORTING"||rel==="delivered")return "REPORTING";
+ if(rel==="delivered")return "REPORTING";
  if(rel==="completed"||ts==="EMPTY")return "EMPTY";
  if(rel==="planned"){
    const loadingDate=trip.loading_date||getNote(trip.notes,"LOADING_DATE");
