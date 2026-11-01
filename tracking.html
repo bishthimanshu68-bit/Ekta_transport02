@@ -833,6 +833,42 @@
 .et-stage-back{border:1px solid #bcd2ed;background:#eef6ff;color:#19578c;border-radius:6px;padding:4px 7px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
 .et-stage-back:hover{background:#dcecff}
 .et-last-update-back{margin-top:7px}
+
+/* Driver photo ABOVE vehicle number — tracking worksheet only */
+#trackingModule .et-truck-avatar-cell{min-width:126px;text-align:center;vertical-align:middle}
+#trackingModule .et-truck-driver-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:66px}
+#trackingModule .et-truck-driver-avatar{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:2px solid #d8e5f4;border-radius:50%;padding:0;overflow:hidden;background:#eef2f7;cursor:pointer;flex:none}
+#trackingModule .et-truck-driver-avatar.assigned{border-color:#75b9e8}
+#trackingModule .et-truck-driver-avatar.unassigned{border-color:#d6dce5;color:#7a8799}
+#trackingModule .et-truck-driver-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+#trackingModule .et-truck-avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#536780}
+/* Compact, clean truck-number label: lighter typography + subtle sky-blue outline. */
+#trackingModule .et-truck-under-avatar{
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  white-space:nowrap;font-size:12px;font-weight:600;letter-spacing:.12px;
+  color:#183d72;background:#f1f7ff;border:1px solid #b7d9fa;
+  border-radius:7px;padding:4px 7px;line-height:1.25;cursor:pointer;
+  box-shadow:none;transition:background-color .15s ease,border-color .15s ease;
+}
+#trackingModule .et-truck-under-avatar::before{
+  content:"";display:inline-block;flex:none;width:14px;height:14px;
+  background:center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23256bb5' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h12v11H3zM15 10h4l3 3v4h-7z'/%3E%3Ccircle cx='7.5' cy='18' r='1.8'/%3E%3Ccircle cx='18.5' cy='18' r='1.8'/%3E%3C/svg%3E");
+}
+#trackingModule .et-truck-under-avatar:hover{background:#e5f2ff;border-color:#83bdf1}
+#trackingModule .et-truck-under-avatar:focus-visible{outline:2px solid #256bb5;outline-offset:2px}
+#trackingModule .et-truck-driver-avatar:focus-visible{outline:3px solid #3677b6;outline-offset:2px}
+
+/* Photo hover preview: enlarges visually without changing the worksheet layout. */
+#trackingModule .et-truck-avatar-cell{position:relative}
+#trackingModule .et-truck-avatar-cell:hover{z-index:20}
+#trackingModule .et-truck-driver-avatar{position:relative;isolation:isolate;transition:box-shadow .16s ease}
+#trackingModule .et-truck-driver-avatar:has(img:hover),
+#trackingModule .et-truck-driver-avatar:has(img:focus-visible){overflow:visible;z-index:30}
+#trackingModule .et-truck-driver-avatar img{border-radius:50%;transform-origin:center;transition:transform .18s ease,box-shadow .18s ease;position:relative}
+#trackingModule .et-truck-driver-avatar img:hover{transform:scale(2.8);box-shadow:0 7px 22px #172b4d55;z-index:31;border:1px solid #fff}
+@media (prefers-reduced-motion:reduce){#trackingModule .et-truck-driver-avatar img{transition:none}}
+
+
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -873,6 +909,38 @@
 /* Final Report keyboard worksheet only; preserves table columns and cell styles. */
 #etFinalPage .tablewrap{max-height:calc(100vh - 280px);min-height:180px;overflow:auto;overscroll-behavior:contain}
 @media(max-width:650px){#etFinalPage .tablewrap{max-height:calc(100vh - 325px)}}
+</style>
+
+<style id="et-driver-modal-polish">
+#etDriverActionModal .box,#etAssignDriverModal .box{width:min(760px,calc(100vw - 24px))!important;border-radius:18px;overflow:hidden}
+.et-dm-head{background:linear-gradient(115deg,#0b396e,#124f87);color:#fff;padding:17px 22px;display:flex;justify-content:space-between;align-items:center}
+.et-dm-head b{font-size:19px}.et-dm-head small{display:block;color:#d9eafb;margin-top:4px}
+.et-dm-head .x{background:#ffffff30;color:white}
+.et-dm-profile{display:flex;align-items:center;gap:15px;padding:15px;background:#edf5ff;border:1px solid #cfe1fb;border-radius:12px;margin-bottom:15px}
+.et-dm-photo{height:74px;width:74px;border-radius:50%;background:#dce8f7;object-fit:cover;border:3px solid #fff;flex-shrink:0}
+.et-dm-profile b{display:block;font-size:16px;color:#173653}.et-dm-profile p{margin:5px 0;color:#435771;line-height:1.6}
+.et-dm-chip{display:inline-block;border:1px solid #a9c8f2;border-radius:8px;padding:5px 9px;color:#1457a0;font-weight:800;margin-top:5px}
+.et-dm-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.et-dm-section{border:1px solid #dce7f3;border-radius:12px;padding:13px;margin:12px 0;background:#fff}
+.et-dm-section h4{margin:0 0 10px;color:#173653;font-size:13px}.et-dm-section .field{margin-bottom:10px}
+.et-dm-actions{border-top:1px solid #e5ebf4;padding-top:12px}.et-dm-actions .btn{min-height:40px}
+.et-dm-new-fields{display:none}.et-dm-new-fields.show{display:block}
+@media(max-width:580px){.et-dm-split{grid-template-columns:1fr}.et-dm-profile{align-items:flex-start}.et-dm-photo{height:60px;width:60px}}
+
+/* Driver popup scroll isolation — only these two modals. */
+#etDriverActionModal,#etAssignDriverModal{overscroll-behavior:contain}
+#etDriverActionModal.show,#etAssignDriverModal.show{overflow:hidden}
+#etDriverActionModal .box,#etAssignDriverModal .box{
+ max-height:calc(100dvh - 32px)!important;
+ overflow-y:auto!important;overflow-x:hidden!important;
+ overscroll-behavior:contain;scrollbar-width:thin;
+}
+#etDriverActionModal .et-dm-head,#etAssignDriverModal .et-dm-head{
+ position:sticky;top:0;z-index:3;
+}
+#etDriverActionModal .et-dm-actions,#etAssignDriverModal .et-dm-actions{
+ position:sticky;bottom:-16px;z-index:2;background:#fff;
+ padding:12px 0 10px;box-shadow:0 -6px 14px #1736530a;
+}
 </style>
 </head>
 
@@ -2426,20 +2494,39 @@
 <div class="et-footer"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etPendingModal')">Close</button><button type="submit" class="btn primary">Save Changes</button></div>
 </form></div></div>
 
-<!-- Tracking quick assignment uses existing Driver Master tables. -->
-<div class="modal" id="etAssignDriverModal">
- <div class="box" style="width:min(480px,calc(100vw - 24px))">
-  <div class="mh"><b>Assign Driver</b><button type="button" class="x" onclick="window.EktaTracking.closeModal('etAssignDriverModal')">×</button></div>
-  <form class="mb" onsubmit="return window.EktaTracking.saveQuickDriverAssignment(event)">
-   <input type="hidden" id="etAssignTruckId">
-   <div class="field" style="margin-bottom:10px"><label>Truck Number</label><input id="etAssignTruckNumber" class="readonly" readonly></div>
-   <div class="field" style="margin-bottom:10px"><label>Driver Phone (10 digits)</label><input id="etAssignPhone" type="tel" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile" oninput="window.EktaTracking.quickDriverPhoneChanged()"></div>
-   <div class="field" style="margin-bottom:10px"><label>Driver Name</label><input id="etAssignName" required placeholder="Driver name"></div>
-   <div class="notice" id="etAssignHint">Existing mobile number will reuse the Driver Master record. New drivers receive the next DRV code.</div>
-   <div class="et-footer"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etAssignDriverModal')">Cancel</button><button type="submit" class="btn green" id="etAssignSaveBtn">Save & Assign</button></div>
-  </form>
- </div>
-</div>
+<!-- Tracking Driver Master shared actions: current driver and new driver previews. -->
+<div class="modal" id="etAssignDriverModal" style="z-index:100520"><div class="box">
+ <div class="et-dm-head"><div><b>Assign Driver</b><small>Existing Driver Master or create a new driver</small></div><button type="button" class="x" onclick="window.EktaTracking.closeModal('etAssignDriverModal')">×</button></div>
+ <form class="mb" onsubmit="return window.EktaTracking.saveQuickDriverAssignment(event)">
+  <input type="hidden" id="etAssignTruckId"><div class="et-dm-chip" id="etAssignTruckNumberDisplay"></div><input id="etAssignTruckNumber" type="hidden">
+  <div class="et-dm-section"><h4>Driver Details</h4>
+   <div class="et-dm-split"><div class="field"><label>Mobile Number (10 digits)</label><input id="etAssignPhone" type="tel" maxlength="10" required oninput="window.EktaTracking.quickDriverPhoneChanged()" placeholder="Search existing / new driver"></div>
+   <div class="field"><label>Driver Name</label><input id="etAssignName" required placeholder="Driver name"></div>
+   <div class="field"><label>Licence Number (for new driver)</label><input id="etAssignLicense" placeholder="DL number"></div>
+   <div class="field"><label>Effective Date &amp; Time (local, editable)</label><input id="etAssignTime" type="datetime-local" required></div></div>
+   <div id="etAssignDriverPreview" class="notice" style="margin-top:9px">Enter a mobile number to check Driver Master.</div>
+  </div>
+  <div class="notice" id="etAssignHint">New driver code will be generated from the same Driver Master sequence.</div>
+  <div class="et-footer et-dm-actions"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etAssignDriverModal')">Cancel</button><button type="submit" class="btn green" id="etAssignSaveBtn">Save &amp; Assign Driver</button></div>
+ </form></div></div>
+<div class="modal" id="etDriverActionModal" style="z-index:100520"><div class="box">
+ <div class="et-dm-head"><div><b>Change / Remove Driver</b><small>Update the driver assigned to this vehicle</small></div><button type="button" class="x" onclick="window.EktaTracking.closeModal('etDriverActionModal')">×</button></div>
+ <div class="mb"><input type="hidden" id="etDriverActionTruckId">
+  <div class="et-dm-profile" id="etDriverActionProfile"></div><div id="etDriverActionInfo" style="display:none"></div>
+  <div class="field" style="margin-bottom:12px"><label>Effective Date &amp; Time (editable, local time)</label><input id="etDriverActionTime" type="datetime-local"></div>
+  <div class="et-dm-section"><h4>New Driver</h4>
+   <div class="field"><label>Choose an available Driver from Driver Master</label><select id="etDriverActionNew" onchange="window.EktaTracking.previewNewDriver()"><option value="">Select available driver</option></select></div>
+   <div id="etDriverActionPreview" style="margin:10px 0"></div>
+   <button type="button" class="btn" onclick="window.EktaTracking.toggleNewDriverForm()">+ Add New Driver</button>
+   <div id="etDriverActionCreate" class="et-dm-new-fields et-dm-section">
+    <h4>Create in Driver Master (same driver code sequence)</h4>
+    <div class="et-dm-split"><div class="field"><label>Driver Name</label><input id="etDriverCreateName" placeholder="Full name"></div><div class="field"><label>Mobile Number</label><input id="etDriverCreatePhone" maxlength="10" inputmode="numeric" placeholder="10 digits"></div><div class="field"><label>Licence Number</label><input id="etDriverCreateLicense" placeholder="DL number"></div></div>
+    <button type="button" class="btn primary" id="etDriverCreateBtn" onclick="window.EktaTracking.createDriverForChange()">Save to Driver Master &amp; Select</button>
+   </div>
+  </div>
+  <div class="notice">Remove keeps the Driver Master Active. Change preserves previous assignment history. Historical trips are not modified.</div>
+  <div class="et-footer et-dm-actions"><button type="button" class="btn" onclick="window.EktaTracking.closeModal('etDriverActionModal')">Cancel</button><button type="button" class="btn red" id="etDriverRemoveBtn" onclick="window.EktaTracking.saveDriverAction('remove')">Remove Driver</button><button type="button" class="btn green" id="etDriverChangeBtn" onclick="window.EktaTracking.saveDriverAction('change')">Change Driver</button></div>
+ </div></div></div>
 
 <!-- MARKET / HIRED VEHICLES — independent full-page workspace; no DB writes in this phase -->
 
