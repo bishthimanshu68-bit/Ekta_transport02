@@ -865,7 +865,7 @@
 #trackingModule .et-truck-driver-avatar:has(img:hover),
 #trackingModule .et-truck-driver-avatar:has(img:focus-visible){overflow:visible;z-index:30}
 #trackingModule .et-truck-driver-avatar img{border-radius:50%;transform-origin:center;transition:transform .18s ease,box-shadow .18s ease;position:relative}
-#trackingModule .et-truck-driver-avatar img:hover{transform:scale(2.8);box-shadow:0 7px 22px #172b4d55;z-index:31;border:1px solid #fff}
+#trackingModule .et-truck-driver-avatar img:hover{transform:scale(4);box-shadow:0 7px 22px #172b4d55;z-index:31;border:1px solid #fff}
 @media (prefers-reduced-motion:reduce){#trackingModule .et-truck-driver-avatar img{transition:none}}
 
 
@@ -923,7 +923,7 @@
 .et-dm-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.et-dm-section{border:1px solid #dce7f3;border-radius:12px;padding:13px;margin:12px 0;background:#fff}
 .et-dm-section h4{margin:0 0 10px;color:#173653;font-size:13px}.et-dm-section .field{margin-bottom:10px}
 .et-dm-actions{border-top:1px solid #e5ebf4;padding-top:12px}.et-dm-actions .btn{min-height:40px}
-.et-dm-new-fields{display:none}.et-dm-new-fields.show{display:block}
+.et-dm-copybar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:0 0 8px}.et-dm-copybtn{font-size:12px!important;min-height:32px!important;padding:6px 11px!important;border:1px solid #b8d3f3!important;background:#f1f7ff!important;color:#164c85!important;border-radius:8px!important}.et-dm-copybtn:hover{background:#e2efff!important}#etDriverCopyFeedback{font-size:12px;color:#087c4c}.et-dm-new-fields{display:none}.et-dm-new-fields.show{display:block}
 @media(max-width:580px){.et-dm-split{grid-template-columns:1fr}.et-dm-profile{align-items:flex-start}.et-dm-photo{height:60px;width:60px}}
 
 /* Driver popup scroll isolation — only these two modals. */
@@ -2512,6 +2512,7 @@
 <div class="modal" id="etDriverActionModal" style="z-index:100520"><div class="box">
  <div class="et-dm-head"><div><b>Change / Remove Driver</b><small>Update the driver assigned to this vehicle</small></div><button type="button" class="x" onclick="window.EktaTracking.closeModal('etDriverActionModal')">×</button></div>
  <div class="mb"><input type="hidden" id="etDriverActionTruckId">
+  <div class="et-dm-copybar"><button type="button" class="btn et-dm-copybtn" id="etDriverCopyBtn" onclick="window.EktaTracking.copyCurrentDriverDetails()">▢ Copy Details</button><span id="etDriverCopyFeedback" role="status" aria-live="polite"></span></div>
   <div class="et-dm-profile" id="etDriverActionProfile"></div><div id="etDriverActionInfo" style="display:none"></div>
   <div class="field" style="margin-bottom:12px"><label>Effective Date &amp; Time (editable, local time)</label><input id="etDriverActionTime" type="datetime-local"></div>
   <div class="et-dm-section"><h4>New Driver</h4>
