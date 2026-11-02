@@ -6653,39 +6653,81 @@ async function downloadDocument(truckId, docKey) {
         await permitOCRWorker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
         return permitOCRWorker;
     }
-    async function readPermitFocused(file) {
-        const bitmap=await createImageBitmap(file);
+    // Decode PDF pages with PDF.js: createImageBitmap() cannot decode PDF files.
+    // Read-only OCR; no storage/database writes happen here.
+    async function permitImageSource(file) {
+        if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
+            return { bitmap: await createImageBitmap(file), dispose() { this.bitmap.close(); } };
+        }
+        await loadOCRLibrary('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', () => !!window.pdfjsLib);
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
         try {
-            // Haryana Form 47: value column x=45%-80%, registration row y=27-32%,
-            // NP Authorization row y=40-45%. Never include Basic Goods Permit row.
-            const width=1000, rowHeight=115;
+            const page=await pdf.getPage(1);
+            const viewport=page.getViewport({scale:2.4});
             const canvas=document.createElement('canvas');
-            canvas.width=width;canvas.height=rowHeight*2+28;
-            const ctx=canvas.getContext('2d',{willReadFrequently:true});
-            ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
-            const bands=[[.448,.273,.36,.044],[.448,.405,.36,.044]];
-            bands.forEach(([x,y,w,h],i)=>{
-                ctx.drawImage(bitmap,bitmap.width*x,bitmap.height*y,bitmap.width*w,bitmap.height*h,12,i*(rowHeight+14)+5,width-24,rowHeight-12);
-            });
+            canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+            await page.render({canvasContext:canvas.getContext('2d',{willReadFrequently:true}),viewport}).promise;
+            return {bitmap:canvas,dispose(){canvas.width=canvas.height=0;pdf.destroy().catch(()=>{});}};
+        } catch(e) { await pdf.destroy();throw e; }
+    }
+    function permitVehicleFromText(text) {
+        const raw=String(text||'').toUpperCase();
+        const candidates=[];
+        // Prefer the field labelled Registration Mark of Vehicle, when readable.
+        const lines=raw.split(/\n/);
+        for(let i=0;i<lines.length;i++) if(/REGISTRAT.{0,12}MARK|VEHICLE\s*(?:NO|NUMBER)/.test(lines[i])) {
+            candidates.push(lines.slice(i,i+3).join(' '));
+        }
+        candidates.push(raw);
+        for(const segment of candidates){
+            const cleaned=segment.replace(/[^A-Z0-9]/g,'');
+            const matches=[...cleaned.matchAll(/(?:HR|UP|DL|RJ|PB|UK|MP|MH|GJ|KA|TN|TS|AP|BR|WB|CG|OD|JK|HP|AS|KL|GA|CH|SK)\d{2}[A-Z]{1,3}\d{4}/g)].map(x=>x[0]);
+            const known=[...new Set(matches)].filter(n=>findTruckByNumber(n));
+            if(known.length===1)return findTruckByNumber(known[0]).truckNo;
+        }
+        return '';
+    }
+    function permitExpiryFromText(text) {
+        const raw=String(text||'').toUpperCase().replace(/[\u2013\u2014]/g,'-');
+        // Anchor to NP authorization, NEVER the Basic Goods Permit (five-year) row.
+        const anchor=raw.search(/(?:VALIDITY\s*(?:OF)?\s*(?:N\.?P\.?|NATIONAL\s+PERMIT)\s*(?:AUTHORI[ZS]ATION)?|N\.?P\.?\s*AUTHORI[ZS]ATION\s*VALIDITY)/);
+        if(anchor<0)return '';
+        let zone=raw.slice(anchor,anchor+170);
+        const boundary=zone.search(/(?:10\s*[.)-]\s*VALIDITY|VALIDITY\s+OF\s+BASIC|BASIC\s+GOODS\s+PERMIT)/);
+        if(boundary>=0)zone=zone.slice(0,boundary);
+        const m=zone.match(/(\d{1,2})\s*[-/. ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC|\d{1,2})[A-Z]*\s*[-/. ,]*\s*(20\d{2})/);
+        if(!m)return '';
+        const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,SEPT:9,OCT:10,NOV:11,DEC:12};
+        const day=+m[1],month=months[m[2]]||+m[2],year=+m[3];
+        return permitSafeDate(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
+    }
+    async function readPermitFocused(file) {
+        const source=await permitImageSource(file);
+        try {
+            const bitmap=source.bitmap;
             const worker=await getPermitOCRWorker();
-            const result=await worker.recognize(canvas);
-            canvas.width=canvas.height=0;
-            const lines=String(result.data.text||'').toUpperCase().split(/\n/).map(x=>x.trim()).filter(Boolean);
-            const vehicleCandidates=lines.flatMap(line=>[...line.replace(/[^A-Z0-9]/g,'').matchAll(/(?:HR|UP|DL|RJ|PB|UK|MP|MH|GJ|KA|TN|TS|AP|BR|WB|CG|OD|JK|HP|AS|KL|GA|CH|SK)\d{2}[A-Z]{1,3}\d{4}/g)].map(m=>m[0]));
-            const known=[...new Set(vehicleCandidates)].filter(n=>findTruckByNumber(n));
-            const truckNo=known.length===1?findTruckByNumber(known[0]).truckNo:'';
-            // Date must come from the second OCR row, not registration/issue/basic-permit.
-            const dateLines=lines.slice(1).join(' ');
-            const match=dateLines.match(/(\d{1,2})\s*[-./ ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|\d{1,2})[A-Z]*\s*[-./ ]\s*(20\d{2})/);
-            const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
-            let expiry='';
-            if(match){
-                const day=+match[1],month=months[match[2]]||+match[2],year=+match[3];
-                const iso=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                expiry=permitSafeDate(iso);
+            // Form-47 layouts differ. Read the whole first page so a shifted row
+            // cannot silently become an empty vehicle number or wrong expiry.
+            const full=await worker.recognize(bitmap);
+            const fullText=String(full.data.text||'');
+            let truckNo=permitVehicleFromText(fullText);
+            let expiry=permitExpiryFromText(fullText);
+            // Additional focused pass on the middle of the document if needed.
+            if(!truckNo || !expiry){
+                const canvas=document.createElement('canvas');
+                canvas.width=1400;canvas.height=1500;
+                const ctx=canvas.getContext('2d',{willReadFrequently:true});
+                ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.drawImage(bitmap,bitmap.width*.10,bitmap.height*.17,bitmap.width*.85,bitmap.height*.67,0,0,canvas.width,canvas.height);
+                const result=await worker.recognize(canvas);
+                const detail=String(result.data.text||'');
+                truckNo=truckNo||permitVehicleFromText(detail);
+                expiry=expiry||permitExpiryFromText(detail);
+                canvas.width=canvas.height=0;
             }
-            return {truckNo,expiry,ocrText:lines.join(' | ')};
-        } finally {bitmap.close();}
+            return {truckNo,expiry,ocrText:fullText.slice(0,400)};
+        } finally {source.dispose();}
     }
     function permitSafeDate(value) {
         const m=String(value||'').match(/^(20\d{2})-(\d{2})-(\d{2})$/);
@@ -6733,7 +6775,7 @@ async function downloadDocument(truckId, docKey) {
                 const raw=docKey==='permit' ? '' : await ocrTextFromFile(work[i].file);
                 const found=docKey==='permit' ? {truckNo:focused.truckNo||'',expiry:focused.expiry||''} : parseOCRFields(focused+'\n'+raw,docKey);
                 const matched=docKey==='permit' ? (findTruckByNumber(found.truckNo)?.truckNo||'') : (docKey==='rc' ? (findRCNumberCandidates(focused)||findRCNumberCandidates(raw)||smartFleetMatch(found.truckNo)) : (findTruckByNumber(found.truckNo)?.truckNo||smartFleetMatch(found.truckNo)));
-                ocrRows.push({...work[i],docKey,...found,truckNo:matched||found.truckNo,error:'',selected:docKey!=='permit' || (!!matched && !!found.expiry)});
+                ocrRows.push({...work[i],docKey,...found,truckNo:matched||found.truckNo,error:docKey==='permit' && (!matched || !found.expiry) ? 'OCR incomplete — verify vehicle and NP expiry against original' : '',selected:docKey!=='permit' || (!!matched && !!found.expiry)});
             } catch(e) { ocrRows.push({...work[i],docKey,truckNo:'',expiry:'',error:e.message,selected:false}); }
         }
         ocrBusy=false;
@@ -6832,7 +6874,7 @@ async function downloadDocument(truckId, docKey) {
         qs('ektaOCRSelectAll')?.addEventListener('change',e=>{content.querySelectorAll('[data-ekta-ocr-select]:not(:disabled)').forEach(cb=>{cb.checked=e.target.checked;ocrRows[Number(cb.dataset.ektaOcrSelect)].selected=cb.checked;});updateOCRSelection();});
         qs('ektaOCRClearSelection')?.addEventListener('click',()=>{content.querySelectorAll('[data-ekta-ocr-select]').forEach(cb=>cb.checked=false);updateOCRSelection();});
         content.querySelectorAll('[data-ocr-field]').forEach(el=>el.addEventListener('input',()=>{
-            const row=ocrRows[Number(el.dataset.ocrRow)];row[el.dataset.ocrField]=el.dataset.ocrField==='expiry'?fleetDateInputChange(el):el.value;
+            const row=ocrRows[Number(el.dataset.ocrRow)];row[el.dataset.ocrField]=el.dataset.ocrField==='expiry'?fleetDateInputChange(el):el.value; if(row.error && row.error.startsWith('OCR incomplete'))row.error='';
             const status=content.querySelector(`[data-ekta-ocr-status="${el.dataset.ocrRow}"]`);
             updateOCRSelection();
         }));
