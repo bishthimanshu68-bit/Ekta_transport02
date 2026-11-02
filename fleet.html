@@ -653,6 +653,7 @@
                         onchange="window.EktaFleet.updateOCRMode()">
                     <option value="single">Single — one document per file</option>
                     <option value="bulk">Bulk — multiple RC cards in one PDF</option>
+                    <option value="folder">Folder — multiple PDFs / images (Insurance, PUC, etc.)</option>
                 </select>
                 <p id="fleetOCRModeHelp" class="text-[10px] text-slate-500 mt-1">One RC, insurance or permit per file.</p>
             </div>
@@ -698,6 +699,11 @@
             </div>
 
 
+<div id="ektaOCRFolderBox" class="hidden" data-ekta-ocr-only style="margin:10px 0;padding:12px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:9px">
+  <label for="ektaOCRFolderInput" style="display:block;font-size:12px;font-weight:800;color:#3730a3;margin-bottom:6px">Select entire document folder</label>
+  <input id="ektaOCRFolderInput" type="file" webkitdirectory directory multiple accept=".pdf,.png,.jpg,.jpeg,.webp" onchange="window.EktaFleet.processAIFile(event)" style="font-size:11px;max-width:100%;width:100%">
+  <p style="font-size:10px;color:#475569;margin-top:6px">All supported PDFs/images in the selected folder will be read individually. Review each result before saving. Existing documents are skipped.</p>
+</div>
 <div id="ektaOCRFiles" class="ekta-ocr-file-list" data-ekta-ocr-only></div>
 <div data-ekta-ocr-only>
   <div class="ekta-ocr-heading"><span class="ekta-ocr-step">2</span> Original Document Preview</div>
@@ -6444,10 +6450,17 @@ async function downloadDocument(truckId, docKey) {
         return ranked.length && (!ranked[1] || ranked[0][1]<ranked[1][1]) ? ranked[0][0] : '';
     }
     function updateOCRMode() {
-        const bulk = qs('fleetOCRMode')?.value === 'bulk';
+        const mode = qs('fleetOCRMode')?.value || 'single';
         const help = qs('fleetOCRModeHelp');
-        if (help) help.textContent = bulk
-            ? 'For scanned sheets arranged in 2 columns × 5 rows (like the sample RC PDF). Review every result before saving.'
+        const folderBox = qs('ektaOCRFolderBox');
+        const normalInput = qs('fleetAIFileInput');
+        const uploadBox = normalInput?.parentElement;
+        if (folderBox) folderBox.classList.toggle('hidden', mode !== 'folder');
+        if (uploadBox) uploadBox.classList.toggle('hidden', mode === 'folder');
+        if (help) help.textContent = mode === 'bulk'
+            ? 'For scanned RC sheets in 2 columns × 5 rows. Review every result.'
+            : mode === 'folder'
+            ? 'Select a folder containing individual PDF/image documents. Each file is OCR-read separately, then shown for review.'
             : 'One document per PDF/image file. You may select multiple separate files.';
     }
     function smartFleetMatch(reading) {
@@ -6551,8 +6564,9 @@ async function downloadDocument(truckId, docKey) {
     }
     async function processOCRDocuments(event) {
         if (ocrBusy) return;
-        const files=Array.from(event.target.files || []);
-        if (!files.length) return;
+        const chosen=Array.from(event.target.files || []);
+        const files=chosen.filter(f=>/\.(pdf|png|jpe?g|webp)$/i.test(f.name));
+        if (!files.length) return showAIError('No supported PDF/image files found in this selection.');
         const docKey=qs('fleetAIDocType')?.value;
         if (!DOC_TYPES.some(x=>x.key===docKey)) return showAIError('Choose document type first.');
         const bulk=qs('fleetOCRMode')?.value==='bulk';
@@ -6561,6 +6575,7 @@ async function downloadDocument(truckId, docKey) {
         ocrBusy=true; ocrRows=[]; showAIError('');
         const fileList=qs('ektaOCRFiles');if(fileList)fileList.textContent=files.map(f=>f.name).join(' • ');
         if(files[0])ektaShowOCRSource({file:files[0]});
+        if (chosen.length !== files.length && fileList) fileList.textContent += ` • ${chosen.length-files.length} unsupported file(s) skipped`;
         const content=qs('fleetAIPreviewContent'), preview=qs('fleetAIPreview'), saveBtn=qs('fleetAISaveBtn');
         preview?.classList.remove('hidden');
         if (saveBtn) {saveBtn.disabled=true; saveBtn.classList.add('opacity-50');}
@@ -6574,7 +6589,7 @@ async function downloadDocument(truckId, docKey) {
             }
         } catch(e) {ocrBusy=false; return showAIError('PDF splitting failed: '+(e.message||e));}
         for (let i=0;i<work.length;i++) {
-            if(content) content.textContent=`Reading registration number ${i+1} / ${work.length}: ${work[i].file.name}`;
+            if(content) content.textContent=`OCR reading ${i+1} / ${work.length}: ${work[i].file.name} (please keep this window open)`;
             try {
                 const focused = bulk && docKey === 'rc' ? await readRCNumberFocused(work[i].file) : '';
                 const raw=await ocrTextFromFile(work[i].file);
