@@ -482,6 +482,8 @@
                                 5 Year Permit
                             </th>
 
+                            <th class="py-2.5 px-2">Road Tax</th>
+                            <th class="py-2.5 px-2">Fitment <span class="block text-[9px] font-medium text-slate-400 normal-case">No expiry</span></th>
                             <th class="py-2.5 px-2">
                                 RC <span class="block text-[9px] font-medium text-slate-400 normal-case">No expiry alert</span>
                             </th>
@@ -640,6 +642,8 @@
                     <option value="fitness">Fitness</option>
                     <option value="permit">National Permit</option>
                      <option value="five_year_permit">5 Year Permit</option>
+                     <option value="road_tax">Road Tax</option>
+                     <option value="fitment">Fitment (No Expiry)</option>
                     <option value="rc">RC</option>
                 </select>
 
@@ -1040,6 +1044,16 @@ if (!window.XLSX) {
             full: "5 Year Permit"
         },
         {
+            key: "road_tax",
+            label: "Road Tax",
+            full: "Road Tax"
+        },
+        {
+            key: "fitment",
+            label: "Fitment",
+            full: "Fitment"
+        },
+        {
             key: "rc",
             label: "RC",
             full: "Registration Certificate"
@@ -1096,6 +1110,10 @@ if (!window.XLSX) {
     }
 
 
+    function documentHasNoExpiry(docKey) {
+        return docKey === "rc" || docKey === "fitment";
+    }
+
     function createEmptyDocuments() {
 
         return {
@@ -1129,6 +1147,8 @@ if (!window.XLSX) {
                 name: ""
             },
 
+            road_tax: { expiry: "", file: null, name: "" },
+            fitment: { expiry: "", file: null, name: "" },
             rc: {
                 expiry: "",
                 file: null,
@@ -2766,7 +2786,7 @@ async function deleteTruck(id) {
 
         if (documentFleet.length === 0) {
             body.innerHTML = `
-                <tr><td colspan="8" class="text-center py-10 text-slate-400">
+                <tr><td colspan="10" class="text-center py-10 text-slate-400">
                     <div class="flex flex-col items-center gap-2">
                         <span class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-magnifying-glass text-slate-300"></i></span>
                         <span class="font-semibold">${normalizedDocumentSearch ? "No matching truck found." : "No trucks available."}</span>
@@ -2782,7 +2802,7 @@ async function deleteTruck(id) {
             DOC_TYPES.forEach(function (doc) {
                 const data = truck.docs[doc.key] || { expiry: "", file: null, name: "" };
                 const status = getExpiryStatus(data.expiry);
-                const badge = doc.key === "rc"
+                const badge = documentHasNoExpiry(doc.key)
                     ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold text-[9px]"><i class="fa-solid fa-infinity mr-1"></i>No Expiry</span>`
                     : expiryBadge(status);
 
@@ -2809,7 +2829,7 @@ async function deleteTruck(id) {
                 cells += `
                     <td class="py-2 px-2 align-top min-w-[185px] fleet-doc-nav-cell" tabindex="0" data-doc-col="${DOC_TYPES.findIndex(d => d.key === doc.key)}">
                         <div class="fleet-doc-card">
-                            ${doc.key === "rc" ? "" : `
+                            ${documentHasNoExpiry(doc.key) ? "" : `
                             <input type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" value="${escapeAttr(fleetDateDisplay(data.expiry))}"
                                 onchange="(this.value.trim()&&!fleetDateISO(this.value)?(alert('Enter valid DD-MM-YYYY date'),this.focus()):window.EktaFleet.updateExpiry('${escapeAttr(truck.id)}','${doc.key}',fleetDateISO(this.value),this))"
                                 class="fleet-doc-date" aria-label="${doc.full} expiry for ${truck.truckNo}">`}
@@ -4024,7 +4044,7 @@ async function downloadDocument(truckId, docKey) {
             DOC_TYPES.forEach(function (doc) {
 
                 // RC is stored as a document, but it is intentionally excluded from expiry alerts.
-                if (doc.key === "rc") return;
+                if (documentHasNoExpiry(doc.key)) return;
 
                 const documentData =
                     truck.docs?.[doc.key];
@@ -6359,7 +6379,7 @@ async function downloadDocument(truckId, docKey) {
         const preferred = [...nearMatches,...detected];
         const truckNo = matchedFleet.length === 1 ? matchedFleet[0].truckNo
             : (preferred.find(n => findTruckByNumber(n)) || (matchedFleet.length ? '' : preferred[0]) || '');
-        if (docKey === 'rc') return {truckNo, expiry: ''};
+        if (documentHasNoExpiry(docKey)) return {truckNo, expiry: ''};
         // National Permit (Form 47) has TWO different expiry dates. Use only
         // "Validity of NP Authorization" (row 9), never "Basic Goods Permit" (row 10).
         // If the NP date is unreadable, leave blank for manual review.
@@ -6781,16 +6801,16 @@ async function downloadDocument(truckId, docKey) {
         const content=qs('fleetAIPreviewContent'), saveBtn=qs('fleetAISaveBtn');
         if(!content)return;
         const count=qs('ektaOCRCount');if(count)count.textContent=ocrRows.length+' documents detected';
-        const rc=ocrRows[0]?.docKey==='rc';
+        const rc=documentHasNoExpiry(ocrRows[0]?.docKey);
         content.innerHTML='<div style="background:#eaf8ef;color:#17643e;border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px">OCR completed. Check every vehicle number against the original document. Unmatched records will not save.</div>'+
         '<div style="margin:8px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><label style="font-weight:700"><input type="checkbox" id="ektaOCRSelectAll"> Select eligible</label><button type="button" id="ektaOCRClearSelection" style="border:1px solid #d7e2ef;border-radius:6px;padding:5px 10px;background:#fff">Clear selection</button><span id="ektaOCRSelectionCount"></span></div><div style="overflow:auto;max-height:58vh"><table class="ekta-ocr-result-table"><thead><tr><th>Save</th><th>#</th><th>Source / Preview</th><th>Vehicle Number</th>'+(rc?'':'<th>Valid Upto</th>')+'<th>Status</th></tr></thead><tbody>'+
-        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && (r.docKey==='rc'||!!r.expiry) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error || findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.sourceName ? `${r.sourceName} — Page ${r.page}/${r.totalPages}` : r.file.name)}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(fleetDateDisplay(r.expiry))}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
+        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && (documentHasNoExpiry(r.docKey)||!!r.expiry) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error || findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.sourceName ? `${r.sourceName} — Page ${r.page}/${r.totalPages}` : r.file.name)}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(fleetDateDisplay(r.expiry))}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
         function updateOCRSelection(){
             let eligible=0, selected=0, existing=0;
             ocrRows.forEach((r,i)=>{
                 const t=findTruckByNumber(r.truckNo);
                 const blocked=!!t?.docs?.[r.docKey]?.file;
-                const allowed=!!t && !r.error && !blocked && (r.docKey==='rc'||(r.docKey==='permit'?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
+                const allowed=!!t && !r.error && !blocked && (documentHasNoExpiry(r.docKey)||(r.docKey==='permit'?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
                 const cb=content.querySelector(`[data-ekta-ocr-select="${i}"]`);
                 if(cb){cb.disabled=!allowed;if(!allowed)cb.checked=false;r.selected=cb.checked;}
                 if(allowed)eligible++;
@@ -6828,9 +6848,9 @@ async function downloadDocument(truckId, docKey) {
     async function saveOCRDocuments() {
         if(ocrBusy || !ocrRows.length) return;
         if(!window.supabaseClient) return showAIError('Supabase connection required.');
-        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file && (r.docKey === 'rc' || (r.docKey === 'permit' ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
+        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file && (documentHasNoExpiry(r.docKey) || (r.docKey === 'permit' ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
         if(new Set(valid.map(r=>normalizeTruckNumber(r.truckNo))).size!==valid.length) return showAIError('Duplicate vehicle numbers in preview. Correct duplicates before saving.');
-        if(!valid.length) return showAIError('No eligible documents. Check truck number and (except RC) expiry date in preview.');
+        if(!valid.length) return showAIError('No eligible documents. Check truck number and (except RC/Fitment) expiry date in preview.');
         const existing = [];
         for (const row of valid) {
             const t = findTruckByNumber(row.truckNo);
@@ -6853,12 +6873,12 @@ async function downloadDocument(truckId, docKey) {
                 const up=await bucket.upload(path,row.file,{cacheControl:'3600',upsert:false});
                 if(up.error) throw up.error;
                 const url=bucket.getPublicUrl(path).data?.publicUrl || '';
-                const payload={file_name:row.file.name,file_url:url,expiry_date:row.docKey === 'rc' ? null : row.expiry,status:'Active'};
+                const payload={file_name:row.file.name,file_url:url,expiry_date:documentHasNoExpiry(row.docKey) ? null : row.expiry,status:'Active'};
                 const result=previous
                     ? await window.supabaseClient.from('truck_documents').update(payload).eq('id',previous.id).select('id').single()
                     : await window.supabaseClient.from('truck_documents').insert({truck_id:truck.id,document_type:row.docKey,...payload}).select('id').single();
                 if(result.error) throw result.error;
-                truck.docs[row.docKey]={...(truck.docs[row.docKey]||{}),expiry:row.docKey === 'rc' ? '' : row.expiry,file:url,name:row.file.name};
+                truck.docs[row.docKey]={...(truck.docs[row.docKey]||{}),expiry:documentHasNoExpiry(row.docKey) ? '' : row.expiry,file:url,name:row.file.name};
                 done++;
                 const oldPath=previous?.file_url ? documentStoragePathFromUrl(previous.file_url) : '';
                 if(oldPath && oldPath!==path){const removed=await bucket.remove([oldPath]); if(removed.error) console.warn('Old file cleanup failed:',removed.error);}
