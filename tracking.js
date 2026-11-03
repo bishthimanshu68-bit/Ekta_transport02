@@ -752,9 +752,11 @@ async function rejectDriverRequest(requestId,btn){
  if(!window.confirm(`Reject ${clean(req.requested_status).toUpperCase()} request for ${driverRequestTruckNumber(req)}? This will not change the trip status.`))return;
  if(btn)btn.disabled=true;
  try{
-  const result=await S.from(T.driverRequests).update({request_status:"REJECTED"}).eq("id",requestId).eq("request_status","PENDING").select("id");
+  // Use the targeted SECURITY DEFINER RPC, just as approval uses its own RPC.
+  // This changes only the pending request row, never the trip lifecycle.
+  const result=await S.rpc("reject_driver_status_request",{p_request_id:requestId});
   if(result.error)throw result.error;
-  if(!result.data?.length)throw new Error("Request is no longer pending. Refresh and check.");
+  if(result.data?.success!==true)throw new Error(result.data?.message||"Request could not be rejected.");
   await loadAll();
   const tid=String(req.truck_id);
   if($("etDriverActionModal")?.classList.contains("show"))renderDriverRequestsInModal(tid);
