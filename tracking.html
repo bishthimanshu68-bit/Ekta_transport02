@@ -875,6 +875,30 @@
 .et-destination-label-row label{margin-bottom:0!important}
 .et-add-destination-btn{background:#2563eb!important;color:#fff!important;border:1px solid #2563eb!important;border-radius:8px;padding:7px 11px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
 .et-add-destination-btn:hover{background:#1d4ed8!important;border-color:#1d4ed8!important}
+
+/* E-Way Bill Register: professional per-bill aligned validity rows. */
+#etEwayPage .et-eway-per-bill{display:flex;flex-direction:column;gap:3px;min-width:max-content}
+#etEwayPage .et-eway-bill-line{display:flex;align-items:center;min-height:35px;padding:4px 0;border-bottom:1px solid #edf2f7;white-space:nowrap;font-size:10px}
+#etEwayPage .et-eway-bill-line:last-child{border-bottom:0}
+#etEwayPage .et-eway-bill-line .eway-text-read{padding:3px 0;font-size:11px}
+#etEwayPage .et-eway-bill-line .eway-status-pill{font-size:9px;padding:4px 7px}
+#etEwayPage .et-eway-bill-line .eway-countdown{font-variant-numeric:tabular-nums}
+
+#etEwayPage .et-eway-top-count{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;font-weight:800;color:#45647d;padding:0 4px}
+@media(max-width:900px){#etEwayPage .top{flex-wrap:wrap}#etEwayPage .top .actions{flex-wrap:wrap}}
+
+/* DRIVER REQUEST BELL — additive, existing tracking layout retained */
+#trackingModule .et-driver-avatar-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+#trackingModule .et-truck-driver-avatar.et-driver-has-request{border-color:#ef4444!important;box-shadow:0 0 0 2px #fee2e2}
+#trackingModule .et-driver-pending-bell{position:absolute;right:-19px;top:-12px;z-index:35;width:27px;height:27px;border:2px solid white;border-radius:50%;background:#dc2626;color:#fff;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px #991b1b55;animation:etBellSwing 1.25s ease-in-out infinite;transform-origin:50% 5%}
+#trackingModule .et-driver-bell-count{position:absolute;right:-7px;top:-7px;background:#7f1d1d;color:#fff;border-radius:12px;padding:2px 4px;font-size:9px;font-weight:900}
+@keyframes etBellSwing{0%,100%{transform:rotate(0)}20%{transform:rotate(15deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(7deg)}80%{transform:rotate(-4deg)}}
+@media(prefers-reduced-motion:reduce){#trackingModule .et-driver-pending-bell{animation:none}}
+#etDriverActionRequests{border:1px solid #fecaca;background:#fff7f7;border-radius:11px;padding:10px;margin:0 0 12px;max-height:230px;overflow:auto}
+#etDriverActionRequests .et-alert{margin:7px 0}
+.et-driver-request-modal-title{font-weight:900;color:#b91c1c;font-size:12px;margin-bottom:7px}
+.et-driver-reject-btn{border:1px solid #fca5a5;border-radius:7px;background:#fff;color:#b91c1c;padding:7px 9px;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}
+
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -946,6 +970,32 @@
 #etDriverActionModal .et-dm-actions,#etAssignDriverModal .et-dm-actions{
  position:sticky;bottom:-16px;z-index:2;background:#fff;
  padding:12px 0 10px;box-shadow:0 -6px 14px #1736530a;
+}
+</style>
+<style id="et-eway-horizontal-scroll-fix">
+/* E-Way Register: accessible horizontal navigation without moving to the page bottom. */
+#etEwayPage .et-eway-register-wrap{overflow-x:auto!important;overflow-y:visible;scrollbar-width:auto;scrollbar-color:#8caad1 #e5edf7}
+@media(max-width:720px){#etEwayPage .et-eway-hscroll-tools button{padding:7px}}
+
+/* E-WAY VISIBLE-ROWS VIEWPORT: frozen column headings, bottom horizontal slider. */
+#etEwayPage .et-eway-viewport-panel{display:flex;flex-direction:column;min-height:220px;overflow:hidden}
+#etEwayPage .et-eway-viewport-panel>.ph{flex:0 0 auto}
+#etEwayPage .et-eway-viewport-panel>.et-eway-register-wrap{
+ flex:1 1 auto;min-height:0;max-height:none!important;
+ overflow:auto!important;overscroll-behavior:contain;
+ scrollbar-width:thin;
+}
+#etEwayPage .et-eway-register-wrap .eway-table thead th{
+ position:sticky;top:0;z-index:5;background:#f8fafc;
+ box-shadow:0 1px 0 #dce6f2;
+}
+#etEwayPage .et-eway-register-wrap .eway-table thead th:first-child{
+ position:sticky;top:0;left:0;z-index:8;background:#f8fafc;
+}
+#etEwayPage .et-eway-viewport-panel>.et-eway-hscroll-tools{
+ flex:0 0 auto;position:relative!important;top:auto!important;
+ padding:5px 12px 3px;z-index:9;background:#f7faff;
+ border-top:1px solid #dce6f2;border-bottom:0;
 }
 </style>
 </head>
@@ -1790,6 +1840,8 @@
             </div>
 
             <div class="actions">
+                <button type="button" class="btn primary" onclick="window.EktaTracking.openEwaySmartEntry()">＋ Scan / Paste E-Way</button>
+                <span id="etEwayCount" class="eway-total et-eway-top-count">0 trips</span>
                 <button class="btn" onclick="window.EktaTracking.refreshEwayPage()">↻ Refresh</button>
                 <button class="btn red" onclick="window.EktaTracking.closeEwayPage()">← Back to Tracking</button>
             </div>
@@ -1805,7 +1857,7 @@
                 <option value="BILLING">Billing</option>
                 <option value="TRANSPORTER">Transporter</option>
             </select>
-            <input id="etEwayDate" type="date" aria-label="Filter by program date" onchange="window.EktaTracking.renderEwayPage()" title="Filter by program date">
+            <input id="etEwayDate" type="date" aria-label="Filter by LR date" onchange="window.EktaTracking.renderEwayPage()" title="Filter by LR date">
             <button type="button" class="btn" onclick="window.EktaTracking.clearEwayFilters()">Clear Filters</button>
 
             <select id="etEwayStatusFilter"
@@ -1819,15 +1871,14 @@
 
             <!-- Active E-Way records are shown regardless of program date. -->
         </div>
-        <div class="eway-smartbar"><div><b>Smart E-Way Entry</b><span>Upload PDF / photo or paste bill text. Only verified fields are saved.</span></div><button type="button" class="btn primary" onclick="window.EktaTracking.openEwaySmartEntry()">＋ Scan / Paste E-Way</button><span id="etEwayCount" class="eway-total">0 trips</span></div>
         <div class="eway-stats" id="etEwayStats" aria-live="polite"></div>
-        <section class="panel">
+        <section class="panel et-eway-viewport-panel" id="etEwayViewportPanel">
             <div class="ph">
                 <b>Trip-wise E-Way Bill Register</b>
                 <span class="mini">Current visible bill set</span>
             </div>
 
-            <div class="tablewrap">
+            <div class="tablewrap et-eway-register-wrap" id="etEwayRegisterScroll">
                 <table class="eway-table">
                     <thead>
                         <tr>
@@ -1850,6 +1901,7 @@
                     </tbody>
                 </table>
             </div>
+
         
         <!-- Driver App requests are rendered here by tracking.js.
              Existing Live Alerts remain unchanged. -->
@@ -2519,7 +2571,7 @@
  <div class="et-dm-head"><div><b>Change / Remove Driver</b><small>Update the driver assigned to this vehicle</small></div><button type="button" class="x" onclick="window.EktaTracking.closeModal('etDriverActionModal')">×</button></div>
  <div class="mb"><input type="hidden" id="etDriverActionTruckId">
   <div class="et-dm-copybar"><button type="button" class="btn et-dm-copybtn" id="etDriverCopyBtn" onclick="window.EktaTracking.copyCurrentDriverDetails()">▢ Copy Details</button><span id="etDriverCopyFeedback" role="status" aria-live="polite"></span></div>
-  <div class="et-dm-profile" id="etDriverActionProfile"></div><div id="etDriverActionInfo" style="display:none"></div>
+  <div class="et-dm-profile" id="etDriverActionProfile"></div><div id="etDriverActionRequests" style="display:none"></div><div id="etDriverActionInfo" style="display:none"></div>
   <div class="field" style="margin-bottom:12px"><label>Effective Date &amp; Time (editable, local time)</label><input id="etDriverActionTime" type="datetime-local"></div>
   <div class="et-dm-section"><h4>New Driver</h4>
    <div class="field"><label>Choose an available Driver from Driver Master</label><select id="etDriverActionNew" onchange="window.EktaTracking.previewNewDriver()"><option value="">Select available driver</option></select></div>
@@ -2537,6 +2589,33 @@
 
 <!-- MARKET / HIRED VEHICLES — independent full-page workspace; no DB writes in this phase -->
 
+
+<script id="et-eway-horizontal-scroll-script">
+(function(){
+  'use strict';
+  function init(){
+    var page=document.getElementById('etEwayPage');
+    var body=document.getElementById('etEwayRegisterScroll');
+    var panel=document.getElementById('etEwayViewportPanel');
+    if(!page||!body||!panel||body.dataset.etScrollReady)return;
+    body.dataset.etScrollReady='1';
+    function update(){
+      if(page.classList.contains('show')){
+        var available=Math.floor(window.innerHeight-panel.getBoundingClientRect().top-12);
+        panel.style.height=Math.max(220,available)+'px';
+      }
+    }
+    body.addEventListener('wheel',function(e){
+      if(e.shiftKey&&Math.abs(e.deltaY)>0){e.preventDefault();body.scrollLeft+=e.deltaY;}
+    },{passive:false});
+    if(typeof MutationObserver!=='undefined')new MutationObserver(update).observe(page,{attributes:true,attributeFilter:['class']});
+    page.addEventListener('scroll',update,{passive:true});
+    window.addEventListener('resize',update,{passive:true});
+    update();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 </body>
 </html>
 

@@ -386,11 +386,12 @@ function statusOf(trip){
  const rel=clean(trip.trip_status).toLowerCase();
  const noteStage=clean(getNote(trip.notes,"STAGE")).toUpperCase();
  if(rel==="cancelled"||ts==="CANCELLED")return "CANCELLED";
- // Approved driver REPORTING takes priority over a stale trip_status="In Transit".
+ // Completed/Delivered lifecycle must not be overridden by stale RUNNING flags.
+ if(rel==="completed")return "EMPTY";
+ if(rel==="delivered")return "REPORTING";
+ if(ts==="EMPTY")return "EMPTY";
  if(ts==="REPORTING")return "REPORTING";
  if(ts==="RUNNING"||rel==="in transit")return "RUNNING";
- if(rel==="delivered")return "REPORTING";
- if(rel==="completed"||ts==="EMPTY")return "EMPTY";
  if(rel==="planned"){
    const loadingDate=trip.loading_date||getNote(trip.notes,"LOADING_DATE");
    if(noteStage==="LOADING"||loadingDate)return "LOADING";
@@ -660,6 +661,7 @@ function driverRequestCard(req){
     <button type="button"
       style="border:0;border-radius:8px;background:#09995f;color:#fff;padding:8px 10px;font-weight:900;cursor:pointer;white-space:nowrap"
       onclick="window.EktaTracking.approveDriverRequest('${esc(req.id)}',this)">✓ APPROVE</button>
+    <button type="button" class="et-driver-reject-btn" onclick="window.EktaTracking.rejectDriverRequest('${esc(req.id)}',this)">REJECT</button>
    </div>
   </div>`;
 }
@@ -671,6 +673,7 @@ async function approveDriverRequest(requestId,btn){
   const r=await S.rpc("approve_driver_status_request",{p_request_id:requestId});
   if(r.error)throw r.error;
   await loadAll();
+  if($("etDriverActionModal")?.classList.contains("show"))renderDriverRequestsInModal(clean($("etDriverActionTruckId")?.value));
  }catch(e){
   console.error("[EKTA TRACKING] Driver approval failed:",e);
   if(btn){btn.disabled=false;btn.textContent=oldText;}
@@ -716,13 +719,56 @@ async function loadTrackingDriverPhotos(){
 function driverPhotoUrl(d){
  return clean((d&&etDriverPhotoCache.get(String(d.id))?.url)||d?.photo_url||d?.profile_photo_url||d?.photo||d?.image_url||"");
 }
+// Pending Driver App requests are linked by truck_id; no lifecycle writes here.
+function pendingRequestsForTruck(truckId){
+ return driverRequests.filter(req=>String(req.truck_id)===String(truckId));
+}
+function driverBellMarkup(truckId){
+ const pending=pendingRequestsForTruck(truckId);
+ if(!pending.length)return "";
+ return `<button type="button" class="et-driver-pending-bell" title="${pending.length} pending driver request(s)" aria-label="Open ${pending.length} pending driver requests" onclick="event.stopPropagation();window.EktaTracking.openDriverRequestsForTruck('${esc(truckId)}')">🔔${pending.length>1?`<span class="et-driver-bell-count">${pending.length}</span>`:""}</button>`;
+}
+function renderDriverRequestsInModal(truckId){
+ const host=$("etDriverActionRequests");if(!host)return;
+ const pending=pendingRequestsForTruck(truckId);
+ host.style.display=pending.length?"block":"none";
+ host.innerHTML=pending.length?`<div class="et-driver-request-modal-title">🔔 Pending Driver Requests (${pending.length})</div>`+pending.map(req=>driverRequestCard(req)).join(""):"";
+}
+function openDriverRequestsForTruck(truckId){
+ const t=truck(truckId);if(!t)return;
+ if(activeDriver(truckId)){
+  openDriverAction(truckId);
+  $("etDriverActionRequests")?.scrollIntoView({block:"nearest",behavior:"smooth"});
+ }else{
+  // Trucks without assigned drivers still have actionable requests in the existing notification strip.
+  const strip=$("etDriverRequestNotifications");
+  if(strip){strip.scrollIntoView({block:"center",behavior:"smooth"});}
+  else alertUser("Open Driver Requests in the Tracking notifications panel.");
+ }
+}
+async function rejectDriverRequest(requestId,btn){
+ const req=driverRequests.find(x=>String(x.id)===String(requestId));
+ if(!req)return alertUser("Pending request not found. Refresh Tracking.");
+ if(!window.confirm(`Reject ${clean(req.requested_status).toUpperCase()} request for ${driverRequestTruckNumber(req)}? This will not change the trip status.`))return;
+ if(btn)btn.disabled=true;
+ try{
+  const result=await S.from(T.driverRequests).update({request_status:"REJECTED"}).eq("id",requestId).eq("request_status","PENDING").select("id");
+  if(result.error)throw result.error;
+  if(!result.data?.length)throw new Error("Request is no longer pending. Refresh and check.");
+  await loadAll();
+  const tid=String(req.truck_id);
+  if($("etDriverActionModal")?.classList.contains("show"))renderDriverRequestsInModal(tid);
+ }catch(e){console.error("[EKTA TRACKING] Reject failed:",e);alertUser("Reject failed: "+(e.message||"Database error"));}
+ finally{if(btn)btn.disabled=false;}
+}
 function trackingTruckDriverAvatar(r){
  const d=r.d,tid=esc(r.t.id),name=d?clean(d.name):"No Driver";
  const photo=d?driverPhotoUrl(d):"";
  const safePhoto=/^https:\/\//i.test(photo)?photo:"";
  const visual=safePhoto?`<img src="${esc(safePhoto)}" alt="${esc(name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><span class="et-truck-avatar-fallback" style="display:none">${esc(driverInitials(d))}</span>`:`<span class="et-truck-avatar-fallback">${d?esc(driverInitials(d)):"👤"}</span>`;
  const target=d?"openDriverAction":"openAssignDriver";
- return `<div class="et-truck-driver-stack"><button type="button" class="et-truck-driver-avatar ${d?'assigned':'unassigned'}" title="${esc(name)} — ${d?'Change / Remove Driver':'Assign Driver'}" aria-label="${esc(name)} — Driver actions" onclick="event.stopPropagation();window.EktaTracking.${target}('${tid}')">${visual}</button><span class="et-truck et-truck-under-avatar" onclick="event.stopPropagation();window.EktaTracking.openTruck('${tid}')">${esc(r.t.truck_number||'—')}</span></div>`;
+ const pending=pendingRequestsForTruck(r.t.id).length;
+ return `<div class="et-truck-driver-stack"><div class="et-driver-avatar-wrap"><button type="button" class="et-truck-driver-avatar ${d?'assigned':'unassigned'} ${pending?'et-driver-has-request':''}" title="${esc(name)} — ${d?'Change / Remove Driver':'Assign Driver'}" aria-label="${esc(name)} — Driver actions" onclick="event.stopPropagation();window.EktaTracking.${target}('${tid}')">${visual}</button>${driverBellMarkup(r.t.id)}</div><span class="et-truck et-truck-under-avatar" onclick="event.stopPropagation();window.EktaTracking.openTruck('${tid}')">${esc(r.t.truck_number||'—')}</span></div>`;
 }
 
 function driverInitials(d){
@@ -4361,7 +4407,7 @@ function openDriverAction(truckId){
  $("etDriverActionTime").value=driverLocalNow();if($("etDriverCopyFeedback"))$("etDriverCopyFeedback").textContent="";
  const options=drivers.filter(x=>clean(x.status).toLowerCase()==="active"&&String(x.id)!==String(d.id)&&!assignments.some(a=>String(a.driver_id)===String(x.id)&&clean(a.status).toLowerCase()==="active"));
  $("etDriverActionNew").innerHTML='<option value="">Select available driver</option>'+options.map(x=>`<option value="${esc(x.id)}">${esc(x.driver_code||"")} — ${esc(x.name)} (${esc(x.phone||"")})</option>`).join("");
- $("etDriverActionModal").classList.add("show");loadTrackingDriverPhotos().then(()=>{if($("etDriverActionModal")?.classList.contains("show"))$("etDriverActionProfile").innerHTML=driverProfileMarkup(d,t.truck_number)});
+ renderDriverRequestsInModal(truckId);$("etDriverActionModal").classList.add("show");loadTrackingDriverPhotos().then(()=>{if($("etDriverActionModal")?.classList.contains("show"))$("etDriverActionProfile").innerHTML=driverProfileMarkup(d,t.truck_number)});
 }
 async function saveDriverAction(mode){
  const btn1=$("etDriverRemoveBtn"),btn2=$("etDriverChangeBtn");
@@ -4423,7 +4469,7 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
