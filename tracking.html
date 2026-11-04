@@ -899,6 +899,28 @@
 .et-driver-request-modal-title{font-weight:900;color:#b91c1c;font-size:12px;margin-bottom:7px}
 .et-driver-reject-btn{border:1px solid #fca5a5;border-radius:7px;background:#fff;color:#b91c1c;padding:7px 9px;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}
 
+
+/* EKTA STATUS TIMER — aligned under its own stage badge */
+#trackingModule .et-stage-actions .et-status-stack{
+ display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+ flex:0 0 auto;gap:0;vertical-align:middle;
+}
+#trackingModule .et-stage-actions .et-status-stack .et-badge{margin:0!important}
+
+#trackingModule .et-status-timer{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ margin-top:5px;padding:5px 10px;min-height:23px;
+ border-radius:8px;font-size:12px;font-weight:850;line-height:1.2;
+ letter-spacing:.1px;white-space:nowrap;font-variant-numeric:tabular-nums;
+ box-shadow:0 1px 3px rgba(20,40,70,.06);
+ border:1px solid #c8e2f9;background:#eff7ff;color:#246ca8;
+}
+#trackingModule .et-timer-running{background:#eaf8f0;border-color:#bde9d1;color:#168052}
+#trackingModule .et-timer-reporting{background:#f2edff;border-color:#ded1ff;color:#7045b7}
+#trackingModule .et-timer-empty{background:#eaf7fa;border-color:#bce7ec;color:#207f91}
+#trackingModule .et-timer-unknown{background:#f5f7fa;border-color:#e0e6ed;color:#8290a0}
+#trackingModule .et-status-timer.et-timer-over{background:#fff0f1!important;border-color:#ffb7c0!important;color:#cb263e!important}
+
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */

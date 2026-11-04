@@ -401,6 +401,55 @@ function statusOf(trip){
  if(ts==="LOADING")return noteStage==="PROGRAM"?"PROGRAM":"LOADING";
  return ts||"PROGRAM";
 }
+/* EKTA STATUS TIMERS — stage timestamps stored in existing trip notes; no schema change. */
+const ET_TIMER_STAGES=new Set(["PROGRAM","RUNNING","REPORTING","EMPTY"]);
+function etStageStamp(notes,stage){return getNote(notes,"TIMER_"+stage+"_AT")}
+function etStampStage(notes,stage){return putNote(notes,"TIMER_"+stage+"_AT",new Date().toISOString())}
+function etTimerStart(r){
+ const stage=r.actualStage;
+ if(!ET_TIMER_STAGES.has(stage))return null;
+ let trip=r.trip;
+ if(stage==="EMPTY"&&!trip){
+  trip=trips.filter(t=>String(t.truck_id)===String(r.t.id)&&clean(t.trip_status).toLowerCase()==="completed")
+   .sort((a,b)=>new Date(b.unloading_date||b.end_date||b.created_at||0)-new Date(a.unloading_date||a.end_date||a.created_at||0))[0];
+ }
+ if(!trip)return null;
+ const exact=etStageStamp(trip.notes,stage);
+ if(exact&&Number.isFinite(Date.parse(exact)))return {time:exact,approx:false};
+ // Older records have dates, not clock times. Mark their elapsed times as estimates.
+ const legacy=stage==="PROGRAM"?(trip.program_date||trip.created_at):stage==="RUNNING"?(trip.lr_date||trip.loading_date||trip.start_date):stage==="REPORTING"?trip.reporting_date:(trip.unloading_date||trip.end_date);
+ if(!legacy)return null;
+ const time=/^\d{4}-\d{2}-\d{2}$/.test(String(legacy))?String(legacy)+"T00:00:00":String(legacy);
+ return Number.isFinite(Date.parse(time))?{time,approx:true}:null;
+}
+function etTimerText(start){
+ const ms=Date.now()-new Date(start).getTime();
+ if(!Number.isFinite(ms))return "—";
+ const minutes=Math.max(0,Math.floor(ms/60000));
+ const days=Math.floor(minutes/1440);
+ const hours=Math.floor((minutes%1440)/60);
+ const mins=String(minutes%60).padStart(2,"0");
+ return days>0?`${days} ${days===1?"Day":"Days"} ${hours}h ${mins}m`:`${hours}h ${mins}m`;
+}
+function etStatusTimer(r){
+ if(selectedTrackingDate()!==today())return "";
+ const stage=r.actualStage;
+ if(!ET_TIMER_STAGES.has(stage))return "";
+ const start=etTimerStart(r);
+ if(!start)return `<div class="et-status-timer et-timer-unknown" title="No reliable stage start date available">◷ —</div>`;
+ const elapsed=Date.now()-Date.parse(start.time);
+ const red=elapsed>=25*3600000;
+ return `<div class="et-status-timer et-timer-${stage.toLowerCase()}${red?" et-timer-over":""}" data-et-timer-start="${esc(start.time)}" title="${start.approx?"Estimated from existing date (exact start time not stored)":"Exact stage entry time"}">◷ <span>${start.approx?"~":""}${etTimerText(start.time)}</span></div>`;
+}
+function updateStatusTimers(){
+ document.querySelectorAll("[data-et-timer-start]").forEach(el=>{
+  const stamp=el.getAttribute("data-et-timer-start"),ms=Date.now()-Date.parse(stamp);
+  const text=el.querySelector("span");if(text)text.textContent=(el.title.startsWith("Estimated")?"~":"")+etTimerText(stamp);
+  el.classList.toggle("et-timer-over",Number.isFinite(ms)&&ms>=25*3600000);
+ });
+}
+if(typeof window!=="undefined")window.setInterval(updateStatusTimers,30000);
+
 function delayed(trip){return !!trip&&statusOf(trip)==="RUNNING"&&trip.expected_arrival_date&&dateOnly(trip.expected_arrival_date)<today()}
 function hasAlert(trip){const notes=clean(trip?.notes).replace(/\[TRACKING:BREAKDOWN_EVENTS=[^\]]*\]/gi,"");const s=[notes,trip?.remark,trip?.current_location].join(" ").toLowerCase();return !!activeBreakdown(trip)||/breakdown|accident|emergency/.test(s)}
 
@@ -1344,7 +1393,7 @@ function render(){
    <td><span class="et-party-kind ${r.p?(isBillingClient(r.p)?"billing":"transporter"):""}">${r.p?(isBillingClient(r.p)?"BILLING":"TRANSPORTER"):"—"}</span></td>
    <td class="et-route-cell">${r.status==="EMPTY"?`<input class="et-empty-from-input" data-truck-id="${esc(r.t.id)}" aria-label="Available From for ${esc(r.t.truck_number)}" value="${esc(emptyFromValue(r.t.id))}" placeholder="Enter From" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onchange="window.EktaTracking.saveEmptyFrom('${esc(r.t.id)}',this.value)" />`: `${esc(r.trip?.from_location||r.trip?.loading_point||"—")}${r.trip?.to_location||r.trip?.destination?'<span class="et-route-arrow" aria-hidden="true">→</span>':''}`}</td>
    <td class="et-route-cell">${esc(r.trip?.to_location||r.trip?.destination||"—")}</td>
-   <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}<button type="button" class="et-breakdown-btn ${truckBreakdown(r.t.id)?"et-breakdown-active":""}" title="${truckBreakdown(r.t.id)?"Breakdown active — see Live Alerts":"Work / Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startTruckBreakdown('${esc(r.t.id)}')">🔧</button>${badge(r.status,truckBreakdown(r.t.id)?false:r.alert,!!truckBreakdown(r.t.id))}${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
+   <td><div class="et-stage-actions">${r.trip&&r.status==="PROGRAM"?`<button type="button" class="et-stage-cancel" title="Cancel Program" onclick="event.stopPropagation();window.EktaTracking.cancelProgram('${esc(r.trip.id)}')">✕</button>`:""}<button type="button" class="et-breakdown-btn ${truckBreakdown(r.t.id)?"et-breakdown-active":""}" title="${truckBreakdown(r.t.id)?"Breakdown active — see Live Alerts":"Work / Breakdown"}" onclick="event.stopPropagation();window.EktaTracking.startTruckBreakdown('${esc(r.t.id)}')">🔧</button><span class="et-status-stack">${badge(r.status,truckBreakdown(r.t.id)?false:r.alert,!!truckBreakdown(r.t.id))}${etStatusTimer(r)}</span>${r.trip&&r.status==="PROGRAM"&&(!r.trip.party_id||!r.trip.driver_id||getNote(r.trip.notes,"PROGRAM_DETAILS_PENDING")==="YES")?'<span class="et-program-pending-pill">PENDING</span>':""}${r.status==="EMPTY"?`<button type="button" class="et-add-program" onclick="event.stopPropagation();window.EktaTracking.openQuickProgram('${esc(r.t.id)}')">＋ Add Program</button>`:""}${r.trip&&["PROGRAM","RUNNING","REPORTING"].includes(r.status)?`<button type="button" class="et-stage-next et-stage-${r.status.toLowerCase()}" title="Move to next stage" onclick="event.stopPropagation();window.EktaTracking.quickNextStage('${esc(r.trip.id)}')">➜</button>`:""}</div></td>
    <td>
       <div class="et-location-wrap">
         <span class="et-location-text">${esc(current)}</span>
@@ -1607,7 +1656,7 @@ async function saveProgram(e){
  notes=clean(notes.replace(/\[TRACKING:[^\]]*\]/gi, "").trim()+" "+(clean(trips.find(x=>String(x.id)===String(programEditTripId))?.notes).match(/\[TRACKING:[^\]]*\]/gi)||[]).join(" ")).trim();
  const remarks=clean($("etPRemark").value);
  notes=clean(remarks+" "+(notes.match(/\[TRACKING:[^\]]*\]/gi)||[]).join(" "));
- if(!programEditTripId)notes=putNote(notes,"STAGE","PROGRAM");
+ if(!programEditTripId){notes=putNote(notes,"STAGE","PROGRAM");notes=etStampStage(notes,"PROGRAM");}
  notes=putNote(notes,"PROGRAM_DETAILS_PENDING",(!selectedParty||!d||!revInput||!lp||!to)?"YES":"NO");
  notes=putNote(notes,"HAIER_BILLING_ARRANGEMENT",$("etProgramHaier")?.value||"PENDING");
  notes=putNote(notes,"PROGRAM_RATE_CATEGORY",$("etProgramCategory")?.value||"PENDING");
@@ -1669,11 +1718,11 @@ async function confirmLoading(e){e.preventDefault();if(!selectedTrip)return fals
 
 /* ========================= 10. LOADING -> RUNNING ========= */
 function openLR(t){selectedTrip=t;const tr=truck(t.truck_id);const ld=t.loading_date||getNote(t.notes,"LOADING_DATE")||"";$("etLRTruck").value=tr?.truck_number||"";$("etLRTrip").value=t.trip_number||"";$("etLRProgram").value=dateOnly(t.program_date);$("etLRLoadingDate").value=ld;$("etLRDate").value=t.lr_date||getNote(t.notes,"LR_DATE")||dateOnly(t.start_date)||today();$("etLREway").value="";$("etLRDetention").value=t.detention_charge??0;$("etLRRemark").value=t.notes||"";$("etLRModal").classList.add("show")}
-async function confirmLR(e){e.preventDefault();if(!selectedTrip)return false;const d=$("etLRDate").value;if(!d)return alertUser("LR Date is required.");let notes=clean($("etLRRemark").value)||selectedTrip.notes||"";notes=putNote(notes,"LR_DATE",d);notes=putNote(notes,"STAGE","RUNNING");const payload={tracking_status:"RUNNING",trip_status:"In Transit",lr_date:d,start_date:d,current_location:selectedTrip.loading_point||selectedTrip.from_location||null,notes};if(Object.prototype.hasOwnProperty.call(selectedTrip,"detention_charge"))payload.detention_charge=parseAmount($("etLRDetention").value);try{const r=await S.from(T.trips).update(payload).eq("id",selectedTrip.id);if(r.error)throw r.error;const ew=clean($("etLREway").value);if(ew)await saveEwayFromLoading(selectedTrip,ew,d);await S.from(T.trucks).update({status:"RUNNING"}).eq("id",selectedTrip.truck_id);closeModal("etLRModal");await loadAll();alertUser(`Trip ${selectedTrip.trip_number} moved to RUNNING.`)}catch(err){console.error(err);alertUser("LR update failed: "+err.message)}return false}
+async function confirmLR(e){e.preventDefault();if(!selectedTrip)return false;const d=$("etLRDate").value;if(!d)return alertUser("LR Date is required.");let notes=clean($("etLRRemark").value)||selectedTrip.notes||"";notes=putNote(notes,"LR_DATE",d);notes=putNote(notes,"STAGE","RUNNING");notes=etStampStage(notes,"RUNNING");const payload={tracking_status:"RUNNING",trip_status:"In Transit",lr_date:d,start_date:d,current_location:selectedTrip.loading_point||selectedTrip.from_location||null,notes};if(Object.prototype.hasOwnProperty.call(selectedTrip,"detention_charge"))payload.detention_charge=parseAmount($("etLRDetention").value);try{const r=await S.from(T.trips).update(payload).eq("id",selectedTrip.id);if(r.error)throw r.error;const ew=clean($("etLREway").value);if(ew)await saveEwayFromLoading(selectedTrip,ew,d);await S.from(T.trucks).update({status:"RUNNING"}).eq("id",selectedTrip.truck_id);closeModal("etLRModal");await loadAll();alertUser(`Trip ${selectedTrip.trip_number} moved to RUNNING.`)}catch(err){console.error(err);alertUser("LR update failed: "+err.message)}return false}
 
 /* ========================= 10. REPORTING ==================== */
 function openReporting(t){selectedTrip=t;const tr=truck(t.truck_id);$("etRTruck").value=tr?.truck_number||"";$("etRTrip").value=t.trip_number||"";$("etRDate").value=t.reporting_date||getNote(t.notes,"REPORTING_DATE")||defaultUnloadingDateIST();$("etRDestination").value=t.destination||t.to_location||"";$("etReportingModal").classList.add("show")}
-async function confirmReporting(e){e.preventDefault();if(!selectedTrip)return false;const d=$("etRDate").value;if(!d)return alertUser("Reporting Date is required.");let notes=selectedTrip.notes||"";notes=putNote(notes,"REPORTING_DATE",d);notes=putNote(notes,"STAGE","REPORTING");const payload={tracking_status:"REPORTING",trip_status:"Delivered",reporting_date:d,current_location:selectedTrip.destination||selectedTrip.to_location||null,notes};try{const r=await S.from(T.trips).update(payload).eq("id",selectedTrip.id);if(r.error)throw r.error;await S.from(T.trucks).update({status:"REPORTING"}).eq("id",selectedTrip.truck_id);closeModal("etReportingModal");await loadAll();alertUser(`Trip ${selectedTrip.trip_number} moved to REPORTING.`)}catch(err){console.error(err);alertUser("Reporting update failed: "+err.message)}return false}
+async function confirmReporting(e){e.preventDefault();if(!selectedTrip)return false;const d=$("etRDate").value;if(!d)return alertUser("Reporting Date is required.");let notes=selectedTrip.notes||"";notes=putNote(notes,"REPORTING_DATE",d);notes=putNote(notes,"STAGE","REPORTING");notes=etStampStage(notes,"REPORTING");const payload={tracking_status:"REPORTING",trip_status:"Delivered",reporting_date:d,current_location:selectedTrip.destination||selectedTrip.to_location||null,notes};try{const r=await S.from(T.trips).update(payload).eq("id",selectedTrip.id);if(r.error)throw r.error;await S.from(T.trucks).update({status:"REPORTING"}).eq("id",selectedTrip.truck_id);closeModal("etReportingModal");await loadAll();alertUser(`Trip ${selectedTrip.trip_number} moved to REPORTING.`)}catch(err){console.error(err);alertUser("Reporting update failed: "+err.message)}return false}
 
 /* ========================= 11. UNLOADING ==================== */
 // Unloading date default: before 11:00 IST use yesterday, otherwise today.
@@ -1721,7 +1770,7 @@ async function confirmUnloading(e){
  notes=putNote(notes,"NGT",num($("etUNgt").value));
  notes=putNote(notes,"UNLOADING_DETENTION_DAYS",unloadDays);
  notes=putNote(notes,"UNLOADING_DETENTION_CHARGE",unloadDetCharge);
- notes=putNote(notes,"STAGE","EMPTY");
+ notes=putNote(notes,"STAGE","EMPTY");notes=etStampStage(notes,"EMPTY");
  const payload={
   tracking_status:"EMPTY",trip_status:"Completed",unloading_date:d,end_date:d,
   current_location:selectedTrip.destination||selectedTrip.to_location||null,notes
@@ -1784,19 +1833,19 @@ async function quickNextStage(id){
  if(stage==="PROGRAM"||stage==="LOADING"){
   label="LR / Loading Date";
   const d=await quickDateForTrip(t,label,t.lr_date||t.loading_date||t.program_date||today());if(!d)return;
-  notes=putNote(putNote(putNote(notes,"LR_DATE",d),"LOADING_DATE",d),"STAGE","RUNNING");
+  notes=putNote(putNote(putNote(notes,"LR_DATE",d),"LOADING_DATE",d),"STAGE","RUNNING");notes=etStampStage(notes,"RUNNING");
   payload={trip_status:"In Transit",tracking_status:"RUNNING",loading_date:d,lr_date:d,start_date:d,notes};truckStatus="On Trip";
  }else if(stage==="RUNNING"){
   label="Reporting Date";
   const d=await quickDateForTrip(t,label,t.reporting_date||today());if(!d)return;
   const lr=dateOnly(t.lr_date||t.loading_date||t.start_date);if(lr&&d<lr)return alertUser("Reporting Date cannot be before LR Date.");
-  notes=putNote(putNote(notes,"REPORTING_DATE",d),"STAGE","REPORTING");
+  notes=putNote(putNote(notes,"REPORTING_DATE",d),"STAGE","REPORTING");notes=etStampStage(notes,"REPORTING");
   payload={trip_status:"Delivered",tracking_status:"REPORTING",reporting_date:d,notes};truckStatus="On Trip";
  }else if(stage==="REPORTING"){
   label="Unloading Date";
   const d=await quickDateForTrip(t,label,t.unloading_date||t.end_date||"",true);if(!d)return;
   const rep=dateOnly(t.reporting_date);if(rep&&d<rep)return alertUser("Unloading Date cannot be before Reporting Date.");
-  notes=putNote(putNote(notes,"UNLOADING_DETENTION_DAYS",unloadingGraceDays(rep,d)),"STAGE","EMPTY");
+  notes=putNote(putNote(notes,"UNLOADING_DETENTION_DAYS",unloadingGraceDays(rep,d)),"STAGE","EMPTY");notes=etStampStage(notes,"EMPTY");
   payload={trip_status:"Completed",tracking_status:"EMPTY",unloading_date:d,end_date:d,notes};truckStatus="Available";
  }else return;
  if(!window.confirm(`${truck(t.truck_id)?.truck_number||"Truck"}\n${label}: ${fmt(payload.lr_date||payload.reporting_date||payload.unloading_date)}\nConfirm status change?`))return;
@@ -1844,7 +1893,7 @@ async function undoTripStage(id){
   payload={trip_status:"Planned",tracking_status:"PROGRAM",lr_date:null,loading_date:null,start_date:null};
   truckStatus="AVAILABLE";
  }
- cleaned=putNote(cleaned,"STAGE",previous);
+ cleaned=etStampStage(putNote(cleaned,"STAGE",previous),previous);
  // Audit trail is append-only in the existing notes field; no schema change.
  const audit=encodeURIComponent(JSON.stringify({from,to:previous,at:new Date().toISOString(),reason:"Operator stage correction"}));
  cleaned+=(cleaned?" ":"")+`[TRACKING:STAGE_UNDO_AUDIT=${audit}]`;
@@ -3777,7 +3826,7 @@ async function confirmAIPrograms(){
   const t=r._truck,p=r._party,d=activeDriver(t.id),a=activeAssignment(t.id);
   const amt=r.freight_amount===null||r.freight_amount===undefined||clean(r.freight_amount)===""?null:Number(String(r.freight_amount).replace(/[,₹]/g,""));
   if(amt!==null&&(!Number.isFinite(amt)||amt<0)){failed.push(r.truck_number+": invalid freight");continue}
-  let notes=putNote("AI Program Import","STAGE","PROGRAM");
+  let notes=etStampStage(putNote("AI Program Import","STAGE","PROGRAM"),"PROGRAM");
   notes=putNote(notes,"FREIGHT_CONFIRMATION","PENDING_LR");
   notes=putNote(notes,"FREIGHT_ENTERED_AT_PROGRAM",amt===null?"NO":"YES");
   notes=putNote(notes,"BILLING_CONFIRMATION","PENDING");
