@@ -1634,6 +1634,17 @@ function fillProgramLoadingPoint(truckId){
 function openProgram(){setProgramRequestContext(null);resetProgram();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPTruck')?.focus(),50)}
 function openProgramForTruck(id){const t=truck(id);if(!t)return;if(activeTrip(id))return alertUser("This truck already has an active trip.");resetProgram();selectedTruck=t;$("etPTruck").value=t.truck_number||"";fillProgramLoadingPoint(t.id);syncFleetProgramCategory();$("etProgramModal").classList.add("show");setTimeout(()=>$('etPParty')?.focus(),50)}
 function resetProgram(){programEditTripId=null;selectedTruck=null;selectedParty=null;$("etPTruck").value="";$("etPDate").value=today();$("etPParty").value="";$("etPPartyType").value="";$("etPLoad").value="";$("etPTo").value="";$("etPSecond").value="";$("etPSecondWrap").style.display="none";$("etPRevenue").value="";$("etPRemark").value="";["etProgramCategory","etProgramHaier","etProgramWeight"].forEach(id=>{if($(id))$(id).value=""});programRates=[];updateProgramPartyFields();syncFleetProgramCategory();$("etTruckSuggestions").classList.remove("show");$("etPartySuggestions").classList.remove("show")}
+// Fresh server check before each new Program insert. This is a client-side
+// safeguard; simultaneous requests still require a database-side constraint.
+async function assertNoActiveProgramInSupabase(truckId){
+ const {data,error}=await S.from(T.trips)
+  .select("id,trip_number,trip_status")
+  .eq("truck_id",truckId)
+  .or("trip_status.is.null,trip_status.not.in.(Completed,Cancelled)")
+  .limit(1);
+ if(error)throw new Error("Could not verify current truck trips: "+error.message);
+ if(data?.length)throw new Error("Duplicate Program blocked: this truck already has an active trip ("+(data[0].trip_number||data[0].id)+"). Refresh Tracking.");
+}
 let etProgramSaving=false;
 async function saveProgram(e){
  e.preventDefault();
@@ -1671,6 +1682,7 @@ async function saveProgram(e){
  const saveButton=document.querySelector('#etProgramModal .et-program-save');
  if(saveButton){saveButton.disabled=true;saveButton.textContent='Saving…';}
  try{
+  if(!programEditTripId)await assertNoActiveProgramInSupabase(selectedTruck.id);
   let payload={...base,tracking_status:"PROGRAM"};
   let r=programEditTripId?await S.from(T.trips).update({party_id:payload.party_id,driver_id:payload.driver_id,from_location:lp,to_location:to,loading_point:lp,destination:to,program_date:pd,freight_amount:rev,revenue:rev,notes}).eq("id",programEditTripId).select().single():await S.from(T.trips).insert(payload).select().single();
   if(!programEditTripId&&r.error&&(r.error.code==="23514"||clean(r.error.message).toLowerCase().includes("tracking_status"))){
@@ -1756,6 +1768,26 @@ function updateUnloadingAttention(){
  if(gap>0&&parseAmount($("etUDetention").value)<=0)$("etUDetention").value=1000;
  $("etUnloadingAttention").innerHTML=`<div class="et-notice">Reporting Date: <b>${esc(fmt(r))}</b> • Unloading Date: <b>${esc(fmt(d))}</b> • Unloading Detention: <b>${gap} day(s)</b> • Default charge if blank: <b>₹1,000</b></div>`;
 }
+// A new completed unloading invalidates any EMPTY From saved for the previous cycle.
+// A later manual edit remains authoritative until the next completion.
+async function resetEmptyFromAfterUnloading(truckId){
+ // All vehicles: clear only this truck's previous-cycle EMPTY From after a
+ // confirmed unloading. Never modify historical trips or other trucks.
+ // Retry a transient request failure; verify the database response each time.
+ let lastError;
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   const result=await S.from(T.trucks).update({empty_from_location:null}).eq("id",truckId).select("id,empty_from_location").single();
+   if(result.error)throw result.error;
+   if(!result.data||String(result.data.id)!==String(truckId)||result.data.empty_from_location!==null)
+    throw new Error("EMPTY From reset was not confirmed");
+   const tr=truck(truckId);if(tr)tr.empty_from_location=null;
+   return;
+  }catch(err){lastError=err;}
+ }
+ throw lastError||new Error("EMPTY From reset failed");
+}
+
 async function confirmUnloading(e){
  e.preventDefault();
  if(!selectedTrip)return false;
@@ -1782,6 +1814,8 @@ async function confirmUnloading(e){
   const r=await S.from(T.trips).update(payload).eq("id",selectedTrip.id);
   if(r.error)throw r.error;
   await S.from(T.trucks).update({status:"AVAILABLE"}).eq("id",selectedTrip.truck_id);
+  try{await resetEmptyFromAfterUnloading(selectedTrip.truck_id)}
+  catch(resetErr){console.error("[EKTA] EMPTY From reset failed after unloading:",resetErr);alertUser("Trip completed, but old EMPTY From could not be reset: "+resetErr.message+". Please refresh and verify From.");}
   closeModal("etUnloadingModal");
   await loadAll();
   alertUser(`Trip ${selectedTrip.trip_number} completed.\nTruck is now EMPTY / AVAILABLE.`);
@@ -1853,6 +1887,10 @@ async function quickNextStage(id){
   const result=await S.from(T.trips).update(payload).eq("id",t.id);if(result.error)throw result.error;
   const tr=await S.from(T.trucks).update({status:truckStatus}).eq("id",t.truck_id);
   if(tr.error)console.warn("[EKTA] Truck status update warning:",tr.error);
+  if(stage==="REPORTING"){
+   try{await resetEmptyFromAfterUnloading(t.truck_id)}
+   catch(resetErr){console.error("[EKTA] EMPTY From reset failed after quick unloading:",resetErr);alertUser("Trip completed, but old EMPTY From could not be reset: "+resetErr.message+". Please refresh and verify From.");}
+  }
   await loadAll();
  }catch(err){console.error("[EKTA] Quick stage change failed:",err);alertUser("Status update failed: "+(err.message||"Database error"));}
 }
@@ -1890,7 +1928,7 @@ async function undoTripStage(id){
   payload={trip_status:"In Transit",tracking_status:"RUNNING",reporting_date:null};
  }else{
   cleaned=removeKeys(cleaned,["LR_DATE","LOADING_DATE"]);
-  payload={trip_status:"Planned",tracking_status:"PROGRAM",lr_date:null,loading_date:null,start_date:null};
+  payload={trip_status:"Planned",tracking_status:"LOADING",lr_date:null,loading_date:null,start_date:null};
   truckStatus="AVAILABLE";
  }
  cleaned=etStampStage(putNote(cleaned,"STAGE",previous),previous);
@@ -3836,6 +3874,7 @@ async function confirmAIPrograms(){
   notes=putNote(notes,"AI_REVIEW",r.needsReview?"YES":"NO");
   const base={trip_number:`ET-${new Date().getFullYear()}-${String(Date.now()+saved).slice(-7)}`,truck_id:t.id,driver_id:d?.id||null,assignment_id:a?.id||null,party_id:p?.id||null,from_location:clean(r.from_location),to_location:clean(r.to_location),loading_point:clean(r.from_location),destination:clean(r.to_location),program_date:programDateISO(r.program_date),freight_amount:amt??0,revenue:amt??0,trip_status:"Planned",start_date:null,current_location:clean(r.from_location),notes};
   try{
+   await assertNoActiveProgramInSupabase(t.id);
    let q=await S.from(T.trips).insert({...base,tracking_status:"PROGRAM"}).select().single();
    if(q.error&&(/tracking_status/i.test(q.error.message||"")||q.error.code==="23514"))q=await S.from(T.trips).insert({...base,tracking_status:"LOADING"}).select().single();
    if(q.error)throw q.error;
