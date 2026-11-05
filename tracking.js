@@ -2958,8 +2958,11 @@ function ewayBillStatus(x){
  return "OK";
 }
 
+function transporterEwayDate(t){return getNote(t?.notes,"TRANSPORTER_EWAY_DATE");}
+function isTransporterEwayTrip(t){const p=party(t?.party_id);return !!p&&!isBillingClient(p);}
 function ewayTripOverallStatus(t){
  const list=currentVisibleBills(t.id);
+ if(isTransporterEwayTrip(t)&&transporterEwayDate(t)&&!list.length)return "OK";
  if(!list.length)return "PENDING";
  if(list.some(x=>ewayBillStatus(x)==="EXPIRED"))return "EXPIRED";
  if(list.some(x=>ewayBillStatus(x)==="WARNING"))return "WARNING";
@@ -3068,7 +3071,7 @@ function renderEwayPage(){
  <td>${ewayBillColumn(bills,"issued",t.id)}</td>
  <td>${ewayBillColumn(bills,"expiry",t.id)}</td>
  <td>${ewayBillColumn(bills,"timer",t.id)}</td>
- <td>${ewayBillColumn(bills,"status",t.id)}</td><td><button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','')">＋ ${bills.length?'Add another':'Enter Bill'}</button></td></tr>`;
+ <td>${ewayBillColumn(bills,"status",t.id)}</td><td><button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','${esc(bills[0]?.id||"")}')">✎ ${isTransporterEwayTrip(t)?'Edit Date':bills.length?'Edit Bill':'Enter Bill'}</button>${!isTransporterEwayTrip(t)&&bills.length?` <button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','')">＋ Add</button>`:''}</td></tr>`;
  }).join("");
  if(!list.length&&!marketList.length)$("etEwayRows").innerHTML=`<tr><td colspan="10" class="empty">No active E-Way trips match this search.</td></tr>`;
 }
@@ -3079,6 +3082,7 @@ function openEwaySmartEntry(){
  // The OCR entry has no default truck: never silently assign the first trip.
  openEwayEdit(available[0].id,"");
  const modal=$("etEwayEditModal");modal.classList.remove("eway-manual-mode");modal.classList.add("eway-ocr-mode");
+ $("etEWTransporterDateWrap").style.display="none";$("etEWBillEntryWrap").style.display="block";$("etEWIssueDate").disabled=false;$("etEWBillRows").querySelectorAll("input").forEach(input=>input.disabled=false);
  $("etEwayEditTitle").textContent="SCAN / PASTE E-WAY BILL";
  $("etEWTripId").value="";$("etEWTruck").value="";
  $("etEWTruckLabel").textContent="Not selected";$("etEWTripLabel").textContent="Select active trip";
@@ -3134,15 +3138,24 @@ function removeEwayBillRow(btn){const host=$("etEWBillRows");if(host.children.le
 function openEwayEdit(tripId,recordId){
  const t=trips.find(x=>String(x.id)===String(tripId));if(!t)return alertUser("Trip not found.");
  const tr=truck(t.truck_id);
+ const transporterMode=isTransporterEwayTrip(t);
  const record=recordId?(ewayBills||[]).find(x=>String(x.id)===String(recordId)):null;
 
+ $("etEWTransporterDateWrap").style.display=transporterMode?"block":"none";
+ $("etEWBillEntryWrap").style.display=transporterMode?"none":"block";
+ $("etEWTransporterDate").value=transporterEwayDate(t);
+ $("etEWTransporterDate").required=transporterMode;
+ $("etEWIssueDate").required=!transporterMode;
+ $("etEWIssueDate").disabled=transporterMode;
  $("etEWTripId").value=t.id;
  $("etEWRecordId").value=record?.id||"";
  $("etEWTruck").value=tr?.truck_number||"";$("etEWTruck").readOnly=true;$("etEWTruck").onchange=null;$("etEWTruckLabel").textContent=tr?.truck_number||"—";$("etEWTripLabel").textContent=t.trip_number||"Active";
  $("etEWProgramDate").value=dateOnly(t.program_date);
  $("etEWLoadingDate").value=dateOnly(t.loading_date);
  $("etEWBillRows").innerHTML="";addEwayBillRow(record?.eway_bill_number||"",dateOnly(record?.valid_until||""),record?.id||"");
+ $("etEWBillRows").querySelectorAll("input").forEach(input=>input.disabled=transporterMode);
  $("etEWDateTime").value=toLocalInput(record?.eway_bill_date||record?.valid_from||"");
+ $("etEWIssueDate").value=dateOnly(record?.eway_bill_date||record?.valid_from||"");
 
  $("etEWDocument").value=record?.document_file_url||"";
  $("etEWNote").value=record?.ai_note||"";
@@ -3150,7 +3163,7 @@ function openEwayEdit(tripId,recordId){
  $("etEWFileNote").textContent="Scan or paste details, review and Save. Original file/text is not stored.";$("etEWPaste").value="";
  const modal=$("etEwayEditModal");modal.classList.add("eway-manual-mode");modal.classList.remove("eway-ocr-mode");
  $("etEWOcrTruckChoice").style.display="none";
- $("etEwayEditTitle").textContent=record?"UPDATE E-WAY BILL":"ADD NEW E-WAY BILL";
+ $("etEwayEditTitle").textContent=transporterMode?"TRANSPORTER — EDIT E-WAY DATE":record?"UPDATE E-WAY BILL":"ADD NEW E-WAY BILL";
  $("etEwayEditModal").classList.add("show");
 }
 
@@ -3208,6 +3221,21 @@ async function saveEwayRecord(e){
  const tripId=clean($("etEWTripId").value);
  const t=trips.find(x=>String(x.id)===String(tripId));if(!t)return alertUser("Select a valid active trip.");
  if(ewayNormalizeTruck(truck(t.truck_id)?.truck_number)!==ewayNormalizeTruck($("etEWTruck").value))return alertUser("Truck number does not match selected trip.");
+ if(isTransporterEwayTrip(t)){
+  const date=clean($("etEWTransporterDate").value);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(new Date(date+"T00:00:00").getTime()))return alertUser("Enter the E-Way Bill date.");
+  const saveBtn=e?.submitter;if(saveBtn)saveBtn.disabled=true;
+  try{
+   const notes=putNote(t.notes,"TRANSPORTER_EWAY_DATE",date);
+   const result=await S.from(T.trips).update({notes}).eq("id",t.id).select("id");
+   if(result.error)throw result.error;
+   if(!result.data?.length)throw new Error("Trip update not confirmed");
+   closeModal("etEwayEditModal");await loadAll();renderEwayPage();alertUser("Transporter E-Way date saved.");
+  }catch(err){console.error("[EKTA TRACKING] Transporter E-Way date save failed:",err);alertUser("Date was not saved: "+(err.message||"Database error"));}
+  finally{if(saveBtn)saveBtn.disabled=false;}
+  return false;
+ }
+
  const rows=[...$("etEWBillRows").querySelectorAll('.eway-bill-row')].map(row=>({id:row.dataset.recordId||"",number:clean(row.querySelector('.eway-row-number').value),expiry:clean(row.querySelector('.eway-row-expiry').value)}));
  if(!rows.length)return alertUser("Add at least one E-Way Bill.");
  const seen=new Set();
@@ -3217,15 +3245,17 @@ async function saveEwayRecord(e){
   if(seen.has(r.number))return alertUser("Duplicate E-Way Bill number in this form: "+r.number);seen.add(r.number);
   if(billsForTrip(tripId).some(b=>String(b.id)!==String(r.id)&&clean(b.eway_bill_number)===r.number))return alertUser("Bill already exists for this trip: "+r.number);
  }
+ const issueDate=clean($("etEWIssueDate").value);
+ if(!issueDate)return alertUser("Enter the E-Way Bill issue date from the document.");
  const saveBtn=e?.submitter;if(saveBtn)saveBtn.disabled=true;
  try{
   for(const r of rows){
    const existing=r.id?(ewayBills||[]).find(x=>String(x.id)===String(r.id)):null;
-   // Preserve existing issue timestamp on edits. For new records, use the existing trip's
-   // program/loading date as legacy database compatibility only; never claim it was OCR-generated.
-   const legacyDate=existing?.eway_bill_date||existing?.valid_from||t.loading_date||t.program_date||new Date().toISOString();
+   // Use the actual E-Way issue date entered by staff, not a trip date.
    const expiryEnd=new Date(r.expiry+"T23:59:59");
-   const issue=new Date(legacyDate);const fallback=Number.isFinite(issue.getTime())&&issue.getTime()<expiryEnd.getTime()?issue.toISOString():new Date(Math.min(Date.now(),expiryEnd.getTime()-60000)).toISOString();
+   const issue=new Date(issueDate+"T00:00:00");
+   if(!Number.isFinite(issue.getTime())||issue>expiryEnd)throw new Error("E-Way issue date must be on or before expiry.");
+   const fallback=issue.toISOString();
    const payload={trip_id:t.id,truck_id:t.truck_id,eway_bill_number:r.number,eway_bill_date:fallback,valid_from:fallback,valid_until:expiryEnd.toISOString(),document_file_url:existing?.document_file_url||null,ai_note:existing?.ai_note||null,verified:false,updated_at:new Date().toISOString()};
    const result=r.id?await S.from(T.eway).update(payload).eq('id',r.id):await S.from(T.eway).insert(payload);
    if(result.error)throw result.error;
