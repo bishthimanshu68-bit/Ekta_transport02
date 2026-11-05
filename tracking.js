@@ -1645,6 +1645,23 @@ async function assertNoActiveProgramInSupabase(truckId){
  if(error)throw new Error("Could not verify current truck trips: "+error.message);
  if(data?.length)throw new Error("Duplicate Program blocked: this truck already has an active trip ("+(data[0].trip_number||data[0].id)+"). Refresh Tracking.");
 }
+// Translate database duplicate-active-trip rejection into a staff-friendly warning.
+// PostgreSQL 23505 may also mean a duplicate trip_number; only label our
+// dedicated truck index as an active-program conflict.
+function etProgramSaveError(err,vehicle){
+ const message=clean(err?.message||err||"Database error");
+ const detail=clean(err?.details);
+ const constraint=clean(err?.constraint);
+ const combined=[message,detail,constraint].join(" ");
+ const duplicateActive=err?.code==="23505"&&/trips_one_active_trip_per_truck_idx/i.test(combined);
+ const precheckConflict=/^Duplicate Program blocked:/i.test(message);
+ if(duplicateActive||precheckConflict){
+  const vehicleLabel=clean(vehicle)||"Selected vehicle";
+  return `PROGRAM ALREADY ACTIVE\nVehicle: ${vehicleLabel}\n\nThis vehicle already has an active trip (PROGRAM / LOADING / RUNNING / REPORTING).\nComplete or cancel the existing trip before creating another Program.\nRefresh Tracking to see the current status.`;
+ }
+ if(err?.code==="23505")return `Program was NOT saved for ${clean(vehicle)||"this vehicle"}: a duplicate database value was detected. Refresh Tracking and check the existing Trip. (${message})`;
+ return message;
+}
 let etProgramSaving=false;
 async function saveProgram(e){
  e.preventDefault();
@@ -1715,7 +1732,7 @@ async function saveProgram(e){
   alertUser(programEditTripId?"Program updated successfully.":`Program saved to Programming List${getNote(notes,"PROGRAM_DETAILS_PENDING")==="YES"?" — PENDING":""}.\nTrip: ${base.trip_number}${requestWarning}${destinationWarning}`);
  }catch(err){
   console.error("[EKTA TRACKING] Program save failed:",err);
-  alertUser("Program save failed: "+(err.message||"Database error"));
+  alertUser("Program save failed: "+etProgramSaveError(err,selectedTruck?.truck_number));
  }finally{
   etProgramSaving=false;
   if(saveButton){saveButton.disabled=false;saveButton.textContent='✓ Save Program';}
@@ -3880,7 +3897,7 @@ async function confirmAIPrograms(){
    if(q.error)throw q.error;
    await S.from(T.trucks).update({status:"PROGRAM"}).eq("id",t.id);
    saved++;savedRows.push(r);
-  }catch(err){failed.push(r.truck_number+": "+(err.message||err))}
+  }catch(err){failed.push(r.truck_number+": "+etProgramSaveError(err,r.truck_number))}
  }
  aiProgramRows=aiProgramRows.filter(r=>!savedRows.includes(r));
  showAIProgramPreview();
