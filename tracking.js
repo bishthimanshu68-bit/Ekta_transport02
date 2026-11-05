@@ -48,6 +48,10 @@ function rememberTrackingCard(value){
 
 let currentProgramRequestId=null;
 const gpsPlaceCache=new Map();
+// Stable ALL worksheet order across stage transitions and location refreshes.
+const etAllRowOrder=new Map();
+let etLoadSequence=0;
+
 
 /* ========================= 1. HELPERS ====================== */
 function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -498,54 +502,65 @@ function updateBreakdownTimers(){document.querySelectorAll("[data-breakdown-star
 if(typeof window!=="undefined")window.setInterval(updateBreakdownTimers,60000);
 
 /* ========================= 4. DATA LOAD ===================== */
-async function loadAll(){
- if(!dbOK()){renderError("Supabase client not available. Make sure db.js loads before Tracking.");return}
- try{
-  const core=await Promise.all([
-   S.from(T.trucks).select("id,truck_number,vehicle_type,capacity_ton,owner_name,status,empty_from_location"),
-   S.from(T.drivers).select("*"),
-   S.from(T.assignments).select("id,truck_id,driver_id,assigned_from,assigned_until,assigned_at,unassigned_at,status,notes,created_at"),
-   S.from(T.parties).select("id,party_code,name,party_type,city,zone,status"),
-   S.from(T.trips).select("*").order("created_at",{ascending:false})
-  ]);
-  for(const r of core)if(r.error)throw r.error;
-  trucks=core[0].data||[];drivers=core[1].data||[];assignments=core[2].data||[];parties=core[3].data||[];trips=core[4].data||[];
-   // Recheck EMPTY From directly in Supabase before painting the worksheet.
-   // Read-only reconciliation: no changes to historical trips or unloading data.
-   const emptyFromRead=await S.from(T.trucks).select("id,empty_from_location");
-   if(emptyFromRead.error){
-    console.warn("[EKTA TRACKING] EMPTY From recheck failed:",emptyFromRead.error.message);
-   }else{
-    const savedById=new Map((emptyFromRead.data||[]).map(x=>[String(x.id),x.empty_from_location]));
-    trucks.forEach(t=>{if(savedById.has(String(t.id)))t.empty_from_location=savedById.get(String(t.id));});
-   }
-
-  const opt=await Promise.all([
-   optionalTable(T.locations),
-   optionalTable(T.gps),
-   optionalTable(T.eway),
-   loadPendingDriverRequests(),
-   loadActiveProgramRequests()
-  ]);
-  locations=opt[0];gpsLocations=opt[1];ewayBills=opt[2];driverRequests=opt[3];programRequests=opt[4];
-  // IMPORTANT: optionalTable(gps_locations) can be capped by the backend and may not
-  // contain the newest row for every vehicle. Fetch one true latest GPS row per truck
-  // so Current Location/Time always uses the same live point as the map marker.
-  await mergeTrueLatestGpsRows();
-  populateDrivers();
-   // Avoid the brief incomplete table: render once after FASTag locations arrive.
-   // On FASTag failure, still show the existing Supabase/GPS data.
-   try{await loadLatestFastagLocations();}
-   catch(e){console.warn("[EKTA] FASTag table locations unavailable",e);}
-   render();
-   // Fetch uploaded Driver Master photos without blocking the tracking table.
-   loadTrackingDriverPhotos();
-   // GPS address enrichment is optional and preserves the existing mapping logic.
-   hydrateGPSPlaces();
- }catch(e){console.error("[EKTA TRACKING] Load error:",e);renderError("Tracking data could not be loaded: "+(e.message||"Database error"))}
+// Read all trip pages: never silently treat a truncated trip list as EMPTY.
+async function loadAllTripPages(){
+ const pageSize=500,all=[];
+ for(let offset=0;offset<100000;offset+=pageSize){
+  const r=await S.from(T.trips).select("*").order("created_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+pageSize-1);
+  if(r.error)throw r.error;
+  const page=r.data||[];all.push(...page);
+  if(page.length<pageSize)return all;
+ }
+ throw new Error("Trip pagination safety limit reached; tracking data was not replaced.");
 }
 
-async function mergeTrueLatestGpsRows(){
+/* ========================= 4. DATA LOAD ===================== */
+async function loadAll(){
+ const loadSequence=++etLoadSequence;
+ if(!dbOK()){renderError("Supabase client not available. Make sure db.js loads before Tracking.");return}
+ try{
+  const [core,allTrips]=await Promise.all([
+   Promise.all([
+    S.from(T.trucks).select("id,truck_number,vehicle_type,capacity_ton,owner_name,status,empty_from_location"),
+    S.from(T.drivers).select("*"),
+    S.from(T.assignments).select("id,truck_id,driver_id,assigned_from,assigned_until,assigned_at,unassigned_at,status,notes,created_at"),
+    S.from(T.parties).select("id,party_code,name,party_type,city,zone,status")
+   ]),loadAllTripPages()
+  ]);
+  if(loadSequence!==etLoadSequence)return;
+  for(const r of core)if(r.error)throw r.error;
+  const [emptyFromRead,opt]=await Promise.all([
+   S.from(T.trucks).select("id,empty_from_location"),
+   Promise.all([optionalTable(T.locations),optionalTable(T.gps),optionalTable(T.eway),loadPendingDriverRequests(),loadActiveProgramRequests()])
+  ]);
+  if(loadSequence!==etLoadSequence)return;
+  const nextTrucks=core[0].data||[];
+  if(emptyFromRead.error)console.warn("[EKTA TRACKING] EMPTY From recheck failed:",emptyFromRead.error.message);
+  else{
+   const saved=new Map((emptyFromRead.data||[]).map(x=>[String(x.id),x.empty_from_location]));
+   nextTrucks.forEach(t=>{if(saved.has(String(t.id)))t.empty_from_location=saved.get(String(t.id));});
+  }
+  // Commit a consistent snapshot only after all required reads have succeeded.
+  trucks=nextTrucks;drivers=core[1].data||[];assignments=core[2].data||[];
+  parties=core[3].data||[];trips=allTrips;
+  locations=opt[0];gpsLocations=opt[1];ewayBills=opt[2];driverRequests=opt[3];programRequests=opt[4];
+  await mergeTrueLatestGpsRows(loadSequence);
+  if(loadSequence!==etLoadSequence)return;
+  populateDrivers();
+  try{await loadLatestFastagLocations(loadSequence)}catch(e){console.warn("[EKTA] FASTag table locations unavailable",e)}
+  if(loadSequence!==etLoadSequence)return;
+  render();
+  loadTrackingDriverPhotos();
+  hydrateGPSPlaces();
+ }catch(e){
+  if(loadSequence!==etLoadSequence)return;
+  console.error("[EKTA TRACKING] Load error:",e);
+  // Do not replace the worksheet with misleading EMPTY statuses on a failed read.
+  alertUser("Tracking refresh failed; previous data retained where available: "+(e.message||"Database error"));
+ }
+}
+
+async function mergeTrueLatestGpsRows(loadSequence=etLoadSequence){
  const jobs=(trucks||[]).map(async tr=>{
   const vehicle=clean(tr?.truck_number).toUpperCase();
   if(!vehicle)return null;
@@ -563,6 +578,7 @@ async function mergeTrueLatestGpsRows(){
   }
  });
  const latest=(await Promise.all(jobs)).filter(Boolean);
+ if(loadSequence!==etLoadSequence)return;
  for(const x of latest){
   const v=clean(x.vehicle_number).toUpperCase();
   gpsLocations=(gpsLocations||[]).filter(g=>!(clean(g.vehicle_number).toUpperCase()===v && String(g.recorded_at||g.created_at||"")===String(x.recorded_at||"")));
@@ -1357,7 +1373,13 @@ function render(){
   const wanted=alertView?breakdown:(emptyView?emptyHeader:standard);
   if(head.innerHTML!==wanted)head.innerHTML=wanted;
  }
- const data=displayedRowsModel().filter(matchesFilter).sort((a,b)=>(ZONES.indexOf(a.truckZone)<0?99:ZONES.indexOf(a.truckZone))-(ZONES.indexOf(b.truckZone)<0?99:ZONES.indexOf(b.truckZone))||String(a.t.truck_number||"").localeCompare(String(b.t.truck_number||"")));
+ const data=displayedRowsModel().filter(matchesFilter).sort((a,b)=>{
+  const defaultOrder=(ZONES.indexOf(a.truckZone)<0?99:ZONES.indexOf(a.truckZone))-(ZONES.indexOf(b.truckZone)<0?99:ZONES.indexOf(b.truckZone))||String(a.t.truck_number||"").localeCompare(String(b.t.truck_number||""));
+  if(filterStatus || selectedTrackingDate()!==today())return defaultOrder;
+  const ai=etAllRowOrder.get(String(a.t.id)),bi=etAllRowOrder.get(String(b.t.id));
+  return ai!=null&&bi!=null?ai-bi:ai!=null?-1:bi!=null?1:defaultOrder;
+ });
+ if(!filterStatus&&selectedTrackingDate()===today())data.forEach((r,i)=>{if(!etAllRowOrder.has(String(r.t.id)))etAllRowOrder.set(String(r.t.id),etAllRowOrder.size)});
  if($("etListTitle"))$("etListTitle").textContent=filterStatus?`Tracking — ${filterStatus}`:"Tracking — All Trucks";
  refreshStatusNotifyButton();
  if($("etCountText"))$("etCountText").textContent=`${data.length} truck(s) shown`;
@@ -1908,6 +1930,10 @@ async function quickNextStage(id){
    try{await resetEmptyFromAfterUnloading(t.truck_id)}
    catch(resetErr){console.error("[EKTA] EMPTY From reset failed after quick unloading:",resetErr);alertUser("Trip completed, but old EMPTY From could not be reset: "+resetErr.message+". Please refresh and verify From.");}
   }
+  // The confirmed trip remains visible immediately in ALL without waiting for a full reload.
+  Object.assign(t,payload);
+  const localTruck=truck(t.truck_id);if(localTruck)localTruck.status=truckStatus;
+  render();
   await loadAll();
  }catch(err){console.error("[EKTA] Quick stage change failed:",err);alertUser("Status update failed: "+(err.message||"Database error"));}
 }
@@ -2536,7 +2562,7 @@ async function reverseFastagLocation(lat,lng){
  return fallback;
 }
 function fastagTime(v){if(!v)return "—";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}
-async function loadLatestFastagLocations(){
+async function loadLatestFastagLocations(loadSequence=etLoadSequence){
  const jobs=(trucks||[]).map(async t=>{
   const vehicle=clean(t?.truck_number).toUpperCase();if(!vehicle)return null;
   try{
@@ -2550,16 +2576,19 @@ async function loadLatestFastagLocations(){
    return {t,d,trip,status:statusOf(trip),lat,lng,time:x.toll_txn_date_time,geo:null};
   }catch(e){console.warn("[EKTA TRACKING] FASTag latest location failed for",vehicle,e.message);return null}
  });
- etFastagRows=(await Promise.all(jobs)).filter(Boolean);
+ const nextFastagRows=(await Promise.all(jobs)).filter(Boolean);
+ if(loadSequence!==etLoadSequence)return;
  let next=0;
  const workers=Array.from({length:4},async()=>{
-  while(next<etFastagRows.length){
-   const i=next++,row=etFastagRows[i];
+  while(next<nextFastagRows.length){
+   const i=next++,row=nextFastagRows[i];
    row.geo=await reverseFastagLocation(row.lat,row.lng);
    if(i%4===0)await waitFastag(80);
   }
  });
  await Promise.all(workers);
+ if(loadSequence!==etLoadSequence)return;
+ etFastagRows=nextFastagRows;
  return etFastagRows;
 }
 let etFastagRange="7D",etFastagCustomStart=null,etFastagCustomEnd=null,etFastagSelectedId=null,etFastagHistoryToken=0,etFastagRoadLines=[];
@@ -4620,7 +4649,7 @@ window.EktaTracking={openDriverRequestsForTruck,rejectDriverRequest,toggleSecond
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
- let lastToday=today();setInterval(()=>{const now=today();if(now!==lastToday){if($("etDate")?.value===lastToday)$("etDate").value=now;lastToday=now;}if($("trackingModule")?.style.display!=="none")render();},60000);
+ let lastToday=today();setInterval(()=>{const now=today(),dayChanged=now!==lastToday;if(dayChanged){if($("etDate")?.value===lastToday)$("etDate").value=now;lastToday=now;}if($("trackingModule")?.style.display!=="none"){if(dayChanged)render();else{updateStatusTimers();updateBreakdownTimers();updateEwayCountdowns();}}},60000);
 }
 init();
 })();
