@@ -228,9 +228,10 @@ html,body{max-width:100%;overflow-x:hidden}#ektaFuelModule,#fuelHpclPanel{min-wi
     <button type="button" data-fuel-source="cash" class="fuel-source text-left bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"><div class="flex items-center justify-between"><span class="w-9 h-9 rounded-lg bg-violet-50 text-violet-700 flex items-center justify-center"><i class="fa-solid fa-money-bill-wave text-base"></i></span><span class="text-xs font-bold text-slate-500">04</span></div><h3 class="font-bold text-sm mt-2 text-slate-800">Diesel Cash / Statement</h3><p class="text-xs text-slate-500 mt-1">Cash &amp; Accounts Statement</p></button>
   </div>
 <div id="fuelHpclPanel" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-4">
-<div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold text-lg text-slate-800">HPCL OTP · FULL DETAILS</h3><p class="text-xs text-slate-500">Only upload HPCL CustomerTransactionDetails. Your Daily Excel is NOT required.</p></div><button type="button" id="hpHistory" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm">Saved History</button><button type="button" id="hpSave" class="bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm">Save Fuel Register</button><button type="button" id="hpExport" class="bg-slate-800 text-white rounded-lg px-4 py-2 text-sm">Export Report (CSV)</button></div>
+<div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold text-lg text-slate-800">HPCL OTP · FULL DETAILS</h3><p class="text-xs text-slate-500">Only upload HPCL CustomerTransactionDetails. Your Daily Excel is NOT required.</p></div><button type="button" id="hpHistory" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm">Saved History</button><button type="button" id="hpSyncPaid" class="bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm">Sync Approved PAID → Pump Ledger</button><button type="button" id="hpSave" class="bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm">Save Fuel Register</button><button type="button" id="hpExport" class="bg-slate-800 text-white rounded-lg px-4 py-2 text-sm">Export Report (CSV)</button></div>
 <div data-hp-work="approval" class="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
 <button type="button" id="hpVerifyAll" class="rounded bg-blue-700 text-white px-3 py-2 font-semibold">Verify All Reviewed</button>
+<button type="button" id="hpVerifyPaid" class="rounded bg-amber-700 text-white px-3 py-2 font-semibold">Verify PAID / Pump</button>
 <button type="button" id="hpVerifyFinancial" class="rounded bg-indigo-700 text-white px-3 py-2 font-semibold">Verify Financial Entries</button>
 <button type="button" id="hpApproveAll" class="rounded bg-emerald-700 text-white px-3 py-2 font-semibold">Approve All Verified</button>
 <span id="hpApprovalInfo" class="text-slate-600">0 verified · 0 approved · 0 pending</span>
@@ -383,6 +384,63 @@ async function loadFleet(){if(!S||typeof S.from!=='function'){el('hpDb').textCon
 const money=v=>'₹'+num(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const category=r=>r.direction.toLowerCase()==='credit'?'credit':r.product.toUpperCase()==='DIESEL'&&r.type.toUpperCase().includes('SALE')?'diesel':'other';
 const message=t=>el('hpMsg').textContent=t;
+const isPaid=r=>String(r.original||'').trim().toUpperCase()==='PAID';
+const pumpKey=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+async function hpclPumpMaster(){
+ const result=[];
+ for(let off=0;off<100000;off+=500){
+  const {data,error}=await S.from('ekta_pump_master').select('id,name').range(off,off+499);
+  if(error)throw Error('Pump Master lookup failed: '+safeErr(error));
+  result.push(...(data||[]));if(!data||data.length<500)break;
+ }
+ return result;
+}
+function matchPaidPump(row,pumps){
+ const name=pumpKey(row.pump);
+ const matched=pumps.filter(p=>name&&pumpKey(p.name)===name);
+ if(matched.length!==1)throw Error(matched.length===0?`PUMP NOT IN LIST: ${row.pump} (HPCL ${row.id}). Add this exact pump in Pump Master before approval.`:`MULTIPLE PUMP MATCHES: ${row.pump}. Resolve Pump Master duplicates first.`);
+ return matched[0];
+}
+function paidRowValid(r){
+ if(!isPaid(r))return;
+ if(!r.id||!r.date||!(Number(r.amount)>0))throw Error('Invalid PAID transaction ID/date/amount: '+r.id);
+ if(String(r.direction||'').trim().toLowerCase()!=='debit'||!String(r.type||'').toUpperCase().includes('SALE'))throw Error('PAID entry '+r.id+' is not a confirmed HPCL debit sale; review manually, no pump payment will be posted.');
+}
+function hpclDate(raw){
+ const m=String(raw||'').match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}:\d{2}(?::\d{2})?))?/);
+ if(!m)return null;
+ return {date:`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`,time:(m[4]||'00:00:00').length===5?(m[4]+':00'):(m[4]||'00:00:00')};
+}
+async function syncApprovedPaid(){
+ if(!S?.from)throw Error('Supabase connection missing');
+ const pumps=await hpclPumpMaster();
+ const paid=[];
+ for(let off=0;off<100000;off+=500){
+  const {data,error}=await S.from('hpcl_fuel_transactions').select('txn_id,txn_datetime_raw,pump_name,original_vehicle,actual_vehicle,txn_type,direction,amount,review_status').eq('review_status','APPROVED').range(off,off+499);
+  if(error)throw Error('Approved HPCL lookup failed: '+safeErr(error));
+  for(const x of data||[])if(String(x.original_vehicle||'').trim().toUpperCase()==='PAID')paid.push(x);
+  if(!data||data.length<500)break;
+ }
+ const candidates=paid.map(x=>({id:String(x.txn_id),date:x.txn_datetime_raw,pump:x.pump_name,original:x.original_vehicle,type:x.txn_type,direction:x.direction,amount:Number(x.amount)}));
+ for(const r of candidates){paidRowValid(r);matchPaidPump(r,pumps);if(!hpclDate(r.date))throw Error('Invalid HPCL date: '+r.id)}
+ let posted=0,existing=0;
+ for(const r of candidates){
+  const pump=matchPaidPump(r,pumps),dt=hpclDate(r.date);
+  const {data:found,error:checkError}=await S.from('ekta_pump_ledger').select('id,pump_id,kind,amount').eq('source_txn_id',r.id).limit(2);
+  if(checkError)throw Error('Ledger duplicate lookup failed: '+safeErr(checkError));
+  if(found?.length){
+   if(found.length!==1||String(found[0].pump_id)!==String(pump.id)||found[0].kind!=='PAYMENT'||Math.abs(Number(found[0].amount)-r.amount)>.01)throw Error('LEDGER CONFLICT for HPCL '+r.id+'; existing entry differs. Review manually.');
+   existing++;continue;
+  }
+  const payload={id:'hpcl'+r.id,pump_id:pump.id,entry_date:dt.date,entry_time:dt.time,kind:'PAYMENT',reference:r.id,source_txn_id:r.id,vehicle:'',litres:0,rate:0,discount:0,amount:r.amount,source:'HPCL OTP',remarks:'Payment Credit (Through HPCL OTP) · '+r.pump,created_ms:Date.now()};
+  const {error}=await S.from('ekta_pump_ledger').insert(payload);
+  if(error){if(error.code==='23505')throw Error('Existing ledger record conflicts for '+r.id+'. Check manually before retrying.');throw Error('Pump Ledger posting failed for '+r.id+': '+safeErr(error));}
+  posted++;
+ }
+ if(posted)window.dispatchEvent(new Event('ekta-hpcl-ledger-posted'));
+ return {posted,existing,total:candidates.length};
+}
+
 const safeErr=e=>[e?.message,e?.details,e?.hint,e?.code].filter(Boolean).join(' | ')||String(e);
 function lib(){return new Promise((resolve,reject)=>{if(window.XLSX)return resolve();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=resolve;s.onerror=()=>reject(Error('Excel reader library could not load. Internet required.'));document.head.appendChild(s)})}
 const cell=(r,h,k)=>{const i=h.findIndex(x=>String(x??'').trim().toLowerCase()===k.toLowerCase());return i<0?'':r[i]};
@@ -503,7 +561,7 @@ el('hpVerifyAll').addEventListener('click',()=>{
 // Financial ledger verification is independent of WhatsApp/vehicle matching.
 // Staff explicitly confirms the original HPCL credit/debit rows before approval.
 el('hpVerifyFinancial').addEventListener('click',()=>{
- const pending=rows.filter(r=>!r.saved&&r.approval==='PENDING'&&category(r)!=='diesel');
+ const pending=rows.filter(r=>!r.saved&&r.approval==='PENDING'&&category(r)!=='diesel'&&!isPaid(r));
  if(!pending.length)return message('No pending financial ledger entries to verify.');
  const valid=pending.filter(r=>r.id&&r.date&&Number.isFinite(r.amount)&&r.amount>0&&['credit','debit'].includes(r.direction.trim().toLowerCase()));
  const invalid=pending.filter(r=>!valid.includes(r));
@@ -512,6 +570,17 @@ el('hpVerifyFinancial').addEventListener('click',()=>{
  if(!confirm(`Verify ${valid.length} HPCL FINANCIAL LEDGER entries (no vehicle required)?\n\n${details}\n\nCheck these amounts and directions against the official HPCL Excel.`))return;
  valid.forEach(r=>{r.actual='';r.owner='';r.approval='VERIFIED';r.matchStatus='Ledger verified';});
  render();message(`${valid.length} financial entries VERIFIED. Click Approve All Verified, then Save Fuel Register.${invalid.length?' '+invalid.length+' invalid entries remain pending.':''}`);
+});
+el('hpVerifyPaid').addEventListener('click',async()=>{
+ const pending=rows.filter(r=>isPaid(r)&&!r.saved&&r.approval==='PENDING');
+ if(!pending.length)return message('No pending PAID transactions to verify.');
+ try{
+  const pumps=await hpclPumpMaster();
+  for(const r of pending){paidRowValid(r);matchPaidPump(r,pumps);if(!hpclDate(r.date))throw Error('Invalid HPCL date: '+r.id)}
+  if(!confirm(`Verify ${pending.length} PAID pump payment(s)?\n\n${pending.map(r=>r.pump+' | '+r.id+' | '+money(r.amount)).join('\n')}\n\nDiesel 0 L; each payment will credit its exact Pump Ledger after Save.`))return;
+  pending.forEach(r=>{r.actual='PAID';r.owner='';r.approval='VERIFIED';r.matchStatus='Pump verified';});
+  render();message(pending.length+' PAID entries verified against Pump Master. Approve, then Save.');
+ }catch(e){message(safeErr(e));alert(safeErr(e))}
 });
 el('hpApproveAll').addEventListener('click',()=>{
  const eligible=rows.filter(r=>!r.saved&&r.approval==='VERIFIED');
@@ -524,7 +593,8 @@ el('hpSave').addEventListener('click',async()=>{
  const approved=rows.filter(r=>r.approval==='APPROVED'&&!r.saved);
  if(!approved.length)return message('No new approved entries to save.');
  if(!S?.from)return message('Supabase client unavailable. Check db.js.');
- if(!confirm(`TEST DATABASE SAVE: Save ${approved.length} APPROVED entries? This uses temporary public anon access.`))return;
+ try{const pumps=await hpclPumpMaster();for(const r of approved.filter(isPaid)){paidRowValid(r);matchPaidPump(r,pumps)}}catch(e){message(safeErr(e));alert(safeErr(e));return}
+ if(!confirm(`Save ${approved.length} APPROVED entries to Supabase? PAID payments will then be posted to matching Pump Ledger. This is live data.`))return;
  const btn=el('hpSave');btn.disabled=true;
  try{
   let saved=0,duplicates=0;
@@ -540,10 +610,18 @@ el('hpSave').addEventListener('click',async()=>{
    if(confirmError||!confirmed?.length)throw Error('Inserted '+r.id+' but read-back confirmation failed: '+safeErr(confirmError||'not found'));
    r.saved=true;saved++;
   }
-  render();message(`Supabase confirmed ${saved} new entries; ${duplicates} existing IDs skipped. Open Saved History to verify.`);
+  render();
+  try{const result=await syncApprovedPaid();message(`HPCL saved ${saved} new; ${duplicates} existing IDs skipped. Pump payments: ${result.posted} posted, ${result.existing} already posted.`)}
+  catch(postErr){message('HPCL saved, but PUMP LEDGER POSTING NEEDS ATTENTION: '+safeErr(postErr)+' Use Sync Approved PAID after resolving.');alert('HPCL saved, Pump Ledger not fully posted: '+safeErr(postErr))}
   if(!el('hpHistoryPanel').classList.contains('hidden'))await loadSavedHistory();
  }catch(e){render();message('Fuel save stopped: '+safeErr(e)+' | Already confirmed rows remain marked saved. Check Supabase SQL before retrying.');}
  finally{btn.disabled=false}
+});
+el('hpSyncPaid').addEventListener('click',async()=>{
+ const btn=el('hpSyncPaid');btn.disabled=true;
+ try{if(!confirm('Reconcile approved PAID transactions with Pump Ledger? Only missing, exact pump-matched payments will be inserted.'))return;
+  const r=await syncApprovedPaid();message(`Pump Ledger: ${r.posted} payments posted; ${r.existing} already present; ${r.total} approved PAID transactions checked.`);
+ }catch(e){message('PUMP LEDGER SYNC BLOCKED: '+safeErr(e));alert(safeErr(e))}finally{btn.disabled=false}
 });
 loadFleet();
 const firstHpCard=root.querySelector('[data-fuel-source="hpcl"]');if(firstHpCard)firstHpCard.click();
@@ -717,7 +795,8 @@ el('hpExport').addEventListener('click',()=>{if(!view.length)return message('No 
   }catch(e){cloudReady=false;cloudStatus('Supabase load failed — changes disabled: '+e.message,true);console.error('Pump cloud load',e);}
  }
  async function postApprovedHpcl(){try{const paid=await fetchHpclPaid();let added=0;for(const r of paid){const p=state.pumps.find(p=>cleanName(p.name)===cleanName(r.pump_name));if(!p||state.entries.some(e=>String(e.sourceTxnId||'')===String(r.txn_id)))continue;const dt=parseHpDate(r.txn_datetime_raw);if(!dt||!(Number(r.amount)>0))continue;state.entries.push({id:'hpcl'+String(r.txn_id),pumpId:p.id,date:dt.date,time:dt.time,kind:'PAYMENT',slip:String(r.txn_id),sourceTxnId:String(r.txn_id),vehicle:'',litres:0,rate:0,discount:0,amount:Number(r.amount),source:'HPCL OTP',remarks:'Payment Credit (Through HPCL OTP) · '+r.pump_name,created:Date.now()});added++;}if(added){save();render();say(added+' approved HPCL payments automatically credited');}}catch(e){console.warn('HPCL auto posting:',e.message)}}
- document.getElementById('hpSave')?.addEventListener('click',()=>{setTimeout(()=>postApprovedHpcl(),1800)});
+ // Approved PAID transactions are posted by the HPCL save workflow with exact Pump Master validation.
+ window.addEventListener('ekta-hpcl-ledger-posted',()=>initializePumpCloud());
  fillPumpSettings();loadPumpFleet();render();initializePumpCloud();
 })();
 
