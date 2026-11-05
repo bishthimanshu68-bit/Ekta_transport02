@@ -414,7 +414,29 @@
                     <p class="text-[10px] text-slate-400 ml-10 mt-0.5">Search, upload and track every truck document from one place.</p>
                 </div>
 
-                <div class="flex items-center gap-2 ml-auto">
+                <div class="flex flex-wrap items-center gap-2 ml-auto">
+                    <!-- Document upload progress filters; no database changes -->
+                    <select id="fleetDocumentTypeFilter" aria-label="Filter document type" title="Select document type"
+                        onchange="window.EktaFleet.setDocumentFilter()"
+                        class="h-8 max-w-[155px] rounded-lg border border-slate-600 bg-slate-800 text-white text-[11px] px-2 outline-none focus:border-blue-400">
+                        <option value="all">All Documents</option>
+                        <option value="puc">PUC</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="fitness">Fitness</option>
+                        <option value="permit">National Permit</option>
+                        <option value="five_year_permit">5 Year Permit</option>
+                        <option value="road_tax">Road Tax</option>
+                        <option value="fitment">Fitment</option>
+                        <option value="rc">RC</option>
+                    </select>
+                    <select id="fleetDocumentStatusFilter" aria-label="Filter upload status" title="Filter uploaded or remaining documents"
+                        onchange="window.EktaFleet.setDocumentFilter()"
+                        class="h-8 max-w-[150px] rounded-lg border border-slate-600 bg-slate-800 text-white text-[11px] px-2 outline-none focus:border-blue-400">
+                        <option value="all">All Status</option>
+                        <option value="remaining">Remaining / Pending</option>
+                        <option value="completed">Uploaded / Done</option>
+                    </select>
+                    <span id="fleetDocumentFilterCount" class="text-[10px] text-slate-300 whitespace-nowrap" aria-live="polite"></span>
                     <div class="relative w-[260px] max-w-[42vw]">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
                         <input
@@ -1065,6 +1087,8 @@ if (!window.XLSX) {
     let activeSection = "details";
     let fleetSearchTerm = "";
     let documentSearchTerm = "";
+    let documentTypeFilter = "all";
+    let documentStatusFilter = "all";
     let currentMedia = null;
     let currentDocument = null;
     const TRUCK_MEDIA_BUCKET = "transport-files";
@@ -2780,16 +2804,23 @@ async function deleteTruck(id) {
         body.innerHTML = "";
         const normalizedDocumentSearch = String(documentSearchTerm || "").trim().toLowerCase();
         const documentFleet = fleetData.filter(function (truck) {
-            if (!normalizedDocumentSearch) return true;
-            return String(truck.truckNo || "").toLowerCase().includes(normalizedDocumentSearch);
+            if (normalizedDocumentSearch && !String(truck.truckNo || "").toLowerCase().includes(normalizedDocumentSearch)) return false;
+            if (documentStatusFilter === "all") return true;
+            const types = documentTypeFilter === "all" ? DOC_TYPES : DOC_TYPES.filter(d => d.key === documentTypeFilter);
+            const uploaded = types.filter(d => !!truck.docs?.[d.key]?.file).length;
+            // All Documents: Remaining = at least one missing; Done = every document uploaded.
+            // Selected document: Remaining / Done apply to that particular column only.
+            return documentStatusFilter === "remaining" ? uploaded < types.length : uploaded === types.length;
         });
+        const count = qs("fleetDocumentFilterCount");
+        if (count) count.textContent = `${documentFleet.length} / ${fleetData.length} Trucks`;
 
         if (documentFleet.length === 0) {
             body.innerHTML = `
                 <tr><td colspan="10" class="text-center py-10 text-slate-400">
                     <div class="flex flex-col items-center gap-2">
                         <span class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-magnifying-glass text-slate-300"></i></span>
-                        <span class="font-semibold">${normalizedDocumentSearch ? "No matching truck found." : "No trucks available."}</span>
+                        <span class="font-semibold">${normalizedDocumentSearch || documentStatusFilter !== "all" ? "No trucks match the selected filters." : "No trucks available."}</span>
                     </div>
                 </td></tr>`;
             return;
@@ -3054,6 +3085,12 @@ async function deleteTruck(id) {
         });
     }
 
+
+function setDocumentFilter() {
+    documentTypeFilter = qs("fleetDocumentTypeFilter")?.value || "all";
+    documentStatusFilter = qs("fleetDocumentStatusFilter")?.value || "all";
+    renderDocuments();
+}
 
 function searchDocuments(value) {
     documentSearchTerm = String(value || "");
@@ -6354,7 +6391,7 @@ async function downloadDocument(truckId, docKey) {
         return runImageOCR(file);
     }
     async function runImageOCR(source) {
-        await loadOCRLibrary('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js', () => !!window.Tesseract);
+        await loadOCRLibrary('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js', () => !!window.Tesseract);
         const result = await window.Tesseract.recognize(source, 'eng');
         return result.data.text || '';
     }
@@ -6648,14 +6685,14 @@ async function downloadDocument(truckId, docKey) {
     let permitOCRWorker = null;
     async function getPermitOCRWorker() {
         if (permitOCRWorker) return permitOCRWorker;
-        await loadOCRLibrary('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js', () => !!window.Tesseract);
+        await loadOCRLibrary('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js', () => !!window.Tesseract);
         permitOCRWorker = await window.Tesseract.createWorker('eng');
         await permitOCRWorker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
         return permitOCRWorker;
     }
     // Decode PDF pages with PDF.js: createImageBitmap() cannot decode PDF files.
     // Read-only OCR; no storage/database writes happen here.
-    async function permitImageSource(file) {
+    async function permitImageSource(file, pageNumber=1) {
         if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
             return { bitmap: await createImageBitmap(file), dispose() { this.bitmap.close(); } };
         }
@@ -6663,7 +6700,7 @@ async function downloadDocument(truckId, docKey) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         const pdf = await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
         try {
-            const page=await pdf.getPage(1);
+            const page=await pdf.getPage(pageNumber);
             const viewport=page.getViewport({scale:2.4});
             const canvas=document.createElement('canvas');
             canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
@@ -6690,50 +6727,190 @@ async function downloadDocument(truckId, docKey) {
     }
     function permitExpiryFromText(text) {
         const raw=String(text||'').toUpperCase().replace(/[\u2013\u2014]/g,'-');
-        // Anchor to NP authorization, NEVER the Basic Goods Permit (five-year) row.
-        const anchor=raw.search(/(?:VALIDITY\s*(?:OF)?\s*(?:N\.?P\.?|NATIONAL\s+PERMIT)\s*(?:AUTHORI[ZS]ATION)?|N\.?P\.?\s*AUTHORI[ZS]ATION\s*VALIDITY)/);
-        if(anchor<0)return '';
-        let zone=raw.slice(anchor,anchor+170);
-        const boundary=zone.search(/(?:10\s*[.)-]\s*VALIDITY|VALIDITY\s+OF\s+BASIC|BASIC\s+GOODS\s+PERMIT)/);
-        if(boundary>=0)zone=zone.slice(0,boundary);
-        const m=zone.match(/(\d{1,2})\s*[-/. ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC|\d{1,2})[A-Z]*\s*[-/. ,]*\s*(20\d{2})/);
-        if(!m)return '';
+        // OCR frequently breaks the label across lines, or reads N.P. as NP.
+        // Only accept a date adjacent to the NP authorization row, never row 10.
         const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,SEPT:9,OCT:10,NOV:11,DEC:12};
-        const day=+m[1],month=months[m[2]]||+m[2],year=+m[3];
-        return permitSafeDate(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
+        const dateRx=/(\d{1,2})\s*[-/. ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC|\d{1,2})[A-Z]*\s*[-/. ,]*\s*(20\d{2})/g;
+        const toDate=m=>{
+            const day=Number(m[1]),month=months[m[2]]||Number(m[2]),year=Number(m[3]);
+            return permitSafeDate(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
+        };
+        const lines=raw.split(/\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+        // Haryana pink National Permit PART-A / PART-B: permit validity is
+        // printed as '8. Valid From: ... To: 22-Jun-2027' (Part A) or
+        // '6. Permit Validity From: ... To: 22-Jun-2027' (Part B).
+        // The separate 'Authorization Validity' row has a different, often
+        // expired date; NEVER use that as the five-year permit expiry.
+        // Accept only a To date tied to the numbered permit-validity field.
+        const toRx=/\bT[O0]\s*[:.\-]?\s*(\d{1,2})\s*[-/. ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC|\d{1,2})[A-Z]*\s*[-/. ,]*\s*(20\d{2})/i;
+        for(let i=0;i<lines.length;i++){
+            const line=lines[i];
+            const isPermitValidity=/(?:\bPERMIT\s+VALID(?:ITY)?\b|^\s*(?:6|8)\s*[.)\-:]?\s*VALID\b)/i.test(line)
+                && !/AUTHORI[ZS]ATION/i.test(line);
+            if(!isPermitValidity)continue;
+            const zone=lines.slice(i,i+3).join(' ').split(/(?:AUTHORI[ZS]ATION\s+VALIDITY|\b(?:11|14)\s*[.)-]\s*AUTHORI)/i)[0].slice(0,200);
+            const m=zone.match(toRx);
+            if(m){const date=toDate([null,m[1],m[2],m[3]]);if(date)return date;}
+        }
+        // Some OCR engines lose the label but retain a single clean 'From ... To ...'
+        // line. On a recognized PART-A/B permit only, use the To date if it is
+        // NOT near an authorization label and the year is within the safe range.
+        if(/PART\s*[-:]?\s*[AB]\b|PERMIT\s+IN\s+RESPECT\s+OF\s+NATIONAL/i.test(raw)){
+            for(let i=0;i<lines.length;i++){
+                const line=lines[i];
+                if(!/\bFROM\s*[:.\-]?/i.test(line)||!/\bT[O0]\s*[:.\-]?/i.test(line))continue;
+                if(/AUTHORI[ZS]ATION/i.test(line)||/AUTHORI[ZS]ATION/i.test(lines[i-1]||''))continue;
+                const m=line.match(toRx);
+                if(m){const date=toDate([null,m[1],m[2],m[3]]);if(date)return date;}
+            }
+        }
+        // First look at the row number and its immediate following line(s).
+        for(let i=0;i<lines.length;i++){
+            const line=lines[i];
+            const normalized=line.replace(/[^A-Z0-9]/g,'');
+            const isNP=/VALID(?:ITY|1TY|LITY)/.test(line) && /(?:N\s*\.?\s*P\.?|NATIONAL\s*PERMIT)/.test(line) && !/BASIC|GOODS/.test(line);
+            const isNumbered=/^\s*(?:9|O9|09)\s*[.)\-:]?\s*VALID/i.test(line);
+            if(!isNP && !isNumbered)continue;
+            let zone=lines.slice(i,i+3).join(' ');
+            zone=zone.split(/(?:10\s*[.)\-:]?\s*VALID|VALIDITY\s+OF\s+BASIC|BASIC\s+GOODS\s+PERMIT)/i)[0];
+            for(const m of zone.matchAll(dateRx)){
+                const date=toDate(m);
+                if(date)return date;
+            }
+        }
+        // When OCR flattens table cells into one line, locate the NP row by label.
+        const flat=raw.replace(/\s+/g,' ');
+        const anchor=/(?:\b9\s*[.)\-:]?\s*)?VALID(?:ITY|1TY|LITY)\s*(?:OF\s*)?(?:N\s*\.?\s*P\.?|NATIONAL\s+PERMIT)(?:\s*AUTHORI[ZS]ATION)?/gi;
+        for(const m of flat.matchAll(anchor)){
+            let zone=flat.slice(m.index+m[0].length,m.index+m[0].length+85);
+            zone=zone.split(/(?:10\s*[.)\-:]?\s*VALID|VALIDITY\s+OF\s+BASIC|BASIC\s+GOODS\s+PERMIT)/i)[0];
+            for(const d of zone.matchAll(dateRx)){
+                const date=toDate(d);
+                if(date)return date;
+            }
+        }
+        return ''; // no guessing from issue date, filename, or 5-year permit
     }
-    async function readPermitFocused(file) {
-        const source=await permitImageSource(file);
+    // Haryana PART-A/B: OCR of a small value-only crop cannot contain the
+    // "Permit Validity" label. Read the printed "To" date only from the
+    // tightly isolated permit-validity row (never the authorization row).
+    function permitExpiryFromValidityCrop(text) {
+        const raw=String(text||'').toUpperCase().replace(/[\u2013\u2014]/g,'-');
+        const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,SEPT:9,OCT:10,NOV:11,DEC:12};
+        const dates=[];
+        const rx=/(\d{1,2})\s*[-/. ]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC|\d{1,2})[A-Z]*\s*[-/. ,]*\s*(20\d{2})/g;
+        for(const m of raw.matchAll(rx)){
+            const month=months[m[2]]||Number(m[2]);
+            const value=permitSafeDate(`${m[3]}-${String(month).padStart(2,'0')}-${String(Number(m[1])).padStart(2,'0')}`);
+            if(value)dates.push({value,index:m.index});
+        }
+        // A validity row has FROM and TO; the last date is the expiry.
+        // Refuse to infer it from one unlabelled date.
+        if(dates.length<2 || dates.length>3)return '';
+        const from=dates[0].value,to=dates[dates.length-1].value;
+        if(from>=to)return '';
+        const span=Number(to.slice(0,4))-Number(from.slice(0,4));
+        if(span<1||span>6)return '';
+        return to;
+    }
+    // Smart Reader V2 Phase 1: crop the Form-47 field table first to avoid
+    // wasting OCR time on watermarks, QR, stamps and blank page margins.
+    // Always fall back to the original full-page pass when a field is missing.
+    // This is read-only; staff still verify before any save.
+    // V7 controlled benchmark: max two OCR calls per document; no database writes.
+    async function readPermitFocused(file, pageNumber=1, strictValidity=false) {
+        const started=performance.now();
+        const source=await permitImageSource(file,pageNumber);
+        const canvases=[];
+        const diagnostics=[];
         try {
             const bitmap=source.bitmap;
             const worker=await getPermitOCRWorker();
-            // Form-47 layouts differ. Read the whole first page so a shifted row
-            // cannot silently become an empty vehicle number or wrong expiry.
-            const full=await worker.recognize(bitmap);
-            const fullText=String(full.data.text||'');
-            let truckNo=permitVehicleFromText(fullText);
-            let expiry=permitExpiryFromText(fullText);
-            // Additional focused pass on the middle of the document if needed.
-            if(!truckNo || !expiry){
-                const canvas=document.createElement('canvas');
-                canvas.width=1400;canvas.height=1500;
-                const ctx=canvas.getContext('2d',{willReadFrequently:true});
-                ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-                ctx.drawImage(bitmap,bitmap.width*.10,bitmap.height*.17,bitmap.width*.85,bitmap.height*.67,0,0,canvas.width,canvas.height);
-                const result=await worker.recognize(canvas);
-                const detail=String(result.data.text||'');
-                truckNo=truckNo||permitVehicleFromText(detail);
-                expiry=expiry||permitExpiryFromText(detail);
-                canvas.width=canvas.height=0;
+            const crop=(x,y,w,h,outW=1700)=>{
+                const c=document.createElement('canvas');
+                const sw=Math.max(1,Math.round(bitmap.width*w));
+                const sh=Math.max(1,Math.round(bitmap.height*h));
+                c.width=outW;c.height=Math.max(1,Math.round(outW*sh/sw));
+                const ctx=c.getContext('2d',{willReadFrequently:true});
+                ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+                ctx.drawImage(bitmap,bitmap.width*x,bitmap.height*y,bitmap.width*w,bitmap.height*h,0,0,c.width,c.height);
+                canvases.push(c);return c;
+            };
+            const read=async(label,image)=>{
+                const t=performance.now();
+                const result=await worker.recognize(image);
+                const text=String(result?.data?.text||'');
+                diagnostics.push({pass:label,seconds:+((performance.now()-t)/1000).toFixed(2),text});
+                return text;
+            };
+            // First pass covers both the registration and permit validity table.
+            const first=await read('table',crop(.05,.13,.90,.52));
+            let truckNo=permitVehicleFromText(first);
+            let expiry=strictValidity ? permitFiveYearExpiry(first) : permitExpiryFromText(first);
+            // Exactly one retry: full page preserves field labels/row context.
+            // Never accept an unlabeled date from an arbitrary crop.
+            if(!truckNo||!expiry){
+                const second=await read('full-page retry',bitmap);
+                truckNo=truckNo||permitVehicleFromText(second);
+                expiry=expiry||(strictValidity ? permitFiveYearExpiry(second) : permitExpiryFromText(second));
             }
-            return {truckNo,expiry,ocrText:fullText.slice(0,400)};
-        } finally {source.dispose();}
+            const durationSeconds=+((performance.now()-started)/1000).toFixed(2);
+            console.groupCollapsed(`[EKTA OCR V7] ${file.name} | ${durationSeconds}s | ${truckNo||'NO VEHICLE'} | ${expiry||'NO EXPIRY'}`);
+            console.table(diagnostics.map(({pass,seconds,text})=>({pass,seconds,characters:text.length})));
+            for(const item of diagnostics)console.log(`[${item.pass}] RAW OCR TEXT:\n${item.text}`);
+            console.log('Result:',{file:file.name,vehicle:truckNo,expiry,durationSeconds,passes:diagnostics.length});
+            console.groupEnd();
+            return {truckNo,expiry,durationSeconds,pageNumber,ocrText:diagnostics.map(d=>d.text).join('\n').slice(0,400)};
+        } finally {
+            for(const c of canvases)c.width=c.height=0;
+            source.dispose();
+        }
     }
     function permitSafeDate(value) {
         const m=String(value||'').match(/^(20\d{2})-(\d{2})-(\d{2})$/);
         if(!m)return '';
         const y=+m[1],mo=+m[2],d=+m[3],dt=new Date(Date.UTC(y,mo-1,d));
         return y>=2024&&y<=2045&&dt.getUTCFullYear()===y&&dt.getUTCMonth()===mo-1&&dt.getUTCDate()===d?value:'';
+    }
+    // V7 Folder Reader: five-year permit expiry must come from the actual
+    // Part-A / Part-B permit-validity field, never the authorization field.
+    function permitFiveYearExpiry(text) {
+        const raw=String(text||'').toUpperCase().replace(/[\u2013\u2014]/g,'-');
+        const lines=raw.split(/\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+        const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,SEPT:9,OCT:10,NOV:11,DEC:12};
+        const datePattern='(\\d{1,2})\\s*[-/. ]\\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC|\\d{1,2})[A-Z]*\\s*[-/. ,]*\\s*(20\\d{2})';
+        const toRx=new RegExp('\\bT[O0]\\s*[:.\\-]?\\s*'+datePattern,'i');
+        const convert=m=>{const month=months[m[2]]||Number(m[2]);return permitSafeDate(`${m[3]}-${String(month).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`);};
+        for(let i=0;i<lines.length;i++) {
+            const line=lines[i];
+            if(/AUTHORI[ZS]ATION|AUTH\s*VALID/i.test(line))continue;
+            const valid=/(?:PERMIT\s+VALID(?:ITY)?|(?:^|\s)(?:6|8)\s*[.)\-:]?\s*VALID(?:ITY)?\b)/i.test(line);
+            if(!valid)continue;
+            // Stop at any next authorization field; do not borrow its date.
+            const zone=lines.slice(i,i+3).join(' ').split(/AUTHORI[ZS]ATION|AUTH\s*VALID/i)[0];
+            const match=zone.match(toRx);
+            if(match){const date=convert(match);if(date)return date;}
+        }
+        return '';
+    }
+    async function readFiveYearPermitPages(file) {
+        if(!(/\.pdf$/i.test(file.name)||file.type==='application/pdf'))return readPermitFocused(file,1,true);
+        await loadOCRLibrary('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', () => !!window.pdfjsLib);
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+        const count=pdf.numPages;
+        await pdf.destroy();
+        let truckNo='',expiry='',totalSeconds=0,pagesRead=0;
+        for(let page=1;page<=Math.min(count,2);page++) {
+            const result=await readPermitFocused(file,page,true);
+            pagesRead++;
+            totalSeconds+=result.durationSeconds||0;
+            truckNo=truckNo||result.truckNo;
+            expiry=result.expiry||'';
+            if(expiry && truckNo)break;
+        }
+        console.log('[EKTA OCR V7 FOLDER]',{file:file.name,pagesRead,truckNo,expiry,seconds:+totalSeconds.toFixed(2)});
+        return {truckNo,expiry,durationSeconds:+totalSeconds.toFixed(2),pagesRead};
     }
     async function processOCRDocuments(event) {
         if (ocrBusy) return;
@@ -6771,11 +6948,11 @@ async function downloadDocument(truckId, docKey) {
         for (let i=0;i<work.length;i++) {
             if(content) content.textContent=`OCR reading ${i+1} / ${work.length}: ${work[i].file.name} (please keep this window open)`;
             try {
-                const focused = docKey==='permit' ? await readPermitFocused(work[i].file) : (bulk && docKey==='rc' ? await readRCNumberFocused(work[i].file) : '');
-                const raw=docKey==='permit' ? '' : await ocrTextFromFile(work[i].file);
-                const found=docKey==='permit' ? {truckNo:focused.truckNo||'',expiry:focused.expiry||''} : parseOCRFields(focused+'\n'+raw,docKey);
-                const matched=docKey==='permit' ? (findTruckByNumber(found.truckNo)?.truckNo||'') : (docKey==='rc' ? (findRCNumberCandidates(focused)||findRCNumberCandidates(raw)||smartFleetMatch(found.truckNo)) : (findTruckByNumber(found.truckNo)?.truckNo||smartFleetMatch(found.truckNo)));
-                ocrRows.push({...work[i],docKey,...found,truckNo:matched||found.truckNo,error:docKey==='permit' && (!matched || !found.expiry) ? 'OCR incomplete — verify vehicle and NP expiry against original' : '',selected:docKey!=='permit' || (!!matched && !!found.expiry)});
+                const focused = (docKey==='permit' || docKey==='five_year_permit') ? (docKey==='five_year_permit' ? await readFiveYearPermitPages(work[i].file) : await readPermitFocused(work[i].file)) : (bulk && docKey==='rc' ? await readRCNumberFocused(work[i].file) : '');
+                const raw=(docKey==='permit' || docKey==='five_year_permit') ? '' : await ocrTextFromFile(work[i].file);
+                const found=(docKey==='permit' || docKey==='five_year_permit') ? {truckNo:focused.truckNo||'',expiry:focused.expiry||''} : parseOCRFields(focused+'\n'+raw,docKey);
+                const matched=(docKey==='permit' || docKey==='five_year_permit') ? (findTruckByNumber(found.truckNo)?.truckNo||'') : (docKey==='rc' ? (findRCNumberCandidates(focused)||findRCNumberCandidates(raw)||smartFleetMatch(found.truckNo)) : (findTruckByNumber(found.truckNo)?.truckNo||smartFleetMatch(found.truckNo)));
+                ocrRows.push({...work[i],docKey,...found,readingSeconds:focused?.durationSeconds??null,pagesRead:focused?.pagesRead??1,truckNo:matched||found.truckNo,error:(docKey==='permit' || docKey==='five_year_permit') && (!matched || !found.expiry) ? 'OCR incomplete — verify vehicle and NP expiry against original' : '',selected:(docKey!=='permit' && docKey!=='five_year_permit') || (!!matched && !!found.expiry)});
             } catch(e) { ocrRows.push({...work[i],docKey,truckNo:'',expiry:'',error:e.message,selected:false}); }
         }
         ocrBusy=false;
@@ -6846,13 +7023,13 @@ async function downloadDocument(truckId, docKey) {
         const rc=documentHasNoExpiry(ocrRows[0]?.docKey);
         content.innerHTML='<div style="background:#eaf8ef;color:#17643e;border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px">OCR completed. Check every vehicle number against the original document. Unmatched records will not save.</div>'+
         '<div style="margin:8px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><label style="font-weight:700"><input type="checkbox" id="ektaOCRSelectAll"> Select eligible</label><button type="button" id="ektaOCRClearSelection" style="border:1px solid #d7e2ef;border-radius:6px;padding:5px 10px;background:#fff">Clear selection</button><span id="ektaOCRSelectionCount"></span></div><div style="overflow:auto;max-height:58vh"><table class="ekta-ocr-result-table"><thead><tr><th>Save</th><th>#</th><th>Source / Preview</th><th>Vehicle Number</th>'+(rc?'':'<th>Valid Upto</th>')+'<th>Status</th></tr></thead><tbody>'+
-        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && (documentHasNoExpiry(r.docKey)||!!r.expiry) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error || findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.sourceName ? `${r.sourceName} — Page ${r.page}/${r.totalPages}` : r.file.name)}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(fleetDateDisplay(r.expiry))}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
+        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && (documentHasNoExpiry(r.docKey)||!!r.expiry) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error || findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.sourceName ? `${r.sourceName} — Page ${r.page}/${r.totalPages}` : r.file.name)}${r.readingSeconds!=null ? `<div style="color:#2563eb;margin-top:3px">${r.readingSeconds.toFixed(2)}s • ${r.pagesRead||1} page(s)</div>` : ''}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(fleetDateDisplay(r.expiry))}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
         function updateOCRSelection(){
             let eligible=0, selected=0, existing=0;
             ocrRows.forEach((r,i)=>{
                 const t=findTruckByNumber(r.truckNo);
                 const blocked=!!t?.docs?.[r.docKey]?.file;
-                const allowed=!!t && !r.error && !blocked && (documentHasNoExpiry(r.docKey)||(r.docKey==='permit'?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
+                const allowed=!!t && !r.error && !blocked && (documentHasNoExpiry(r.docKey)||((r.docKey==='permit'||r.docKey==='five_year_permit')?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
                 const cb=content.querySelector(`[data-ekta-ocr-select="${i}"]`);
                 if(cb){cb.disabled=!allowed;if(!allowed)cb.checked=false;r.selected=cb.checked;}
                 if(allowed)eligible++;
@@ -6890,7 +7067,7 @@ async function downloadDocument(truckId, docKey) {
     async function saveOCRDocuments() {
         if(ocrBusy || !ocrRows.length) return;
         if(!window.supabaseClient) return showAIError('Supabase connection required.');
-        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file && (documentHasNoExpiry(r.docKey) || (r.docKey === 'permit' ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
+        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file && (documentHasNoExpiry(r.docKey) || ((r.docKey === 'permit'||r.docKey === 'five_year_permit') ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
         if(new Set(valid.map(r=>normalizeTruckNumber(r.truckNo))).size!==valid.length) return showAIError('Duplicate vehicle numbers in preview. Correct duplicates before saving.');
         if(!valid.length) return showAIError('No eligible documents. Check truck number and (except RC/Fitment) expiry date in preview.');
         const existing = [];
@@ -6967,6 +7144,7 @@ async function downloadDocument(truckId, docKey) {
 
         searchDocuments,
         clearDocumentSearch,
+        setDocumentFilter,
 
         updateExpiry,
 
