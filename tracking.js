@@ -2945,6 +2945,11 @@ function billsForTrip(tripId){
 }
 
 function currentVisibleBills(tripId){
+ const t=trips.find(x=>String(x.id)===String(tripId));
+ if(t&&isTransporterEwayTrip(t)){
+  const synthetic=transporterEwayBill(t);
+  return synthetic?[synthetic]:[];
+ }
  return billsForTrip(tripId);
 }
 
@@ -2958,11 +2963,15 @@ function ewayBillStatus(x){
  return "OK";
 }
 
-function transporterEwayDate(t){return getNote(t?.notes,"TRANSPORTER_EWAY_DATE");}
+function transporterEwayDate(t){return getNote(t?.notes,"TRANSPORTER_EWAY_VALID_UNTIL")||getNote(t?.notes,"TRANSPORTER_EWAY_DATE");}
+function transporterEwayBill(t){
+ const date=transporterEwayDate(t);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return null;
+ return {id:"",trip_id:t.id,eway_bill_number:"",eway_bill_date:null,valid_until:date+"T23:59:59+05:30",_transporterExpiryOnly:true};
+}
 function isTransporterEwayTrip(t){const p=party(t?.party_id);return !!p&&!isBillingClient(p);}
 function ewayTripOverallStatus(t){
  const list=currentVisibleBills(t.id);
- if(isTransporterEwayTrip(t)&&transporterEwayDate(t)&&!list.length)return "OK";
  if(!list.length)return "PENDING";
  if(list.some(x=>ewayBillStatus(x)==="EXPIRED"))return "EXPIRED";
  if(list.some(x=>ewayBillStatus(x)==="WARNING"))return "WARNING";
@@ -3028,6 +3037,7 @@ function ewayRemaining(v){if(!v)return "—";const ms=new Date(v).getTime()-Date
 function ewayBillColumn(bills,kind,tripId){
  const items=bills.length?bills:[null];
  return `<div class="et-eway-per-bill">${items.map(b=>{
+  if(kind==="number"&&b?._transporterExpiryOnly)return `<span class="eway-empty-cell">Not required</span>`;
   if(kind==="number")return b?`<button class="eway-number eway-text-read" type="button" onclick="window.EktaTracking.openEwayEdit('${esc(tripId)}','${esc(b.id)}')">${esc(b.eway_bill_number||"—")}</button>`:`<span class="eway-empty-cell">Not entered</span>`;
   if(kind==="issued")return `<span>${b?esc(fmtDT(b.eway_bill_date||b.valid_from)):"—"}</span>`;
   if(kind==="expiry")return `<span>${b?esc(fmtDT(b.valid_until)):"—"}</span>`;
@@ -3059,7 +3069,7 @@ function renderEwayPage(){
  $("etEwayRows").innerHTML=sortedRows.map(entry=>{
  if(entry.kind==="market")return marketEwayRow(entry.trip);
  const t=entry.trip;
- const tr=truck(t.truck_id),bills=billsForTrip(t.id),s=ewayTripOverallStatus(t),latest=bills.slice().sort((a,b)=>new Date(b.created_at||b.eway_bill_date||0)-new Date(a.created_at||a.eway_bill_date||0))[0];
+ const tr=truck(t.truck_id),bills=currentVisibleBills(t.id),s=ewayTripOverallStatus(t),latest=bills.slice().sort((a,b)=>new Date(b.created_at||b.eway_bill_date||0)-new Date(a.created_at||a.eway_bill_date||0))[0];
  const nearest=bills.filter(b=>b.valid_until).sort((a,b)=>new Date(a.valid_until)-new Date(b.valid_until))[0];
  const p=party(t.party_id);
  const partyKind=p?(isBillingClient(p)?"BILLING":"TRANSPORTER"):"—";
@@ -3163,7 +3173,7 @@ function openEwayEdit(tripId,recordId){
  $("etEWFileNote").textContent="Scan or paste details, review and Save. Original file/text is not stored.";$("etEWPaste").value="";
  const modal=$("etEwayEditModal");modal.classList.add("eway-manual-mode");modal.classList.remove("eway-ocr-mode");
  $("etEWOcrTruckChoice").style.display="none";
- $("etEwayEditTitle").textContent=transporterMode?"TRANSPORTER — EDIT E-WAY DATE":record?"UPDATE E-WAY BILL":"ADD NEW E-WAY BILL";
+ $("etEwayEditTitle").textContent=transporterMode?"TRANSPORTER — EDIT VALID UNTIL":record?"UPDATE E-WAY BILL":"ADD NEW E-WAY BILL";
  $("etEwayEditModal").classList.add("show");
 }
 
@@ -3223,14 +3233,14 @@ async function saveEwayRecord(e){
  if(ewayNormalizeTruck(truck(t.truck_id)?.truck_number)!==ewayNormalizeTruck($("etEWTruck").value))return alertUser("Truck number does not match selected trip.");
  if(isTransporterEwayTrip(t)){
   const date=clean($("etEWTransporterDate").value);
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(new Date(date+"T00:00:00").getTime()))return alertUser("Enter the E-Way Bill date.");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(new Date(date+"T00:00:00").getTime()))return alertUser("Enter the E-Way Bill Valid Until date.");
   const saveBtn=e?.submitter;if(saveBtn)saveBtn.disabled=true;
   try{
-   const notes=putNote(t.notes,"TRANSPORTER_EWAY_DATE",date);
+   const notes=putNote(t.notes,"TRANSPORTER_EWAY_VALID_UNTIL",date);
    const result=await S.from(T.trips).update({notes}).eq("id",t.id).select("id");
    if(result.error)throw result.error;
    if(!result.data?.length)throw new Error("Trip update not confirmed");
-   closeModal("etEwayEditModal");await loadAll();renderEwayPage();alertUser("Transporter E-Way date saved.");
+   closeModal("etEwayEditModal");await loadAll();renderEwayPage();alertUser("Transporter E-Way Valid Until saved.");
   }catch(err){console.error("[EKTA TRACKING] Transporter E-Way date save failed:",err);alertUser("Date was not saved: "+(err.message||"Database error"));}
   finally{if(saveBtn)saveBtn.disabled=false;}
   return false;
