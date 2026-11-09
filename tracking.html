@@ -1220,6 +1220,18 @@
 #etFleetMapPage #etFleetMapCard .et-fastag-driver-assign{background:#e8f8ef;border-color:#b5e7ca;color:#087c57}
 #etFleetMapPage .et-fleet-side{position:relative;isolation:isolate;overflow:hidden}
 </style>
+
+<style id="et-live-map-right-side-card-fix">
+/* Live Map truck details float over Vehicles sidebar, matching FASTag. */
+#etFleetMapPage .et-fleet-side{position:relative!important;isolation:isolate;overflow:hidden!important}
+#etFleetMapPage .et-fleet-side:has(#etFleetMapCard.show)::after{content:"";position:absolute;inset:0;background:rgba(18,40,68,.10);z-index:18;pointer-events:none}
+#etFleetMapPage #etFleetMapCard{display:none;position:absolute!important;top:12px!important;right:12px!important;bottom:auto!important;left:12px!important;transform:none!important;width:auto!important;max-width:none!important;max-height:calc(100% - 24px)!important;overflow:auto!important;margin:0!important;border:2px solid #b8cee7!important;border-radius:15px!important;box-shadow:0 20px 60px rgba(15,35,62,.30),0 0 0 1px rgba(255,255,255,.9)!important;background:#fff!important;z-index:20!important;scrollbar-gutter:stable}
+#etFleetMapPage #etFleetMapCard.show{display:block!important}
+#etFleetMapPage #etFleetMapCard .et-fleet-card-top{position:sticky;top:-11px;background:#fff;z-index:2;padding:5px 0 10px;border-bottom:1px solid #e6edf5}
+#etFleetMapPage #etFleetMapCard .et-fleet-card-x{width:30px;height:30px;border-radius:50%;background:#eef3fa;font-weight:900;font-size:20px}
+#etFleetMapPage:fullscreen #etFleetMapCard{max-height:calc(100% - 24px)!important}
+@media(max-width:650px){#etFleetMapPage #etFleetMapCard{left:6px!important;right:6px!important;top:6px!important;max-height:calc(100% - 12px)!important}}
+</style>
 </head>
 
 <body>
@@ -2664,10 +2676,10 @@
             </div>
             <div class="et-map-full-canvas" id="etFleetMapCanvas"></div>
             <div class="et-fleet-history-meta" id="etFleetHistoryMeta">Select a vehicle to view its road history</div>
-            <div class="et-fleet-map-card" id="etFleetMapCard"></div>
             <div class="et-fleet-legend"><b>Navigation History:</b> Start → Road-following Route → Current Truck &nbsp; | &nbsp; <b>Views:</b> Road Map • Street View • Satellite</div>
         </div>
         <aside class="et-fleet-side">
+            <div class="et-fleet-map-card" id="etFleetMapCard" aria-live="polite"></div>
             <div class="et-fleet-side-head">
                 <div class="et-fleet-side-title"><b>Vehicles</b><span class="et-fleet-count" id="etFleetCount">0 vehicles</span></div>
                 <div class="et-fleet-tabs" id="etFleetTabs"></div>
