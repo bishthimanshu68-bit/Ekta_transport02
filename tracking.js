@@ -76,6 +76,7 @@ function etRestoreMapModal(id){
  if(home.next?.parentNode===home.parent)home.parent.insertBefore(modal,home.next);
  else home.parent.appendChild(modal);
  etMapModalHomes.delete(id);
+  $("etFastagMapPage")?.querySelector(".et-fleet-side")?.classList.remove("et-fastag-driver-modal-open");
 }
 function closeModal(id){$(id)?.classList.remove("show");if(id==="etProgramModal")setProgramRequestContext(null);etRestoreMapModal(id)}
 function closeAllModals(){document.querySelectorAll("#trackingModule .modal").forEach(x=>{x.classList.remove("show");etRestoreMapModal(x.id)})}
@@ -2758,6 +2759,17 @@ function clearFastagHistory(){etFastagRoadLines.forEach(x=>x.setMap(null));etFas
 function clearFastagMapObjects(){clearFastagHistory();if(etFastagClusterer){etFastagClusterer.clearMarkers();etFastagClusterer=null}etFastagMarkers.forEach(m=>m.setMap(null));etFastagMarkers=[];if(etFastagInfo){etFastagInfo.close();etFastagInfo=null}}
 function fastagLocationHtml(r){const g=r.geo||{};return `<b>${esc(g.place||"—")}</b><br><span>${esc(g.district||"—")}, ${esc(g.state||"—")}</span><br><span class="muted">${r.hasLocation?esc(fastagTime(r.time)):"FASTag coordinates unavailable — not plotted"}</span>`}
 function fastagInfoHtml(r){return `<div class="et-map-info"><b>${esc(r.t?.truck_number||"Truck")}</b> • ${esc(r.status||"—")}<br><span>Driver: ${esc(r.d?.name||"—")}</span><br><span>Phone: ${esc(r.d?.phone||"—")}</span><br><span>FASTag Last Location:</span><br>${fastagLocationHtml(r)}</div>`}
+/* Keep driver forms in the FASTag right panel, including browser fullscreen.
+   Reparent only their DOM nodes; existing save/validation/history remain unchanged.
+   closeModal() restores the original parent after the form is closed. */
+function etAttachFastagDriverModal(id){
+ const page=$("etFastagMapPage"),modal=$(id);
+ const side=page?.querySelector(".et-fleet-side");
+ if(!page?.classList.contains("show")||!side||!modal?.classList.contains("show"))return;
+ if(!etMapModalHomes.has(id))etMapModalHomes.set(id,{parent:modal.parentNode,next:modal.nextSibling});
+ side.appendChild(modal);
+ side.classList.add("et-fastag-driver-modal-open");
+}
 /* FASTag popup driver controls reuse the existing Driver Master actions and Supabase save flows. */
 function fastagDriverActions(r){
  const id=esc(r.t?.id||"");
@@ -2771,10 +2783,13 @@ function openFastagDriverAction(truckId,action){
  const hasDriver=!!activeAssignment(truckId);
  if(action==="assign"){
   if(hasDriver)return alertUser("A driver is already assigned. Use Change Driver.");
-  return openAssignDriver(truckId);
+  openAssignDriver(truckId);
+  etAttachFastagDriverModal("etAssignDriverModal");
+  return;
  }
  if(!hasDriver)return alertUser("No active driver. Use Assign Driver.");
  openDriverAction(truckId);
+ etAttachFastagDriverModal("etDriverActionModal");
  if(action==="remove"){
   const selector=$("etDriverActionNew");if(selector)selector.value="";
   const preview=$("etDriverActionPreview");if(preview)preview.innerHTML="";

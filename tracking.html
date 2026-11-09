@@ -1091,6 +1091,64 @@
  border-top:1px solid #dce6f2;border-bottom:0;
 }
 </style>
+
+<style id="et-fastag-driver-modal-inside-panel-fix">
+/* FASTag only: driver form stays within the right-hand floating vehicle panel.
+   It is a sibling of the vehicle list, never a row in that list. */
+#etFastagMapPage .et-fleet-side.et-fastag-driver-modal-open{
+ position:relative!important;isolation:isolate;overflow:hidden!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal{
+ position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+ padding:10px!important;margin:0!important;z-index:110!important;
+ background:rgba(15,35,57,.48)!important;align-items:center!important;
+ justify-content:center!important;overscroll-behavior:contain;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .box,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .box{
+ width:100%!important;max-width:100%!important;
+ max-height:calc(100% - 2px)!important;min-height:0!important;
+ border-radius:13px!important;box-shadow:0 12px 35px #10233b40!important;
+ overflow-y:auto!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-head,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-head{
+ padding:11px 13px!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-head b,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-head b{font-size:15px!important}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .mb,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .mb{padding:11px!important}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-profile,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-profile{
+ padding:9px!important;gap:9px!important;margin-bottom:9px!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-photo,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-photo{
+ width:48px!important;height:48px!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-section,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-section{
+ padding:9px!important;margin:8px 0!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-actions,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-actions{
+ display:flex;gap:5px!important;flex-wrap:wrap;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-actions .btn,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-actions .btn{
+ min-height:34px!important;padding:7px 9px!important;
+}
+#etFastagMapPage .et-fleet-side > #etDriverActionModal .et-dm-split,
+#etFastagMapPage .et-fleet-side > #etAssignDriverModal .et-dm-split{
+ grid-template-columns:1fr!important;
+}
+@media(max-width:650px){
+ #etFastagMapPage .et-fleet-side > #etDriverActionModal,
+ #etFastagMapPage .et-fleet-side > #etAssignDriverModal{padding:5px!important}
+}
+</style>
 </head>
 
 <body>
