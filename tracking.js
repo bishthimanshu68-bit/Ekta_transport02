@@ -76,7 +76,7 @@ function etRestoreMapModal(id){
  if(home.next?.parentNode===home.parent)home.parent.insertBefore(modal,home.next);
  else home.parent.appendChild(modal);
  etMapModalHomes.delete(id);
-  $("etFastagMapPage")?.querySelector(".et-fleet-side")?.classList.remove("et-fastag-driver-modal-open");
+  ["etFastagMapPage","etFleetMapPage"].forEach(pageId=>$(pageId)?.querySelector(".et-fleet-side")?.classList.remove("et-fastag-driver-modal-open"));
 }
 function closeModal(id){$(id)?.classList.remove("show");if(id==="etProgramModal")setProgramRequestContext(null);etRestoreMapModal(id)}
 function closeAllModals(){document.querySelectorAll("#trackingModule .modal").forEach(x=>{x.classList.remove("show");etRestoreMapModal(x.id)})}
@@ -2494,7 +2494,7 @@ function renderFleetVehicleList(){
 }
 function showFleetCard(r){
  const box=$("etFleetMapCard");if(!box)return;const old=fleetOldLocation(r),curTime=r.loc?.recorded_at||r.loc?.timestamp||r.loc?.created_at;
- box.innerHTML=`<div class="et-fleet-card-top"><b>🚚 ${esc(r.t.truck_number||"Truck")} • ${esc(r.status)}</b><button class="et-fleet-card-x" onclick="event.stopPropagation();window.EktaTracking.closeFleetVehicleCard()">×</button></div><div class="et-fleet-card-grid"><div>Driver<b>${esc(r.d?.name||"—")}</b></div><div>Party<b>${esc(r.p?.name||"—")}</b></div><div>Old Location<b>${esc(fleetPlace(old,"—"))}</b></div><div>Current Location<b>${esc(fleetPlace(r.loc,r.trip?.current_location||"—"))}</b></div><div>Old Time<b>${esc(fmtDT(old?.time))}</b></div><div>Current Time<b>${esc(fmtDT(curTime))}</b></div></div>${mapStageButtons(r.t.id)}<div class="et-fleet-card-actions"><button class="primary" onclick="window.EktaTracking.focusFleetRoute('${esc(r.t.id)}')">View Route</button><button onclick="window.EktaTracking.fleetViewStreet()">Street View</button><button onclick="window.EktaTracking.openSelectedInGoogleMaps()">Open in Maps ↗</button></div>`;
+ box.innerHTML=`<div class="et-fleet-card-top"><b>🚚 ${esc(r.t.truck_number||"Truck")} • ${esc(r.status)}</b><button class="et-fleet-card-x" onclick="event.stopPropagation();window.EktaTracking.closeFleetVehicleCard()">×</button></div><div class="et-fleet-card-grid"><div>Driver<b>${esc(r.d?.name||"—")}</b></div><div>Party<b>${esc(r.p?.name||"—")}</b></div><div>Old Location<b>${esc(fleetPlace(old,"—"))}</b></div><div>Current Location<b>${esc(fleetPlace(r.loc,r.trip?.current_location||"—"))}</b></div><div>Old Time<b>${esc(fmtDT(old?.time))}</b></div><div>Current Time<b>${esc(fmtDT(curTime))}</b></div></div>${mapStageButtons(r.t.id)}${fastagDriverActions(r)}<div class="et-fleet-card-actions"><button class="primary" onclick="window.EktaTracking.focusFleetRoute('${esc(r.t.id)}')">View Route</button><button onclick="window.EktaTracking.fleetViewStreet()">Street View</button><button onclick="window.EktaTracking.openSelectedInGoogleMaps()">Open in Maps ↗</button></div>`;
  box.classList.add("show");
 }
 function clearFleetMapObjects(){etFleetMarkers.forEach(m=>m.setMap(null));etFleetMarkers=[];clearFleetRouteMarkers();if(etFleetTrail){Array.isArray(etFleetTrail)?etFleetTrail.forEach(x=>x?.setMap?.(null)):etFleetTrail.setMap(null);etFleetTrail=null}if(etFleetInfo){etFleetInfo.close();etFleetInfo=null}}
@@ -2763,7 +2763,7 @@ function fastagInfoHtml(r){return `<div class="et-map-info"><b>${esc(r.t?.truck_
    Reparent only their DOM nodes; existing save/validation/history remain unchanged.
    closeModal() restores the original parent after the form is closed. */
 function etAttachFastagDriverModal(id){
- const page=$("etFastagMapPage"),modal=$(id);
+ const page=etActiveMapPage(),modal=$(id);
  const side=page?.querySelector(".et-fleet-side");
  if(!page?.classList.contains("show")||!side||!modal?.classList.contains("show"))return;
  if(!etMapModalHomes.has(id))etMapModalHomes.set(id,{parent:modal.parentNode,next:modal.nextSibling});

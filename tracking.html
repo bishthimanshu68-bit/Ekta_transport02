@@ -1149,6 +1149,77 @@
  #etFastagMapPage .et-fleet-side > #etAssignDriverModal{padding:5px!important}
 }
 </style>
+<style id="et-live-driver-modal-inside-panel-fix">
+
+/* FASTag only: driver form stays within the right-hand floating vehicle panel.
+   It is a sibling of the vehicle list, never a row in that list. */
+#etFleetMapPage .et-fleet-side.et-fastag-driver-modal-open{
+ position:relative!important;isolation:isolate;overflow:hidden!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal{
+ position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+ padding:10px!important;margin:0!important;z-index:110!important;
+ background:rgba(15,35,57,.48)!important;align-items:center!important;
+ justify-content:center!important;overscroll-behavior:contain;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .box,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .box{
+ width:100%!important;max-width:100%!important;
+ max-height:calc(100% - 2px)!important;min-height:0!important;
+ border-radius:13px!important;box-shadow:0 12px 35px #10233b40!important;
+ overflow-y:auto!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-head,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-head{
+ padding:11px 13px!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-head b,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-head b{font-size:15px!important}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .mb,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .mb{padding:11px!important}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-profile,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-profile{
+ padding:9px!important;gap:9px!important;margin-bottom:9px!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-photo,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-photo{
+ width:48px!important;height:48px!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-section,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-section{
+ padding:9px!important;margin:8px 0!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-actions,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-actions{
+ display:flex;gap:5px!important;flex-wrap:wrap;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-actions .btn,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-actions .btn{
+ min-height:34px!important;padding:7px 9px!important;
+}
+#etFleetMapPage .et-fleet-side > #etDriverActionModal .et-dm-split,
+#etFleetMapPage .et-fleet-side > #etAssignDriverModal .et-dm-split{
+ grid-template-columns:1fr!important;
+}
+@media(max-width:650px){
+ #etFleetMapPage .et-fleet-side > #etDriverActionModal,
+ #etFleetMapPage .et-fleet-side > #etAssignDriverModal{padding:5px!important}
+}
+
+</style>
+
+<style id="et-live-map-fastag-style">
+#etFleetMapPage #etFleetMapCard{width:min(540px,calc(100% - 24px));max-height:calc(100% - 88px);overflow:auto;scrollbar-width:thin}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-actions{margin-top:12px;padding:11px 12px;border:1px solid #dbe7f4;background:#f7faff;border-radius:11px}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-actions-title{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;font-weight:900;color:#173653}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-actions-title span{font-size:10px;font-weight:600;color:#68758a}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-actions-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-btn{border:1px solid #bfd5ef;background:#eaf3ff;color:#174e91;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:800;cursor:pointer}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-remove{background:#fff1f2;border-color:#fecdd3;color:#a32335}
+#etFleetMapPage #etFleetMapCard .et-fastag-driver-assign{background:#e8f8ef;border-color:#b5e7ca;color:#087c57}
+#etFleetMapPage .et-fleet-side{position:relative;isolation:isolate;overflow:hidden}
+</style>
 </head>
 
 <body>
