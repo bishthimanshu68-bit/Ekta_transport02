@@ -2277,7 +2277,7 @@ function truckMarkerIcon(status,vehicleNo="",programRoute=""){
 // Only the selected FASTag truck is drawn just ahead of the last toll visit pin.
 // This is a screen-pixel visual offset, NOT a fabricated vehicle GPS coordinate.
 function fastagSelectedTruckIcon(r){
- const icon=fastagTruckMarkerIcon(etFastagListFilter==="NO_DRIVER"?"NO_DRIVER":(!r.d?"NO_DRIVER":r.status),r.t.truck_number,fastagProgramRoute(r.trip));
+ const icon=fastagTruckMarkerIcon(etMapStatus(r),r.t.truck_number,fastagProgramRoute(r.trip));
  return {...icon,anchor:new google.maps.Point(-14,41)};
 }
 function loadMarkerClusterer(){
@@ -2472,7 +2472,7 @@ function fleetInfoHtml(r){
  const old=fleetOldLocation(r),last=r.loc?.recorded_at||r.loc?.timestamp||r.loc?.created_at;
  return `<div class="et-map-info"><b>${esc(r.t.truck_number||"Truck")}</b> • ${esc(r.status)}<br><span>Old: ${esc(fleetPlace(old,"—"))}</span><br><span>Current: ${esc(fleetPlace(r.loc,r.trip?.current_location||"Live GPS"))}</span><br><span class="muted">Driver: ${esc(r.d?.name||"—")} • Party: ${esc(r.p?.name||"—")}<br>Last GPS: ${esc(fmtDT(last))}</span></div>`;
 }
-function fleetStatusCounts(rows){const o={ALL:rows.length,RUNNING:0,LOADING:0,REPORTING:0,EMPTY:0,NO_DRIVER:0};rows.forEach(r=>{if(o[r.status]!=null)o[r.status]++;if(!r.d)o.NO_DRIVER++});return o}
+function fleetStatusCounts(rows){const o={ALL:rows.length,RUNNING:0,LOADING:0,REPORTING:0,EMPTY:0,NO_DRIVER:0};rows.forEach(r=>{const status=etMapStatus(r);if(o[status]!=null)o[status]++});return o}
 function setFleetFilter(v){etFleetFilter=v||"ALL";showAllFleetVehicles();applyFleetMarkerFilter();renderFleetTabs()}
 function applyFleetMarkerFilter(){
  const ids=new Set(fleetFilteredRows().map(r=>String(r.t.id)));
@@ -2484,12 +2484,12 @@ function renderFleetTabs(){
 }
 function fleetFilteredRows(){
  const q=clean($("etFleetSearch")?.value).toLowerCase();
- return fleetRowsWithGPS().filter(r=>etFleetFilter==="ALL"||(etFleetFilter==="NO_DRIVER"?!r.d:r.status===etFleetFilter)).filter(r=>!q||[r.t?.truck_number,r.status,r.loc?.location,r.loc?.address,r.trip?.current_location,r.trip?.destination].join(" ").toLowerCase().includes(q));
+ return fleetRowsWithGPS().filter(r=>etFleetFilter==="ALL"||(etMapStatus(r)===etFleetFilter)).filter(r=>!q||[r.t?.truck_number,r.status,r.loc?.location,r.loc?.address,r.trip?.current_location,r.trip?.destination].join(" ").toLowerCase().includes(q));
 }
 function renderFleetVehicleList(){
  const box=$("etFleetVehicleList");if(!box)return;const rows=fleetFilteredRows();
  if($("etFleetCount"))$("etFleetCount").textContent=`${rows.length} vehicle${rows.length===1?"":"s"}`;
- box.innerHTML=rows.length?rows.map(r=>{const old=fleetOldLocation(r),curTime=r.loc?.recorded_at||r.loc?.timestamp||r.loc?.created_at;return `<div class="et-fleet-row ${String(selectedMap?.t?.id)===String(r.t.id)?"selected":""}" onclick="${r.hasGPS?`window.EktaTracking.selectFleetVehicle('${esc(r.t.id)}')`:``}"><div class="et-fleet-veh">🚚 ${esc(r.t.truck_number||"—")}</div><div><span class="et-fleet-pill ${!r.d?"NO_DRIVER":esc(r.status)}">${!r.d?"NO DRIVER":esc(r.status)}</span></div><div class="et-fleet-cell">${esc(fleetPlace(old,"—"))}<span class="et-fleet-time">${esc(fmtDT(old?.time))}</span></div><div class="et-fleet-cell">${esc(fleetPlace(r.loc,r.trip?.current_location||"—"))}<span class="et-fleet-time">${esc(fmtDT(curTime))}</span></div></div>`}).join(""):`<div class="et-fleet-empty">No vehicles match this filter.</div>`;
+ box.innerHTML=rows.length?rows.map(r=>{const old=fleetOldLocation(r),curTime=r.loc?.recorded_at||r.loc?.timestamp||r.loc?.created_at;return `<div class="et-fleet-row ${String(selectedMap?.t?.id)===String(r.t.id)?"selected":""}" onclick="${r.hasGPS?`window.EktaTracking.selectFleetVehicle('${esc(r.t.id)}')`:``}"><div class="et-fleet-veh">🚚 ${esc(r.t.truck_number||"—")}</div><div><span class="et-fleet-pill ${esc(etMapStatus(r))}">${!r.d?"NO DRIVER":esc(r.status)}</span></div><div class="et-fleet-cell">${esc(fleetPlace(old,"—"))}<span class="et-fleet-time">${esc(fmtDT(old?.time))}</span></div><div class="et-fleet-cell">${esc(fleetPlace(r.loc,r.trip?.current_location||"—"))}<span class="et-fleet-time">${esc(fmtDT(curTime))}</span></div></div>`}).join(""):`<div class="et-fleet-empty">No vehicles match this filter.</div>`;
 }
 function showFleetCard(r){
  const box=$("etFleetMapCard");if(!box)return;const old=fleetOldLocation(r),curTime=r.loc?.recorded_at||r.loc?.timestamp||r.loc?.created_at;
@@ -2531,7 +2531,7 @@ async function drawTruckTrail(r){
  const latestGps=await fetchLatestGpsPointForTruck(r.t);
  const currentPt=latestGps||endPt;
  const liveTruck=new google.maps.Marker({
-  position:{lat:currentPt.lat,lng:currentPt.lng},map:etFleetMap,icon:truckMarkerIcon(!r.d?"NO_DRIVER":r.status,r.t.truck_number,fastagProgramRoute(r.trip)),
+  position:{lat:currentPt.lat,lng:currentPt.lng},map:etFleetMap,icon:truckMarkerIcon(etMapStatus(r),r.t.truck_number,fastagProgramRoute(r.trip)),
   title:`${r.t.truck_number||"Truck"} • Current • ${fmtDT(currentPt.time)}`,zIndex:90
  });
  liveTruck.__truckId=r.t.id; etFleetRouteMarkers.push(liveTruck);
@@ -2604,7 +2604,7 @@ async function renderFleetMap(){
    {featureType:"administrative.province",elementType:"labels",stylers:[{visibility:"on"}]}
   ];
   etFleetMap=new google.maps.Map(c,{center:{lat:22.8,lng:79.0},zoom:5,minZoom:5,maxZoom:16,restriction:{latLngBounds:INDIA_BOUNDS,strictBounds:false},mapTypeId:"roadmap",styles:ROAD_FOCUS_STYLE,mapTypeControl:false,streetViewControl:false,fullscreenControl:true,gestureHandling:"greedy"});clearFleetMapObjects();const bounds=new google.maps.LatLngBounds();
-  rows.forEach(r=>{const pos={lat:r.lat,lng:r.lng};bounds.extend(pos);const marker=new google.maps.Marker({position:pos,map:etFleetMap,title:r.t.truck_number||"Truck",icon:truckMarkerIcon(!r.d?"NO_DRIVER":r.status,r.t.truck_number,fastagProgramRoute(r.trip))});marker.__truckId=r.t.id;marker.addListener("click",()=>{selectFleetVehicle(r.t.id)});etFleetMarkers.push(marker)});
+  rows.forEach(r=>{const pos={lat:r.lat,lng:r.lng};bounds.extend(pos);const marker=new google.maps.Marker({position:pos,map:etFleetMap,title:r.t.truck_number||"Truck",icon:truckMarkerIcon(etMapStatus(r),r.t.truck_number,fastagProgramRoute(r.trip))});marker.__truckId=r.t.id;marker.addListener("click",()=>{selectFleetVehicle(r.t.id)});etFleetMarkers.push(marker)});
   if(etFleetCamera){etFleetMap.setCenter(etFleetCamera.center);etFleetMap.setZoom(etFleetCamera.zoom)}else if(rows.length===1)etFleetMap.setZoom(11);else if(rows.length>1)etFleetMap.fitBounds(bounds,55);renderFleetTabs();renderFleetVehicleList();applyFleetMarkerFilter();updateFleetHistoryWindowText();
   if(selectedMap?.t){const sr=rows.find(x=>String(x.t.id)===String(selectedMap.t.id));if(sr)showFleetCard(sr)}
   if(!rows.length)new google.maps.InfoWindow({content:"No valid live GPS coordinates are available yet.",position:center}).open({map:etFleetMap});
@@ -2756,7 +2756,7 @@ async function loadFastagHistory(vehicle){
 }
 function clearFastagHistory(){etFastagRoadLines.forEach(x=>x.setMap(null));etFastagRoadLines=[];etFastagHistoryMarkers.forEach(m=>m.setMap(null));etFastagHistoryMarkers=[];if(etFastagHistoryLine){etFastagHistoryLine.setMap(null);etFastagHistoryLine=null}if(etFastagDirectionsRenderer){etFastagDirectionsRenderer.setMap(null);etFastagDirectionsRenderer=null}}
 function clearFastagMapObjects(){clearFastagHistory();if(etFastagClusterer){etFastagClusterer.clearMarkers();etFastagClusterer=null}etFastagMarkers.forEach(m=>m.setMap(null));etFastagMarkers=[];if(etFastagInfo){etFastagInfo.close();etFastagInfo=null}}
-function fastagLocationHtml(r){const g=r.geo||{};return `<b>${esc(g.place||"—")}</b><br><span>${esc(g.district||"—")}, ${esc(g.state||"—")}</span><br><span class="muted">${esc(fastagTime(r.time))}</span>`}
+function fastagLocationHtml(r){const g=r.geo||{};return `<b>${esc(g.place||"—")}</b><br><span>${esc(g.district||"—")}, ${esc(g.state||"—")}</span><br><span class="muted">${r.hasLocation?esc(fastagTime(r.time)):"FASTag coordinates unavailable — not plotted"}</span>`}
 function fastagInfoHtml(r){return `<div class="et-map-info"><b>${esc(r.t?.truck_number||"Truck")}</b> • ${esc(r.status||"—")}<br><span>Driver: ${esc(r.d?.name||"—")}</span><br><span>Phone: ${esc(r.d?.phone||"—")}</span><br><span>FASTag Last Location:</span><br>${fastagLocationHtml(r)}</div>`}
 function showFastagCard(r,history=[]){
  const c=$("etFastagMapCard");if(!c)return;
@@ -2801,10 +2801,12 @@ function fastagDecodePolyline(encoded){
 }
 let etFastagListFilter="ALL";
 let etFastagFitRequest=0; // Ignore stale zoom callbacks after filter changes.
+function etMapStatus(r){return !r.d&&r.status==="EMPTY"?"NO_DRIVER":r.status}
+function etMapMatchesStatus(r,k){return k==="ALL"||(k==="ACTIVE_TRIP"?Boolean(r.trip):etMapStatus(r)===k)}
 function fastagFilteredRows(){
  const q=clean($("etFastagSearch")?.value).toLowerCase();
  return (etFastagRows||[]).filter(r=>
-  (etFastagListFilter==="ALL"||(etFastagListFilter==="ACTIVE_TRIP"?Boolean(r.trip):etFastagListFilter==="NO_DRIVER"?!r.d:String(r.status||"").toUpperCase()===etFastagListFilter))&&
+  etMapMatchesStatus(r,etFastagListFilter)&&
   (!q||[r.t?.truck_number,r.d?.name,r.d?.phone,r.status,r.geo?.place,r.geo?.district,r.geo?.state,r.trip?.loading_point,r.trip?.from_location,r.trip?.destination,r.trip?.to_location].join(" ").toLowerCase().includes(q))
  );
 }
@@ -2840,7 +2842,7 @@ function applyFastagMapFilter(options={}){
  if(etFastagSelectedId){++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();}
  $("etFastagMapCard")?.classList.remove("show");
  if(etFastagInfo){etFastagInfo.close();etFastagInfo=null;}
- for(const m of etFastagMarkers){const row=(etFastagRows||[]).find(r=>String(r.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(etFastagListFilter==="NO_DRIVER"?"NO_DRIVER":(!row.d?"NO_DRIVER":row.status),row.t.truck_number,fastagProgramRoute(row.trip)));m.setMap(ids.has(String(m.__truckId))?etFastagMap:null);}
+ for(const m of etFastagMarkers){const row=(etFastagRows||[]).find(r=>String(r.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(etMapStatus(row),row.t.truck_number,fastagProgramRoute(row.trip)));m.setMap(ids.has(String(m.__truckId))?etFastagMap:null);}
  buildFastagClusters();
  if(!options.preserveCamera)fitFastagFilteredVehicles();
  const b=$("etFastagShowAll");if(b)b.style.display="none";
@@ -2858,13 +2860,13 @@ function renderFastagVehicleList(){
  if(tabs){
   const options=[["ALL","All"],["RUNNING","Running"],["REPORTING","Reporting"],["EMPTY","Empty"],["NO_DRIVER","No Driver"],["ACTIVE_TRIP","Active Trip"]];
   tabs.innerHTML=options.map(([key,label])=>{
-   const count=all.filter(r=>key==="ALL"||(key==="ACTIVE_TRIP"?Boolean(r.trip):key==="NO_DRIVER"?!r.d:String(r.status||"").toUpperCase()===key)).length;
+   const count=all.filter(r=>etMapMatchesStatus(r,key)).length;
    return `<button type="button" class="${etFastagListFilter===key?"active":""}" aria-pressed="${etFastagListFilter===key}" onclick="window.EktaTracking.setFastagListFilter('${key}')">${label} (${count})</button>`;
   }).join("");
  }
  const rows=fastagFilteredRows();
- if($("etFastagCount"))$("etFastagCount").textContent=`${rows.length} vehicle${rows.length===1?"":"s"}`;
- box.innerHTML=rows.length?rows.map(r=>`<div class="et-fleet-row" style="grid-template-columns:.90fr .62fr .76fr .80fr 1.35fr 1.25fr" onclick="${r.hasLocation?`window.EktaTracking.selectFastagVehicle('${esc(r.t.id)}')`:``}"><div class="et-fleet-veh">🚚 ${esc(r.t.truck_number||"—")}</div><div><span class="et-fleet-pill ${!r.d?"NO_DRIVER":esc(r.status)}">${!r.d?"NO DRIVER":esc(r.status)}</span></div><div class="et-fleet-cell">${esc(r.d?.name||"—")}</div><div class="et-fleet-cell">${esc(r.d?.phone||"—")}</div><div class="et-fleet-cell"><b>${esc(r.geo?.place||"—")}</b><br><span>${esc(r.geo?.district||"—")}, ${esc(r.geo?.state||"—")}</span><br><span class="muted">${esc(fastagTime(r.time))}</span></div><div class="et-fleet-cell">${r.trip?`<b>${esc(r.trip.loading_point||r.trip.from_location||"—")}</b><br><span style="color:#718096">↓</span><br><b>${esc(r.trip.destination||r.trip.to_location||"—")}</b>`:`<span class="muted">No Active Trip</span>`}</div></div>`).join(""):`<div class="et-fleet-empty">No vehicles match this filter.</div>`;
+ if($("etFastagCount")){const missing=rows.filter(r=>!r.hasLocation).length;$("etFastagCount").textContent=`${rows.length} vehicles • ${rows.length-missing} on map${missing?` • ${missing} without FASTag coordinates`:""}`;}
+ box.innerHTML=rows.length?rows.map(r=>`<div class="et-fleet-row" style="grid-template-columns:.90fr .62fr .76fr .80fr 1.35fr 1.25fr" onclick="${r.hasLocation?`window.EktaTracking.selectFastagVehicle('${esc(r.t.id)}')`:``}"><div class="et-fleet-veh">🚚 ${esc(r.t.truck_number||"—")}</div><div><span class="et-fleet-pill ${esc(etMapStatus(r))}">${!r.d?"NO DRIVER":esc(r.status)}</span></div><div class="et-fleet-cell">${esc(r.d?.name||"—")}</div><div class="et-fleet-cell">${esc(r.d?.phone||"—")}</div><div class="et-fleet-cell"><b>${esc(r.geo?.place||"—")}</b><br><span>${esc(r.geo?.district||"—")}, ${esc(r.geo?.state||"—")}</span><br><span class="muted">${esc(fastagTime(r.time))}</span></div><div class="et-fleet-cell">${r.trip?`<b>${esc(r.trip.loading_point||r.trip.from_location||"—")}</b><br><span style="color:#718096">↓</span><br><b>${esc(r.trip.destination||r.trip.to_location||"—")}</b>`:`<span class="muted">No Active Trip</span>`}</div></div>`).join(""):`<div class="et-fleet-empty">No vehicles match this filter.</div>`;
 }
 /* FASTag visit pins: show EACH crossing number, even repeated tolls. The little
    connector points back to the actual toll; road routes use ORIGINAL coordinates. */
@@ -2960,7 +2962,7 @@ async function drawFastagHistory(r,history,token){
 async function selectFastagVehicle(id){
  const r=(etFastagRows||[]).find(x=>String(x.t.id)===String(id));if(!r)return;
  etFastagSelectedId=id;++etFastagFitRequest;const token=++etFastagHistoryToken;
- if(etFastagClusterer){etFastagClusterer.clearMarkers();etFastagClusterer=null}etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(etFastagListFilter==="NO_DRIVER"?"NO_DRIVER":(!row.d?"NO_DRIVER":row.status),row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(String(m.__truckId)===String(id)?etFastagMap:null)});
+ if(etFastagClusterer){etFastagClusterer.clearMarkers();etFastagClusterer=null}etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(etMapStatus(row),row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(String(m.__truckId)===String(id)?etFastagMap:null)});
  const meta=$("etFastagHistoryMeta"),w=fastagWindow();if(meta)meta.textContent=`${r.t.truck_number} • ${fastagTime(w.start)} → ${fastagTime(w.end)} • Loading...`;
  try{
   const history=await loadFastagHistory(r.t.truck_number);if(token!==etFastagHistoryToken)return;
@@ -2972,7 +2974,7 @@ async function selectFastagVehicle(id){
 function showAllFastagVehicles(){
  ++etFastagFitRequest; ++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();if(etFastagInfo){etFastagInfo.close();etFastagInfo=null}
  const c=$("etFastagMapCard");if(c)c.classList.remove("show");
- etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(etFastagListFilter==="NO_DRIVER"?"NO_DRIVER":(!row.d?"NO_DRIVER":row.status),row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(etFastagMap)});applyFastagMapFilter({preserveCamera:true});
+ etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(etMapStatus(row),row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(etFastagMap)});applyFastagMapFilter({preserveCamera:true});
  const b=$("etFastagShowAll");if(b)b.style.display="none";
 }
 async function renderFastagMap(){
@@ -2986,7 +2988,7 @@ async function renderFastagMap(){
   clearFastagMapObjects();
   rows.forEach(r=>{
    if(!r.hasLocation) return;
-   const marker=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:etFastagMap,title:`${r.t.truck_number||"Truck"} • ${r.status||""}`,icon:fastagTruckMarkerIcon(etFastagListFilter==="NO_DRIVER"?"NO_DRIVER":(!r.d?"NO_DRIVER":r.status),r.t.truck_number,fastagProgramRoute(r.trip))});
+   const marker=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:etFastagMap,title:`${r.t.truck_number||"Truck"} • ${r.status||""}`,icon:fastagTruckMarkerIcon(etMapStatus(r),r.t.truck_number,fastagProgramRoute(r.trip))});
    marker.__truckId=r.t.id;marker.addListener("click",()=>selectFastagVehicle(r.t.id));etFastagMarkers.push(marker);
   });
   // Keep the operator’s chosen camera when rebuilding markers after an edit or refresh.
