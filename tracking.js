@@ -1998,35 +1998,49 @@ function mapTripForTruck(truckId){
 function mapStageButtons(truckId){
  const tr=truck(truckId),t=mapTripForTruck(truckId);
  if(!tr)return "";
- const stage=t?statusOf(t):"EMPTY",id=esc(t?.id||""),tid=esc(truckId);
- const next=stage==="RUNNING"?"→ Reporting":stage==="REPORTING"?"→ Empty":null;
- const back=stage==="REPORTING"?"← Running":stage==="EMPTY"&&t?"← Reporting":null;
+ const stage=t?statusOf(t):"EMPTY",tid=esc(truckId);
+ const next=stage==="PROGRAM"?"→ Loading":stage==="LOADING"?"→ Running":stage==="RUNNING"?"→ Reporting":stage==="REPORTING"?"→ Empty":null;
+ const back=stage==="RUNNING"?"← Program":stage==="REPORTING"?"← Running":stage==="EMPTY"&&t?"← Reporting":null;
  return `<div class="et-map-stage-actions" onclick="event.stopPropagation()">
+ <button type="button" class="et-map-stage-edit" onclick="window.EktaTracking.mapTripAction('${tid}','edit')">✎ ${stage==="EMPTY"?"View / Edit Truck":"View / Edit Program"}</button>
+ ${stage==="PROGRAM"&&t?`<button type="button" class="et-map-stage-cancel" onclick="window.EktaTracking.mapTripAction('${tid}','cancel')">✕ Cancel Program</button>`:""}
  ${back?`<button type="button" class="et-map-stage-back" onclick="window.EktaTracking.mapTripAction('${tid}','back')">${back}</button>`:""}
  ${next?`<button type="button" class="et-map-stage-next" onclick="window.EktaTracking.mapTripAction('${tid}','next')">${next}</button>`:""}
  ${stage==="EMPTY"?`<button type="button" class="et-map-stage-next" onclick="window.EktaTracking.mapTripAction('${tid}','program')">+ New Program</button>`:""}
  </div>`;
 }
+function hideMapForTripForm(){
+ // Map pages have a higher stacking level than Tracking forms.
+ if($("etFleetMapPage")?.classList.contains("show"))closeFleetMap();
+ if($("etFastagMapPage")?.classList.contains("show"))closeFastagMap();
+}
 async function mapTripAction(truckId,action){
  const tr=truck(truckId);if(!tr)return alertUser("Truck not found. Refresh Tracking.");
  if(action==="program"){
   if(activeTrip(truckId))return alertUser("This truck already has an active trip.");
-  // The map is full-screen: hide it so the existing Program modal is accessible.
-  if($("etFleetMapPage")?.classList.contains("show"))closeFleetMap();
-  if($("etFastagMapPage")?.classList.contains("show"))closeFastagMap();
-  return openProgramForTruck(truckId);
+  hideMapForTripForm();return openProgramForTruck(truckId);
  }
- const t=mapTripForTruck(truckId);if(!t)return alertUser("No eligible trip found.");
- const before=statusOf(t);
- if(action==="next"){
-  if(!["RUNNING","REPORTING"].includes(before))return alertUser("No forward action available for this stage.");
+ const t=mapTripForTruck(truckId),stage=t?statusOf(t):"EMPTY";
+ if(action==="edit"){
+  hideMapForTripForm();
+  // The exact same edit form as the Tracking table; no duplicate editor.
+  if(t&&stage!=="EMPTY"&&stage!=="CANCELLED")return openPendingProgram(t.id);
+  return openTruck(truckId);
+ }
+ if(!t)return alertUser("No eligible trip found.");
+ if(action==="cancel"){
+  if(stage!=="PROGRAM")return alertUser("Cancel Program is available in PROGRAM stage only.");
+  // Existing cancellation includes a confirmation and writes the same trip record.
+  await cancelProgram(t.id);
+ }else if(action==="next"){
+  if(!["PROGRAM","LOADING","RUNNING","REPORTING"].includes(stage))return alertUser("No forward action available for this stage.");
   await quickNextStage(t.id);
  }else if(action==="back"){
-  if(!["REPORTING","EMPTY"].includes(before))return alertUser("No back action available for this stage.");
+  if(!["RUNNING","REPORTING","EMPTY"].includes(stage))return alertUser("No back action available for this stage.");
   await undoTripStage(t.id);
  }else return;
  const current=trips.find(x=>String(x.id)===String(t.id));
- if(!current||statusOf(current)===before)return; // Cancelled or failed; leave map untouched.
+ if(!current||statusOf(current)===stage)return;
  if($("etFleetMapPage")?.classList.contains("show"))await renderFleetMap();
  if($("etFastagMapPage")?.classList.contains("show"))await renderFastagMap();
 }
@@ -2268,7 +2282,7 @@ function buildFastagClusters(){
  if(!etFastagMap||!etFastagMarkers.length||!window.markerClusterer?.MarkerClusterer)return;
  const renderer={render:({count,position})=>new google.maps.Marker({position,icon:{path:google.maps.SymbolPath.CIRCLE,scale:20,fillColor:"#173653",fillOpacity:.94,strokeColor:"#fff",strokeWeight:3},label:{text:String(count),color:"#fff",fontSize:"12px",fontWeight:"800"},zIndex:Number(google.maps.Marker.MAX_ZINDEX)+count})};
  etFastagClusterer=new window.markerClusterer.MarkerClusterer({
-  map:etFastagMap,markers:etFastagMarkers,renderer,
+  map:etFastagMap,markers:etFastagMarkers.filter(m=>m.getMap()===etFastagMap),renderer,
   algorithmOptions:{maxZoom:7,radius:70}
  });
 }
@@ -2614,7 +2628,7 @@ async function loadLatestFastagLocations(loadSequence=etLoadSequence){
    if(r.error)throw r.error;const x=(r.data||[])[0];if(!x)return null;
    const lat=Number(x.latitude),lng=Number(x.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng)||(lat===0&&lng===0))return null;
    const d=activeDriver(t.id),trip=activeTrip(t.id);
-   return {t,d,trip,status:statusOf(trip),lat,lng,time:x.toll_txn_date_time,geo:null};
+   return {t,d,trip,status:(!d && statusOf(trip)==="EMPTY")?"NO_DRIVER":statusOf(trip),lat,lng,time:x.toll_txn_date_time,geo:null};
   }catch(e){console.warn("[EKTA TRACKING] FASTag latest location failed for",vehicle,e.message);return null}
  });
  const nextFastagRows=(await Promise.all(jobs)).filter(Boolean);
@@ -2755,23 +2769,42 @@ function fastagDecodePolyline(encoded){
  return points;
 }
 let etFastagListFilter="ALL";
+function fastagFilteredRows(){
+ const q=clean($("etFastagSearch")?.value).toLowerCase();
+ return (etFastagRows||[]).filter(r=>
+  (etFastagListFilter==="ALL"||(etFastagListFilter==="ACTIVE_TRIP"?Boolean(r.trip):String(r.status||"").toUpperCase()===etFastagListFilter))&&
+  (!q||[r.t?.truck_number,r.d?.name,r.d?.phone,r.status,r.geo?.place,r.geo?.district,r.geo?.state,r.trip?.loading_point,r.trip?.from_location,r.trip?.destination,r.trip?.to_location].join(" ").toLowerCase().includes(q))
+ );
+}
+function applyFastagMapFilter(){
+ if(!etFastagMap)return;
+ const ids=new Set(fastagFilteredRows().map(r=>String(r.t.id)));
+ // Changing a status/search filter ends the single-truck history view.
+ if(etFastagSelectedId){++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();}
+ $("etFastagMapCard")?.classList.remove("show");
+ if(etFastagInfo){etFastagInfo.close();etFastagInfo=null;}
+ for(const m of etFastagMarkers)m.setMap(ids.has(String(m.__truckId))?etFastagMap:null);
+ buildFastagClusters();
+ const b=$("etFastagShowAll");if(b)b.style.display="none";
+}
 function setFastagListFilter(filter){
- const valid=["ALL","RUNNING","LOADING","REPORTING","EMPTY","ACTIVE_TRIP"];
+ const valid=["ALL","RUNNING","REPORTING","EMPTY","NO_DRIVER","ACTIVE_TRIP"];
  etFastagListFilter=valid.includes(filter)?filter:"ALL";
  renderFastagVehicleList();
+ applyFastagMapFilter();
 }
 function renderFastagVehicleList(){
  const box=$("etFastagVehicleList");if(!box)return;const q=clean($("etFastagSearch")?.value).toLowerCase();
  const all=etFastagRows||[];
  const tabs=$("etFastagTabs");
  if(tabs){
-  const options=[["ALL","All"],["RUNNING","Running"],["LOADING","Loading"],["REPORTING","Reporting"],["EMPTY","Empty"],["ACTIVE_TRIP","Active Trip"]];
+  const options=[["ALL","All"],["RUNNING","Running"],["REPORTING","Reporting"],["EMPTY","Empty"],["NO_DRIVER","No Driver"],["ACTIVE_TRIP","Active Trip"]];
   tabs.innerHTML=options.map(([key,label])=>{
    const count=all.filter(r=>key==="ALL"||(key==="ACTIVE_TRIP"?Boolean(r.trip):String(r.status||"").toUpperCase()===key)).length;
    return `<button type="button" class="${etFastagListFilter===key?"active":""}" aria-pressed="${etFastagListFilter===key}" onclick="window.EktaTracking.setFastagListFilter('${key}')">${label} (${count})</button>`;
   }).join("");
  }
- const rows=all.filter(r=>(etFastagListFilter==="ALL"||(etFastagListFilter==="ACTIVE_TRIP"?Boolean(r.trip):String(r.status||"").toUpperCase()===etFastagListFilter))&&(!q||[r.t?.truck_number,r.d?.name,r.d?.phone,r.status,r.geo?.place,r.geo?.district,r.geo?.state,r.trip?.loading_point,r.trip?.from_location,r.trip?.destination,r.trip?.to_location].join(" ").toLowerCase().includes(q)));
+ const rows=fastagFilteredRows();
  if($("etFastagCount"))$("etFastagCount").textContent=`${rows.length} vehicle${rows.length===1?"":"s"}`;
  box.innerHTML=rows.length?rows.map(r=>`<div class="et-fleet-row" style="grid-template-columns:.90fr .62fr .76fr .80fr 1.35fr 1.25fr" onclick="window.EktaTracking.selectFastagVehicle('${esc(r.t.id)}')"><div class="et-fleet-veh">🚚 ${esc(r.t.truck_number||"—")}</div><div><span class="et-fleet-pill ${esc(r.status)}">${esc(r.status)}</span></div><div class="et-fleet-cell">${esc(r.d?.name||"—")}</div><div class="et-fleet-cell">${esc(r.d?.phone||"—")}</div><div class="et-fleet-cell"><b>${esc(r.geo?.place||"—")}</b><br><span>${esc(r.geo?.district||"—")}, ${esc(r.geo?.state||"—")}</span><br><span class="muted">${esc(fastagTime(r.time))}</span></div><div class="et-fleet-cell">${r.trip?`<b>${esc(r.trip.loading_point||r.trip.from_location||"—")}</b><br><span style="color:#718096">↓</span><br><b>${esc(r.trip.destination||r.trip.to_location||"—")}</b>`:`<span class="muted">No Active Trip</span>`}</div></div>`).join(""):`<div class="et-fleet-empty">No vehicle with FASTag coordinates found.</div>`;
 }
@@ -2878,7 +2911,7 @@ async function selectFastagVehicle(id){
 function showAllFastagVehicles(){
  ++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();if(etFastagInfo){etFastagInfo.close();etFastagInfo=null}
  const c=$("etFastagMapCard");if(c)c.classList.remove("show");
- etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(row.status,row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(etFastagMap)});buildFastagClusters();
+ etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(row.status,row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(etFastagMap)});applyFastagMapFilter();
  if(etFastagMap){etFastagMap.setCenter({lat:22.9734,lng:78.6569});etFastagMap.setZoom(5)}
  const b=$("etFastagShowAll");if(b)b.style.display="none";
 }
@@ -2894,9 +2927,9 @@ async function renderFastagMap(){
    const marker=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:etFastagMap,title:`${r.t.truck_number||"Truck"} • ${r.status||""}`,icon:fastagTruckMarkerIcon(r.status,r.t.truck_number,fastagProgramRoute(r.trip))});
    marker.__truckId=r.t.id;marker.addListener("click",()=>selectFastagVehicle(r.t.id));etFastagMarkers.push(marker);
   });
-  buildFastagClusters();
+  renderFastagVehicleList();applyFastagMapFilter();
   etFastagMap.setCenter(center);etFastagMap.setZoom(5);
-  renderFastagVehicleList();fastagRangeUI();
+  fastagRangeUI();
  }catch(e){console.error("[EKTA TRACKING] FASTag map failed:",e);canvas.innerHTML=`<div class="et-map-api-note"><b>FASTag map could not load</b><br>${esc(e.message||"Unknown error")}</div>`}
 }
 function openFastagMap(){fastagRangeUI();const p=$("etFastagMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFastagMap()}
@@ -4686,7 +4719,7 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={mapTripAction,openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+window.EktaTracking={mapTripAction,openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,renderFastagVehicleList,setFastagListFilter,applyFastagMapFilter,selectFastagVehicle,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();
