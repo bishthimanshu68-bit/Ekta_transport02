@@ -729,7 +729,7 @@
 <div id="ektaOCRFolderBox" class="hidden" data-ekta-ocr-only style="margin:10px 0;padding:12px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:9px">
   <label for="ektaOCRFolderInput" style="display:block;font-size:12px;font-weight:800;color:#3730a3;margin-bottom:6px">Select entire document folder</label>
   <input id="ektaOCRFolderInput" type="file" webkitdirectory directory multiple accept=".pdf,.png,.jpg,.jpeg,.webp" onchange="window.EktaFleet.processAIFile(event)" style="font-size:11px;max-width:100%;width:100%">
-  <p style="font-size:10px;color:#475569;margin-top:6px">All supported PDFs/images in the selected folder will be read individually. Review each result before saving. Existing documents are skipped.</p>
+  <p style="font-size:10px;color:#475569;margin-top:6px">All supported PDFs/images in the selected folder will be read individually. Review each result before saving. Existing documents can be replaced after confirmation.</p>
 </div>
 <div id="ektaOCRFiles" class="ekta-ocr-file-list" data-ekta-ocr-only></div>
 <div data-ekta-ocr-only>
@@ -7023,13 +7023,13 @@ async function downloadDocument(truckId, docKey) {
         const rc=documentHasNoExpiry(ocrRows[0]?.docKey);
         content.innerHTML='<div style="background:#eaf8ef;color:#17643e;border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px">OCR completed. Check every vehicle number against the original document. Unmatched records will not save.</div>'+
         '<div style="margin:8px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><label style="font-weight:700"><input type="checkbox" id="ektaOCRSelectAll"> Select eligible</label><button type="button" id="ektaOCRClearSelection" style="border:1px solid #d7e2ef;border-radius:6px;padding:5px 10px;background:#fff">Clear selection</button><span id="ektaOCRSelectionCount"></span></div><div style="overflow:auto;max-height:58vh"><table class="ekta-ocr-result-table"><thead><tr><th>Save</th><th>#</th><th>Source / Preview</th><th>Vehicle Number</th>'+(rc?'':'<th>Valid Upto</th>')+'<th>Status</th></tr></thead><tbody>'+
-        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && (documentHasNoExpiry(r.docKey)||!!r.expiry) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error || findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.sourceName ? `${r.sourceName} — Page ${r.page}/${r.totalPages}` : r.file.name)}${r.readingSeconds!=null ? `<div style="color:#2563eb;margin-top:3px">${r.readingSeconds.toFixed(2)}s • ${r.pagesRead||1} page(s)</div>` : ''}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(fleetDateDisplay(r.expiry))}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
+        ocrRows.map((r,i)=>`<tr data-ekta-ocr-tr="${i}" class="${i===0?'ekta-ocr-selected':''}"><td><input type="checkbox" data-ekta-ocr-select="${i}" ${r.selected && findTruckByNumber(r.truckNo) && !r.error && (documentHasNoExpiry(r.docKey)||!!r.expiry) ?'checked':''} ${!findTruckByNumber(r.truckNo) || r.error?'disabled':''} title="Save this document"></td><td>${i+1}</td><td><button type="button" class="ekta-ocr-select" data-ekta-ocr-source="${i}" title="View original document">View</button><div style="max-width:140px;overflow-wrap:anywhere;color:#64748b;font-size:10px;margin-top:4px">${escapeHTML(r.sourceName ? `${r.sourceName} — Page ${r.page}/${r.totalPages}` : r.file.name)}${r.readingSeconds!=null ? `<div style="color:#2563eb;margin-top:3px">${r.readingSeconds.toFixed(2)}s • ${r.pagesRead||1} page(s)</div>` : ''}</div></td><td><input aria-label="Vehicle number row ${i+1}" data-ocr-row="${i}" data-ocr-field="truckNo" value="${escapeAttr(r.truckNo||'')}" placeholder="Enter vehicle number" style="text-transform:uppercase"></td>${rc?'':`<td><input aria-label="Expiry date row ${i+1}" type="text" inputmode="numeric" maxlength="10" placeholder="DD-MM-YYYY" title="Day-Month-Year (DD-MM-YYYY)" data-ocr-row="${i}" data-ocr-field="expiry" value="${escapeAttr(fleetDateDisplay(r.expiry))}"></td>`}<td><span data-ekta-ocr-status="${i}" class="ekta-ocr-status ${findTruckByNumber(r.truckNo)&&!r.error?'ok':'bad'}">${escapeHTML(r.error|| (findTruckByNumber(r.truckNo)?'Matched':'Needs review'))}</span></td></tr>`).join('')+'</tbody></table></div>';
         function updateOCRSelection(){
             let eligible=0, selected=0, existing=0;
             ocrRows.forEach((r,i)=>{
                 const t=findTruckByNumber(r.truckNo);
                 const blocked=!!t?.docs?.[r.docKey]?.file;
-                const allowed=!!t && !r.error && !blocked && (documentHasNoExpiry(r.docKey)||((r.docKey==='permit'||r.docKey==='five_year_permit')?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
+                const allowed=!!t && !r.error && (documentHasNoExpiry(r.docKey)||((r.docKey==='permit'||r.docKey==='five_year_permit')?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
                 const cb=content.querySelector(`[data-ekta-ocr-select="${i}"]`);
                 if(cb){cb.disabled=!allowed;if(!allowed)cb.checked=false;r.selected=cb.checked;}
                 if(allowed)eligible++;
@@ -7037,12 +7037,12 @@ async function downloadDocument(truckId, docKey) {
                 if(blocked)existing++;
                 const status=content.querySelector(`[data-ekta-ocr-status="${i}"]`);
                 if(status){
-                    status.textContent=r.error || (blocked?'Already exists — skipped':!t?'Truck not found':!allowed?'Check expiry date':'Matched');
+                    status.textContent=r.error || (!t?'Truck not found':!allowed?'Check expiry date':blocked?'Existing document — Replace on save':'Matched — New');
                     status.className='ekta-ocr-status '+(allowed?'ok':'bad');
                 }
             });
             const label=qs('ektaOCRSelectionCount');
-            if(label)label.textContent=`${selected} selected / ${eligible} eligible`+(existing?` • ${existing} existing skipped`:'');
+            if(label)label.textContent=`${selected} selected / ${eligible} eligible`+(existing?` • ${existing} existing (replace available)`:'');
             const all=qs('ektaOCRSelectAll');
             if(all){all.checked=eligible>0&&selected===eligible;all.indeterminate=selected>0&&selected<eligible;}
             if(saveBtn){saveBtn.disabled=selected===0;saveBtn.textContent=`Confirm & Save Selected (${selected})`;}
@@ -7067,16 +7067,12 @@ async function downloadDocument(truckId, docKey) {
     async function saveOCRDocuments() {
         if(ocrBusy || !ocrRows.length) return;
         if(!window.supabaseClient) return showAIError('Supabase connection required.');
-        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && !findTruckByNumber(r.truckNo)?.docs?.[r.docKey]?.file && (documentHasNoExpiry(r.docKey) || ((r.docKey === 'permit'||r.docKey === 'five_year_permit') ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
+        const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && (documentHasNoExpiry(r.docKey) || ((r.docKey === 'permit'||r.docKey === 'five_year_permit') ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
         if(new Set(valid.map(r=>normalizeTruckNumber(r.truckNo))).size!==valid.length) return showAIError('Duplicate vehicle numbers in preview. Correct duplicates before saving.');
         if(!valid.length) return showAIError('No eligible documents. Check truck number and (except RC/Fitment) expiry date in preview.');
-        const existing = [];
-        for (const row of valid) {
-            const t = findTruckByNumber(row.truckNo);
-            if (t?.docs?.[row.docKey]?.file) existing.push(t.truckNo);
-        }
-        if (existing.length) return showAIError('Some selected documents already exist: '+existing.join(', ')+'. Deselect them and save the others.');
-        if(!confirm(`Save ${valid.length} document(s) to matching trucks? Please verify each vehicle number before confirming.`)) return;
+        const replacements = valid.filter(row=>!!findTruckByNumber(row.truckNo)?.docs?.[row.docKey]?.file);
+        const message = `Save ${valid.length} document(s)?\n\n${replacements.length} existing document(s) will be REPLACED with the uploaded file and new expiry date.\n\nPlease verify vehicle numbers and expiry dates before confirming.`;
+        if(!confirm(message)) return;
         ocrBusy=true;
         const btn=qs('fleetAISaveBtn'); if(btn) btn.disabled=true;
         let done=0; const errors=[];
@@ -7085,7 +7081,6 @@ async function downloadDocument(truckId, docKey) {
             let path='';
             try {
                 const previous=await getLatestDocumentRecord(truck.id,row.docKey);
-                if(previous?.file_url) {errors.push(`${row.truckNo}: document already exists, skipped`);continue;}
                 const safeName=row.file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
                 path=`${truck.id}/${row.docKey}/${crypto.randomUUID()}-${safeName}`;
                 const bucket=window.supabaseClient.storage.from('truck-documents');
@@ -7100,7 +7095,7 @@ async function downloadDocument(truckId, docKey) {
                 truck.docs[row.docKey]={...(truck.docs[row.docKey]||{}),expiry:documentHasNoExpiry(row.docKey) ? '' : row.expiry,file:url,name:row.file.name};
                 done++;
                 const oldPath=previous?.file_url ? documentStoragePathFromUrl(previous.file_url) : '';
-                if(oldPath && oldPath!==path){const removed=await bucket.remove([oldPath]); if(removed.error) console.warn('Old file cleanup failed:',removed.error);}
+                // Keep the old storage object as a safety backup. No automatic deletion on replacement.
             } catch(e){
                 errors.push(`${row.file.name}: ${e.message||e}`);
                 if(path){try{await window.supabaseClient.storage.from('truck-documents').remove([path]);}catch(_) {}}
