@@ -936,6 +936,18 @@
 #trackingModule:has(#etFastagMapPage.show) .modal.show{z-index:101500!important;}
 #trackingModule:has(#etFleetMapPage.show) .modal.show{z-index:101500!important;}
 
+
+/* FASTag detail is a docked right-hand panel, never an overlay on the truck. */
+#etFastagMapPage .et-fastag-side-card,
+#etFastagMapPage #etFastagMapCard{position:relative!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;transform:none!important;width:auto!important;max-height:min(56vh,520px)!important;overflow:auto!important;flex:0 0 auto;margin:9px 10px;border:1px solid #c9d9eb;box-shadow:0 4px 14px #17365319;z-index:1}
+#etFastagMapPage .et-fleet-side{min-height:0}
+#etFastagMapPage .et-fleet-list{min-height:100px}
+#etFastagMapPage .et-fleet-card-actions{flex-wrap:wrap}
+#etFastagMapPage .et-fleet-card-actions button{white-space:normal}
+#etFastagMapPage:fullscreen{width:100vw;height:100vh;background:#f5f8fc}
+#etFastagMapPage:fullscreen .et-fleet-shell{height:calc(100vh - 58px)}
+@media(max-width:900px){#etFastagMapPage .et-fleet-shell{grid-template-columns:minmax(0,1fr) minmax(320px,42%)}}
+@media(max-width:650px){#etFastagMapPage .et-fleet-shell{grid-template-columns:minmax(0,1fr) minmax(235px,44%)}#etFastagMapPage .et-fleet-card-grid{grid-template-columns:1fr}#etFastagMapPage .et-map-full-title span{display:none}#etFastagMapPage .et-fastag-side-card{max-height:55vh!important}}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -2502,6 +2514,7 @@
             <span>Latest FASTag location • vehicle & assigned-driver details from Tracking</span>
         </div>
         <div class="et-map-full-actions">
+            <button class="btn" id="etFastagBrowserFullScreen" onclick="window.EktaTracking.toggleFastagFullScreen()">⛶ Full Screen</button>
             <button class="btn" id="etFastagShowAll" style="display:none" onclick="window.EktaTracking.showAllFastagVehicles()">← Show All Vehicles</button>
             <button class="btn" onclick="window.EktaTracking.refreshFastagMap()">↻ Refresh</button>
             <button class="btn red" onclick="window.EktaTracking.closeFastagMap()">✕ Close</button>
@@ -2520,7 +2533,7 @@
             </div>
             <div class="et-fastag-history-meta" id="etFastagHistoryMeta">Select a truck to view its FASTag toll history</div>
             <div class="et-map-full-canvas" id="etFastagMapCanvas" style="top:0"></div>
-            <div class="et-fleet-map-card" id="etFastagMapCard" style="top:18px"></div>
+            
             <div class="et-fleet-legend"><b>FASTag Location:</b> latest readable place/district/state + time. Select a vehicle to view chronological FASTag toll crossings. Road route is estimated, not recorded GPS. No financial data is displayed.</div>
         </div>
         <aside class="et-fleet-side">
@@ -2530,6 +2543,7 @@
                 <input class="et-fleet-search" id="etFastagSearch" placeholder="Search vehicle or driver..." oninput="window.EktaTracking.renderFastagVehicleList();window.EktaTracking.applyFastagMapFilter()">
             </div>
             <div class="et-fleet-cols" style="grid-template-columns:.90fr .62fr .76fr .80fr 1.35fr 1.25fr"><div>Vehicle No.</div><div>Status</div><div>Driver</div><div>Phone</div><div>FASTag Last Location</div><div>Active Trip<br><span style="font-weight:600">From → To</span></div></div>
+            <div class="et-fleet-map-card et-fastag-side-card" id="etFastagMapCard" aria-live="polite"></div>
             <div class="et-fleet-list" id="etFastagVehicleList"></div>
         </aside>
     </div>
