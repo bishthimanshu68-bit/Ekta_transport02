@@ -2296,7 +2296,7 @@ function loadMarkerClusterer(){
 function buildFastagClusters(){
  if(etFastagClusterer){etFastagClusterer.clearMarkers();etFastagClusterer=null}
  if(!etFastagMap||!etFastagMarkers.length||!window.markerClusterer?.MarkerClusterer)return;
- const renderer={render:({count,position})=>new google.maps.Marker({position,icon:{path:google.maps.SymbolPath.CIRCLE,scale:20,fillColor:etFastagListFilter==="NO_DRIVER"?"#dc2626":"#173653",fillOpacity:.94,strokeColor:"#fff",strokeWeight:3},label:{text:String(count),color:"#fff",fontSize:"12px",fontWeight:"800"},zIndex:Number(google.maps.Marker.MAX_ZINDEX)+count})};
+ const renderer={render:({count,position,markers})=>new google.maps.Marker({position,icon:{path:google.maps.SymbolPath.CIRCLE,scale:20,fillColor:etFastagListFilter==="NO_DRIVER" || (markers?.length>0 && markers.every(m=>m.__noDriver))?"#dc2626":"#173653",fillOpacity:.94,strokeColor:"#fff",strokeWeight:3},label:{text:String(count),color:"#fff",fontSize:"12px",fontWeight:"800"},zIndex:Number(google.maps.Marker.MAX_ZINDEX)+count})};
  etFastagClusterer=new window.markerClusterer.MarkerClusterer({
   map:etFastagMap,markers:etFastagMarkers.filter(m=>m.getMap()===etFastagMap),renderer,
   algorithmOptions:{maxZoom:7,radius:70}
@@ -2610,7 +2610,7 @@ async function renderFleetMap(){
   if(!rows.length)new google.maps.InfoWindow({content:"No valid live GPS coordinates are available yet.",position:center}).open({map:etFleetMap});
  }catch(e){console.error("[EKTA TRACKING] Fleet map failed:",e);showMapApiNote(e.message||"Google Maps could not be loaded.")}
 }
-function openFleetMap(){etFleetCamera=null;const p=$("etFleetMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFleetMap()}
+function openFleetMap(){etFleetFilter=["RUNNING","REPORTING","EMPTY","NO_DRIVER"].includes(filterStatus)?filterStatus:"ALL";etFleetCamera=null;const p=$("etFleetMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFleetMap()}
 function closeFleetMap(){[...etMapModalHomes.keys()].forEach(id=>closeModal(id));const p=$("etFleetMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
 async function refreshFleetMap(){rememberFleetCamera();await loadAll();if($("etFleetMapPage")?.classList.contains("show"))renderFleetMap()}
 
@@ -2840,7 +2840,7 @@ function applyFastagMapFilter(options={}){
  if(etFastagSelectedId){++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();}
  $("etFastagMapCard")?.classList.remove("show");
  if(etFastagInfo){etFastagInfo.close();etFastagInfo=null;}
- for(const m of etFastagMarkers)m.setMap(ids.has(String(m.__truckId))?etFastagMap:null);
+ for(const m of etFastagMarkers){const row=etFastagRows.find(r=>String(r.t.id)===String(m.__truckId));if(row){m.__noDriver=!row.d;m.setIcon(fastagTruckMarkerIcon(!row.d?"NO_DRIVER":row.status,row.t.truck_number,fastagProgramRoute(row.trip)));}m.setMap(ids.has(String(m.__truckId))?etFastagMap:null);}
  buildFastagClusters();
  if(!options.preserveCamera)fitFastagFilteredVehicles();
  const b=$("etFastagShowAll");if(b)b.style.display="none";
@@ -2987,7 +2987,7 @@ async function renderFastagMap(){
   rows.forEach(r=>{
    if(!r.hasLocation) return;
    const marker=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:etFastagMap,title:`${r.t.truck_number||"Truck"} • ${r.status||""}`,icon:fastagTruckMarkerIcon(!r.d?"NO_DRIVER":r.status,r.t.truck_number,fastagProgramRoute(r.trip))});
-   marker.__truckId=r.t.id;marker.addListener("click",()=>selectFastagVehicle(r.t.id));etFastagMarkers.push(marker);
+   marker.__truckId=r.t.id;marker.__noDriver=!r.d;marker.addListener("click",()=>selectFastagVehicle(r.t.id));etFastagMarkers.push(marker);
   });
   // Keep the operator’s chosen camera when rebuilding markers after an edit or refresh.
   renderFastagVehicleList();applyFastagMapFilter({preserveCamera:Boolean(retainedCamera)});
@@ -2996,7 +2996,7 @@ async function renderFastagMap(){
   fastagRangeUI();
  }catch(e){console.error("[EKTA TRACKING] FASTag map failed:",e);canvas.innerHTML=`<div class="et-map-api-note"><b>FASTag map could not load</b><br>${esc(e.message||"Unknown error")}</div>`}
 }
-function openFastagMap(){fastagRangeUI();const p=$("etFastagMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFastagMap()}
+function openFastagMap(){etFastagListFilter=["RUNNING","REPORTING","EMPTY","NO_DRIVER"].includes(filterStatus)?filterStatus:"ALL";fastagRangeUI();const p=$("etFastagMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFastagMap()}
 function closeFastagMap(){[...etMapModalHomes.keys()].forEach(id=>closeModal(id));const p=$("etFastagMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
 async function refreshFastagMap(){await loadAll();if($("etFastagMapPage")?.classList.contains("show"))renderFastagMap()}
 

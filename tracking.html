@@ -935,6 +935,9 @@
 #trackingModule:has(#etFastagMapPage.show) .modal.show{z-index:101500!important;}
 #trackingModule:has(#etFleetMapPage.show) .modal.show{z-index:101500!important;}
 
+/* NO DRIVER is a red operational filter in both maps. */
+#etFleetTabs .et-fleet-tab[onclick*="NO_DRIVER"],#etFastagTabs button[onclick*="NO_DRIVER"]{border-color:#ef4444;background:#fff1f2;color:#b91c1c}
+#etFleetTabs .et-fleet-tab.active[onclick*="NO_DRIVER"],#etFastagTabs button.active[onclick*="NO_DRIVER"]{background:#dc2626;border-color:#dc2626;color:#fff}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
