@@ -948,6 +948,38 @@
 #etFastagMapPage:fullscreen .et-fleet-shell{height:calc(100vh - 58px)}
 @media(max-width:900px){#etFastagMapPage .et-fleet-shell{grid-template-columns:minmax(0,1fr) minmax(320px,42%)}}
 @media(max-width:650px){#etFastagMapPage .et-fleet-shell{grid-template-columns:minmax(0,1fr) minmax(235px,44%)}#etFastagMapPage .et-fleet-card-grid{grid-template-columns:1fr}#etFastagMapPage .et-map-full-title span{display:none}#etFastagMapPage .et-fastag-side-card{max-height:55vh!important}}
+
+/* FASTag selected vehicle: distinct floating window over the RIGHT sidebar only.
+   Keep map, map markers, and vehicle-list DOM unchanged. */
+#etFastagMapPage .et-fleet-side{position:relative!important;isolation:isolate;}
+#etFastagMapPage .et-fleet-side:has(#etFastagMapCard.show)::after{
+ content:"";position:absolute;inset:0;background:rgba(18,40,68,.10);
+ z-index:18;pointer-events:none;
+}
+#etFastagMapPage #etFastagMapCard{
+ display:none;position:absolute!important;top:12px!important;right:12px!important;
+ bottom:auto!important;left:12px!important;inset:auto 12px auto 12px!important;
+ transform:none!important;width:auto!important;margin:0!important;
+ max-height:calc(100% - 24px)!important;overflow:auto!important;
+ border:2px solid #b8cee7!important;border-radius:15px!important;
+ box-shadow:0 20px 60px rgba(15,35,62,.30),0 0 0 1px rgba(255,255,255,.9)!important;
+ background:#fff!important;z-index:20!important;flex:none!important;
+ scrollbar-gutter:stable;
+}
+#etFastagMapPage #etFastagMapCard.show{display:block!important;}
+#etFastagMapPage #etFastagMapCard .et-fleet-card-top{
+ position:sticky;top:-11px;background:#fff;z-index:2;
+ padding:5px 0 10px;border-bottom:1px solid #e6edf5;
+}
+#etFastagMapPage #etFastagMapCard .et-fleet-card-x{
+ width:30px;height:30px;border-radius:50%;background:#eef3fa;
+ font-weight:900;font-size:20px;
+}
+#etFastagMapPage:fullscreen #etFastagMapCard{max-height:calc(100% - 24px)!important;}
+@media(max-width:650px){#etFastagMapPage #etFastagMapCard{
+ left:6px!important;right:6px!important;inset:auto 6px auto 6px!important;
+ top:6px!important;max-height:calc(100% - 12px)!important;
+}}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
