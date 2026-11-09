@@ -621,6 +621,7 @@
 #etFastagTabs{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
 #etFastagTabs button{border:1px solid #d9e4f1;border-radius:8px;background:#f8fafc;color:#173653;padding:6px 8px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
 #etFastagTabs button.active{background:#173653;color:white;border-color:#173653}
+#etFastagTabs button.active[onclick*="NO_DRIVER"]{background:#dc2626;border-color:#dc2626;color:#fff}
 #etFastagTabs button:focus-visible{outline:2px solid #3677b6;outline-offset:2px}
 
 /* Empty-list quick programming entry: visual addition only. */
@@ -935,9 +936,6 @@
 #trackingModule:has(#etFastagMapPage.show) .modal.show{z-index:101500!important;}
 #trackingModule:has(#etFleetMapPage.show) .modal.show{z-index:101500!important;}
 
-/* NO DRIVER is a red operational filter in both maps. */
-#etFleetTabs .et-fleet-tab[onclick*="NO_DRIVER"],#etFastagTabs button[onclick*="NO_DRIVER"]{border-color:#ef4444;background:#fff1f2;color:#b91c1c}
-#etFleetTabs .et-fleet-tab.active[onclick*="NO_DRIVER"],#etFastagTabs button.active[onclick*="NO_DRIVER"]{background:#dc2626;border-color:#dc2626;color:#fff}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
