@@ -2472,7 +2472,7 @@ function fleetInfoHtml(r){
  const old=fleetOldLocation(r),last=r.loc?.recorded_at||r.loc?.timestamp||r.loc?.created_at;
  return `<div class="et-map-info"><b>${esc(r.t.truck_number||"Truck")}</b> • ${esc(r.status)}<br><span>Old: ${esc(fleetPlace(old,"—"))}</span><br><span>Current: ${esc(fleetPlace(r.loc,r.trip?.current_location||"Live GPS"))}</span><br><span class="muted">Driver: ${esc(r.d?.name||"—")} • Party: ${esc(r.p?.name||"—")}<br>Last GPS: ${esc(fmtDT(last))}</span></div>`;
 }
-function fleetStatusCounts(rows){const o={ALL:rows.length,RUNNING:0,LOADING:0,REPORTING:0,EMPTY:0};rows.forEach(r=>{if(o[r.status]!=null)o[r.status]++});return o}
+function fleetStatusCounts(rows){const o={ALL:rows.length,RUNNING:0,LOADING:0,REPORTING:0,EMPTY:0,NO_DRIVER:0};rows.forEach(r=>{if(o[r.status]!=null)o[r.status]++;if(!r.d)o.NO_DRIVER++});return o}
 function setFleetFilter(v){etFleetFilter=v||"ALL";showAllFleetVehicles();applyFleetMarkerFilter();renderFleetTabs()}
 function applyFleetMarkerFilter(){
  const ids=new Set(fleetFilteredRows().map(r=>String(r.t.id)));
@@ -2480,11 +2480,11 @@ function applyFleetMarkerFilter(){
 }
 function renderFleetTabs(){
  const box=$("etFleetTabs");if(!box)return;const rows=fleetRowsWithGPS(),c=fleetStatusCounts(rows);
- box.innerHTML=["ALL","RUNNING","LOADING","REPORTING","EMPTY"].map(k=>`<button class="et-fleet-tab ${etFleetFilter===k?"active":""}" onclick="window.EktaTracking.setFleetFilter('${k}')">${k==="ALL"?"All":k[0]+k.slice(1).toLowerCase()} (${c[k]||0})</button>`).join("");
+ box.innerHTML=["ALL","RUNNING","LOADING","REPORTING","EMPTY","NO_DRIVER"].map(k=>`<button class="et-fleet-tab ${etFleetFilter===k?"active":""}" onclick="window.EktaTracking.setFleetFilter('${k}')">${k==="ALL"?"All":k[0]+k.slice(1).toLowerCase()} (${c[k]||0})</button>`).join("");
 }
 function fleetFilteredRows(){
  const q=clean($("etFleetSearch")?.value).toLowerCase();
- return fleetRowsWithGPS().filter(r=>etFleetFilter==="ALL"||r.status===etFleetFilter).filter(r=>!q||[r.t?.truck_number,r.status,r.loc?.location,r.loc?.address,r.trip?.current_location,r.trip?.destination].join(" ").toLowerCase().includes(q));
+ return fleetRowsWithGPS().filter(r=>etFleetFilter==="ALL"||(etFleetFilter==="NO_DRIVER"?!r.d:r.status===etFleetFilter)).filter(r=>!q||[r.t?.truck_number,r.status,r.loc?.location,r.loc?.address,r.trip?.current_location,r.trip?.destination].join(" ").toLowerCase().includes(q));
 }
 function renderFleetVehicleList(){
  const box=$("etFleetVehicleList");if(!box)return;const rows=fleetFilteredRows();
@@ -2801,7 +2801,7 @@ let etFastagFitRequest=0; // Ignore stale zoom callbacks after filter changes.
 function fastagFilteredRows(){
  const q=clean($("etFastagSearch")?.value).toLowerCase();
  return (etFastagRows||[]).filter(r=>
-  (etFastagListFilter==="ALL"||(etFastagListFilter==="ACTIVE_TRIP"?Boolean(r.trip):String(r.status||"").toUpperCase()===etFastagListFilter))&&
+  (etFastagListFilter==="ALL"||(etFastagListFilter==="ACTIVE_TRIP"?Boolean(r.trip):etFastagListFilter==="NO_DRIVER"?!r.d:String(r.status||"").toUpperCase()===etFastagListFilter))&&
   (!q||[r.t?.truck_number,r.d?.name,r.d?.phone,r.status,r.geo?.place,r.geo?.district,r.geo?.state,r.trip?.loading_point,r.trip?.from_location,r.trip?.destination,r.trip?.to_location].join(" ").toLowerCase().includes(q))
  );
 }
@@ -2855,7 +2855,7 @@ function renderFastagVehicleList(){
  if(tabs){
   const options=[["ALL","All"],["RUNNING","Running"],["REPORTING","Reporting"],["EMPTY","Empty"],["NO_DRIVER","No Driver"],["ACTIVE_TRIP","Active Trip"]];
   tabs.innerHTML=options.map(([key,label])=>{
-   const count=all.filter(r=>key==="ALL"||(key==="ACTIVE_TRIP"?Boolean(r.trip):String(r.status||"").toUpperCase()===key)).length;
+   const count=all.filter(r=>key==="ALL"||(key==="ACTIVE_TRIP"?Boolean(r.trip):key==="NO_DRIVER"?!r.d:String(r.status||"").toUpperCase()===key)).length;
    return `<button type="button" class="${etFastagListFilter===key?"active":""}" aria-pressed="${etFastagListFilter===key}" onclick="window.EktaTracking.setFastagListFilter('${key}')">${label} (${count})</button>`;
   }).join("");
  }
