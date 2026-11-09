@@ -63,8 +63,22 @@ function fmtDT(v){if(!v)return "—";const d=new Date(v);return isNaN(d)?"—":d
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function dbOK(){return S&&typeof S.from==="function"}
 function alertUser(m){window.alert(m)}
-function closeModal(id){$(id)?.classList.remove("show");if(id==="etProgramModal")setProgramRequestContext(null)}
-function closeAllModals(){document.querySelectorAll("#trackingModule .modal").forEach(x=>x.classList.remove("show"))}
+// Keep forms launched from a map inside that same map page, without altering their save logic.
+const etMapModalHomes=new Map();
+function etActiveMapPage(){return ["etFastagMapPage","etFleetMapPage"].map(id=>$(id)).find(p=>p?.classList.contains("show"))||null}
+function etAttachMapModal(id){
+ const modal=$(id),page=etActiveMapPage();if(!modal||!page)return;
+ if(!etMapModalHomes.has(id))etMapModalHomes.set(id,{parent:modal.parentNode,next:modal.nextSibling});
+ page.appendChild(modal);
+}
+function etRestoreMapModal(id){
+ const home=etMapModalHomes.get(id),modal=$(id);if(!home||!modal)return;
+ if(home.next?.parentNode===home.parent)home.parent.insertBefore(modal,home.next);
+ else home.parent.appendChild(modal);
+ etMapModalHomes.delete(id);
+}
+function closeModal(id){$(id)?.classList.remove("show");if(id==="etProgramModal")setProgramRequestContext(null);etRestoreMapModal(id)}
+function closeAllModals(){document.querySelectorAll("#trackingModule .modal").forEach(x=>{x.classList.remove("show");etRestoreMapModal(x.id)})}
 function daysBetween(a,b){if(!a||!b)return 0;const x=new Date(dateOnly(a)+"T00:00:00"),y=new Date(dateOnly(b)+"T00:00:00");return Math.max(0,Math.floor((y-x)/86400000))}
 function parseAmount(v){const s=clean(v).toUpperCase();if(!s||s==="NA")return 0;const n=Number(s.replace(/[₹,\s]/g,""));return Number.isFinite(n)?n:0}
 
@@ -2019,13 +2033,15 @@ async function mapTripAction(truckId,action){
  const tr=truck(truckId);if(!tr)return alertUser("Truck not found. Refresh Tracking.");
  if(action==="program"){
   if(activeTrip(truckId))return alertUser("This truck already has an active trip.");
-  return openProgramForTruck(truckId);
+  etAttachMapModal("etProgramModal");return openProgramForTruck(truckId);
  }
  const t=mapTripForTruck(truckId),stage=t?statusOf(t):"EMPTY";
  if(action==="edit"){
   // The exact same edit form as the Tracking table; no duplicate editor.
-  if(t&&stage!=="EMPTY"&&stage!=="CANCELLED")return openPendingProgram(t.id);
-  return openTruck(truckId);
+  if(t&&stage!=="EMPTY"&&stage!=="CANCELLED"){
+   etAttachMapModal("etProgramModal");return openPendingProgram(t.id);
+  }
+  etAttachMapModal("etTruckModal");return openTruck(truckId);
  }
  if(!t)return alertUser("No eligible trip found.");
  if(action==="cancel"){
@@ -2595,7 +2611,7 @@ async function renderFleetMap(){
  }catch(e){console.error("[EKTA TRACKING] Fleet map failed:",e);showMapApiNote(e.message||"Google Maps could not be loaded.")}
 }
 function openFleetMap(){etFleetCamera=null;const p=$("etFleetMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFleetMap()}
-function closeFleetMap(){const p=$("etFleetMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
+function closeFleetMap(){[...etMapModalHomes.keys()].forEach(id=>closeModal(id));const p=$("etFleetMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
 async function refreshFleetMap(){rememberFleetCamera();await loadAll();if($("etFleetMapPage")?.classList.contains("show"))renderFleetMap()}
 
 /* ========================= 14B. FASTag LOCATION MAP =========================
@@ -2977,7 +2993,7 @@ async function renderFastagMap(){
  }catch(e){console.error("[EKTA TRACKING] FASTag map failed:",e);canvas.innerHTML=`<div class="et-map-api-note"><b>FASTag map could not load</b><br>${esc(e.message||"Unknown error")}</div>`}
 }
 function openFastagMap(){fastagRangeUI();const p=$("etFastagMapPage");if(!p)return;p.classList.add("show");p.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";renderFastagMap()}
-function closeFastagMap(){const p=$("etFastagMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
+function closeFastagMap(){[...etMapModalHomes.keys()].forEach(id=>closeModal(id));const p=$("etFastagMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
 async function refreshFastagMap(){await loadAll();if($("etFastagMapPage")?.classList.contains("show"))renderFastagMap()}
 
 function openSelectedMapFullScreen(){
