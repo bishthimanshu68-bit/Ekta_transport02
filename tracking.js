@@ -2016,7 +2016,7 @@ function mapStageButtons(truckId){
  if(!tr)return "";
  const stage=t?statusOf(t):"EMPTY",tid=esc(truckId);
  const next=stage==="PROGRAM"?"→ Loading":stage==="LOADING"?"→ Running":stage==="RUNNING"?"→ Reporting":stage==="REPORTING"?"→ Empty":null;
- const back=stage==="RUNNING"?"← Program":stage==="REPORTING"?"← Running":stage==="EMPTY"&&t?"← Reporting":null;
+ const back=(stage==="RUNNING"||stage==="REPORTING"||(stage==="EMPTY"&&t))?"← Back":null;
  return `<div class="et-map-stage-actions" onclick="event.stopPropagation()">
  <button type="button" class="et-map-stage-edit" onclick="window.EktaTracking.mapTripAction('${tid}','edit')">✎ ${stage==="EMPTY"?"View / Edit Truck":"View / Edit Program"}</button>
  ${stage==="PROGRAM"&&t?`<button type="button" class="et-map-stage-cancel" onclick="window.EktaTracking.mapTripAction('${tid}','cancel')">✕ Cancel Program</button>`:""}
