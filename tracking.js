@@ -550,6 +550,7 @@ async function loadAll(){
   try{await loadLatestFastagLocations(loadSequence)}catch(e){console.warn("[EKTA] FASTag table locations unavailable",e)}
   if(loadSequence!==etLoadSequence)return;
   render();
+  if($("etFastagMapPage")?.classList.contains("show"))await renderFastagMap();
   loadTrackingDriverPhotos();
   hydrateGPSPlaces();
  }catch(e){
@@ -2018,11 +2019,10 @@ async function mapTripAction(truckId,action){
  const tr=truck(truckId);if(!tr)return alertUser("Truck not found. Refresh Tracking.");
  if(action==="program"){
   if(activeTrip(truckId))return alertUser("This truck already has an active trip.");
-  hideMapForTripForm();return openProgramForTruck(truckId);
+  return openProgramForTruck(truckId);
  }
  const t=mapTripForTruck(truckId),stage=t?statusOf(t):"EMPTY";
  if(action==="edit"){
-  hideMapForTripForm();
   // The exact same edit form as the Tracking table; no duplicate editor.
   if(t&&stage!=="EMPTY"&&stage!=="CANCELLED")return openPendingProgram(t.id);
   return openTruck(truckId);
@@ -2804,7 +2804,7 @@ function closeFastagVehicleCard(){
  // clears route overlays, restores filtered markers and clustering.
  showAllFastagVehicles();
 }
-function applyFastagMapFilter(){
+function applyFastagMapFilter(options={}){
  if(!etFastagMap)return;
  const ids=new Set(fastagFilteredRows().map(r=>String(r.t.id)));
  // Changing a status/search filter ends the single-truck history view.
@@ -2813,7 +2813,7 @@ function applyFastagMapFilter(){
  if(etFastagInfo){etFastagInfo.close();etFastagInfo=null;}
  for(const m of etFastagMarkers)m.setMap(ids.has(String(m.__truckId))?etFastagMap:null);
  buildFastagClusters();
- fitFastagFilteredVehicles();
+ if(!options.preserveCamera)fitFastagFilteredVehicles();
  const b=$("etFastagShowAll");if(b)b.style.display="none";
 }
 function setFastagListFilter(filter){
@@ -2941,9 +2941,9 @@ async function selectFastagVehicle(id){
  const b=$("etFastagShowAll");if(b)b.style.display="inline-flex";
 }
 function showAllFastagVehicles(){
- ++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();if(etFastagInfo){etFastagInfo.close();etFastagInfo=null}
+ ++etFastagFitRequest; ++etFastagHistoryToken;etFastagSelectedId=null;etFastagVisibleHistory=[];clearFastagHistory();if(etFastagInfo){etFastagInfo.close();etFastagInfo=null}
  const c=$("etFastagMapCard");if(c)c.classList.remove("show");
- etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(row.status,row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(etFastagMap)});applyFastagMapFilter();
+ etFastagMarkers.forEach(m=>{const row=etFastagRows.find(x=>String(x.t.id)===String(m.__truckId));if(row)m.setIcon(fastagTruckMarkerIcon(row.status,row.t.truck_number,fastagProgramRoute(row.trip)));m.setZIndex(undefined);m.setMap(etFastagMap)});applyFastagMapFilter({preserveCamera:true});
  const b=$("etFastagShowAll");if(b)b.style.display="none";
 }
 async function renderFastagMap(){
@@ -2953,14 +2953,16 @@ async function renderFastagMap(){
   try{await loadMarkerClusterer()}catch(e){console.warn("[EKTA TRACKING] FASTag clustering unavailable; using individual markers.",e.message)}
   const rows=await loadLatestFastagLocations(),center={lat:22.9734,lng:78.6569};
   if(!etFastagMap)etFastagMap=new google.maps.Map(canvas,{center,zoom:5,minZoom:3,maxZoom:10,mapTypeId:"roadmap",fullscreenControl:true,streetViewControl:true,mapTypeControl:true,gestureHandling:"greedy",restriction:{latLngBounds:{north:38.5,south:5.0,west:66.0,east:99.0},strictBounds:false}});
+  const retainedCamera=etFastagMap.__ektaHasRendered ? {center:etFastagMap.getCenter(),zoom:etFastagMap.getZoom()} : null;
   clearFastagMapObjects();
   rows.forEach(r=>{
    const marker=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:etFastagMap,title:`${r.t.truck_number||"Truck"} • ${r.status||""}`,icon:fastagTruckMarkerIcon(r.status,r.t.truck_number,fastagProgramRoute(r.trip))});
    marker.__truckId=r.t.id;marker.addListener("click",()=>selectFastagVehicle(r.t.id));etFastagMarkers.push(marker);
   });
-  renderFastagVehicleList();applyFastagMapFilter();
-  // Filter fitting owns camera positioning; do not overwrite it after rendering.
-  fitFastagFilteredVehicles();
+  // Keep the operator’s chosen camera when rebuilding markers after an edit or refresh.
+  renderFastagVehicleList();applyFastagMapFilter({preserveCamera:Boolean(retainedCamera)});
+  if(retainedCamera){etFastagMap.setCenter(retainedCamera.center);etFastagMap.setZoom(retainedCamera.zoom);}
+  etFastagMap.__ektaHasRendered=true;
   fastagRangeUI();
  }catch(e){console.error("[EKTA TRACKING] FASTag map failed:",e);canvas.innerHTML=`<div class="et-map-api-note"><b>FASTag map could not load</b><br>${esc(e.message||"Unknown error")}</div>`}
 }

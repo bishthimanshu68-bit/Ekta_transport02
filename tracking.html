@@ -930,6 +930,11 @@
 .et-map-stage-next{background:#087e52;color:white;border-color:#087e52!important}
 .et-map-stage-back{background:#fff7ed;color:#9a3412;border-color:#fdba74!important}
 
+
+/* FASTag map workflow: existing ERP forms float over the map without closing it. */
+#trackingModule:has(#etFastagMapPage.show) .modal.show{z-index:101500!important;}
+#trackingModule:has(#etFleetMapPage.show) .modal.show{z-index:101500!important;}
+
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
