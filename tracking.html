@@ -1236,7 +1236,22 @@
 /* Compact single-truck FASTag/GPS preview, isolated from fleet map. */
 #trackingModule .et-source-map-btn{border:1px solid #dbe5f0;border-radius:7px;padding:5px 9px;background:#f5f9ff;color:#173653;font-weight:800;cursor:pointer;font-size:11px}
 #trackingModule .et-source-map-btn:hover{background:#e6f1ff;border-color:#9ec5f1}
-#trackingModule #etSingleTruckLocationModal{z-index:101700!important}
+#trackingModule #etSingleTruckLocationModal{
+  z-index:101700!important;
+  background:transparent!important;
+  justify-content:flex-end!important;
+  align-items:flex-start!important;
+  padding:clamp(85px,30vh,285px) 18px 16px!important;
+  pointer-events:none;
+}
+#trackingModule #etSingleTruckLocationModal .box{
+  pointer-events:auto;
+  box-shadow:0 12px 38px #10233b45;
+}
+@media(max-width:650px){
+ #trackingModule #etSingleTruckLocationModal{padding:110px 8px 8px!important}
+ #trackingModule #etSingleTruckLocationModal .box{width:min(420px,calc(100vw - 16px))}
+}
 #etSingleTruckLocationModal .box{width:min(470px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:hidden}
 #etSingleTruckLocationModal .mh{padding:11px 13px}
 #etSingleTruckLocationCanvas{height:285px;min-height:220px;background:#edf2f8;border-radius:9px;overflow:hidden}
