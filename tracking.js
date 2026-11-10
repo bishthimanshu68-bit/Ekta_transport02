@@ -1438,7 +1438,7 @@ function render(){
         ${r.trip?`<button class="et-location-edit" onclick="event.stopPropagation();window.EktaTracking.openManualLocation('${esc(r.t.id)}')">✏ Edit</button>`:""}
       </div>
     </td>
-   <td><span class="et-gps-source">${esc(gps)}</span></td>
+   <td><button type="button" class="et-source-map-btn" title="Show only this truck on a small map" onclick="event.stopPropagation();window.EktaTracking.openSingleTruckLocation('${esc(r.t.id)}','${esc(gps)}')">${esc(gps)} <span aria-hidden="true">⌖</span></button></td>
    <td>${esc(last)}<div style="margin-top:5px">${action(r)}</div><div class="et-last-update-back">${r.trip&&["RUNNING","REPORTING","EMPTY"].includes(r.actualStage)?`<button type="button" class="et-stage-back" title="Undo last stage" onclick="event.stopPropagation();window.EktaTracking.undoTripStage('${esc(r.trip.id)}')">↶ BACK</button>`:""}${!r.trip&&r.status==="EMPTY"&&selectedTrackingDate()===today()&&lastCompletedTripForUndo(r.t.id)?`<button type="button" class="et-stage-back" title="Return last completed trip to REPORTING" onclick="event.stopPropagation();window.EktaTracking.undoTripStage('${esc(lastCompletedTripForUndo(r.t.id).id)}')">↶ BACK TO REPORTING</button>`:""}</div></td>
    </tr>`;
  }).join(""):`<tr><td colspan="${emptyView?12:11}" style="padding:30px;text-align:center" class="muted">No Tracking records found.</td></tr>`;
@@ -4838,7 +4838,66 @@ function marketTab(name){
  document.querySelectorAll("#etMarketPage [data-market-panel]").forEach(p=>{p.hidden=p.dataset.marketPanel!==name});
 }
 
-window.EktaTracking={openFastagDriverAction,mapTripAction,openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,toggleFastagFullScreen,renderFastagVehicleList,setFastagListFilter,applyFastagMapFilter,selectFastagVehicle,closeFastagVehicleCard,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,closeFleetVehicleCard,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+
+/* Single-vehicle location preview. This popup never renders the fleet marker collections. */
+let etSingleTruckMap=null,etSingleTruckMarker=null,etSingleTruckRequest=0;
+function closeSingleTruckLocation(){
+ etSingleTruckRequest++;
+ $("etSingleTruckLocationModal")?.classList.remove("show");
+ if(etSingleTruckMarker){etSingleTruckMarker.setMap(null);etSingleTruckMarker=null;}
+}
+async function openSingleTruckLocation(truckId,source){
+ const t=truck(truckId),mode=clean(source).toUpperCase()==="GPS"?"GPS":"FASTAG";
+ if(!t)return alertUser("Truck not found.");
+ const modal=$("etSingleTruckLocationModal"),canvas=$("etSingleTruckLocationCanvas"),detail=$("etSingleTruckLocationDetail"),title=$("etSingleTruckLocationTitle");
+ if(!modal||!canvas||!detail)return;
+ // The tracking module is a high-z-index stacking context. Keep this modal inside it.
+ const host=$("trackingModule");
+ if(host && modal.parentElement!==host)host.appendChild(modal);
+ const request=++etSingleTruckRequest;
+ title.textContent=`🚛 ${clean(t.truck_number)} — ${mode === "GPS" ? "GPS" : "FASTag"} Location`;
+ detail.textContent="Loading this truck's last known location...";
+ canvas.textContent="Loading map...";
+ modal.classList.add("show");
+ let point=null;
+ try{
+  if(mode==="GPS"){
+   const vehicle=clean(t.truck_number).toUpperCase();
+   const records=(gpsLocations||[]).filter(x=>clean(x.vehicle_number).toUpperCase()===vehicle)
+    .sort((a,b)=>Date.parse(b.recorded_at||b.created_at||0)-Date.parse(a.recorded_at||a.created_at||0));
+   const x=records.find(x=>validIndiaFastagPoint(Number(x.latitude),Number(x.longitude)));
+   if(x)point={lat:Number(x.latitude),lng:Number(x.longitude),time:x.recorded_at||x.created_at,location:clean(x.location||x.address)};
+  }else{
+   const vehicle=clean(t.truck_number).toUpperCase();
+   const cached=(etFastagRows||[]).find(r=>String(r.t?.id)===String(t.id)&&r.hasLocation&&validIndiaFastagPoint(Number(r.lat),Number(r.lng)));
+   if(cached)point={lat:Number(cached.lat),lng:Number(cached.lng),time:cached.time,location:clean(cached.geo?.label||cached.geo?.place)};
+   else{
+    const {data,error}=await S.from("fastag_transactions").select("latitude,longitude,toll_txn_date_time")
+     .eq("vehicle_no",vehicle).not("latitude","is",null).not("longitude","is",null)
+     .order("toll_txn_date_time",{ascending:false}).limit(1);
+    if(error)throw error;
+    const x=(data||[])[0];
+    if(x&&validIndiaFastagPoint(Number(x.latitude),Number(x.longitude)))point={lat:Number(x.latitude),lng:Number(x.longitude),time:x.toll_txn_date_time,location:""};
+   }
+  }
+  if(request!==etSingleTruckRequest)return;
+  if(!point){canvas.textContent="Location Not Available";detail.textContent=`No valid ${mode} coordinates found for ${clean(t.truck_number)}.`;return;}
+  await loadGoogleMapsAPI();
+  if(request!==etSingleTruckRequest)return;
+  canvas.textContent="";
+  if(etSingleTruckMarker){etSingleTruckMarker.setMap(null);etSingleTruckMarker=null;}
+  etSingleTruckMap=new google.maps.Map(canvas,{center:{lat:point.lat,lng:point.lng},zoom:13,mapTypeId:"roadmap",streetViewControl:false,mapTypeControl:false,fullscreenControl:false});
+  etSingleTruckMarker=new google.maps.Marker({map:etSingleTruckMap,position:{lat:point.lat,lng:point.lng},title:clean(t.truck_number)});
+  detail.textContent=`${point.location?point.location+" • ":""}${mode==="GPS"?"Last GPS update":"Last FASTag toll crossing"}: ${fmtDT(point.time)} • ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}${mode==="FASTAG"?" • Not live GPS":""}`;
+ }catch(e){
+  if(request!==etSingleTruckRequest)return;
+  console.error("[EKTA TRACKING] Single-truck map error:",e);
+  canvas.textContent="Map unavailable";
+  detail.textContent=e.message||"Could not load location.";
+ }
+}
+
+window.EktaTracking={openSingleTruckLocation,closeSingleTruckLocation,openFastagDriverAction,mapTripAction,openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,toggleFastagFullScreen,renderFastagVehicleList,setFastagListFilter,applyFastagMapFilter,selectFastagVehicle,closeFastagVehicleCard,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,closeFleetVehicleCard,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 /* ========================= 22. INIT ========================= */
 function init(){$("trackingModule").style.display="block";document.body.style.overflow="hidden";/* Preserve the operator-selected card if host reinitializes Tracking. */if(trackingInitialized){render();return;}trackingInitialized=true;filterStatus=restoreTrackingCard();selectedMap=null;if($("etSearch"))$("etSearch").value="";if($("etPartySearch"))$("etPartySearch").value="";if($("etFromSearch"))$("etFromSearch").value="";if($("etToSearch"))$("etToSearch").value="";if($("etStatusFilter"))$("etStatusFilter").value="";if($("etZoneFilter"))$("etZoneFilter").value="";if($("etDriverFilter"))$("etDriverFilter").value="";if($("etDate"))$("etDate").value=today();if($("etExcelDate")&&!$("etExcelDate").value)$("etExcelDate").value=today();setupTypeaheads();setupAutoRateInputs();setupEvents();setupOtherOfflinePlaceInputs();loadAll();

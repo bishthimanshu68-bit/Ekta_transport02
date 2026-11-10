@@ -1232,6 +1232,17 @@
 #etFleetMapPage:fullscreen #etFleetMapCard{max-height:calc(100% - 24px)!important}
 @media(max-width:650px){#etFleetMapPage #etFleetMapCard{left:6px!important;right:6px!important;top:6px!important;max-height:calc(100% - 12px)!important}}
 </style>
+<style id="et-single-truck-map-style">
+/* Compact single-truck FASTag/GPS preview, isolated from fleet map. */
+#trackingModule .et-source-map-btn{border:1px solid #dbe5f0;border-radius:7px;padding:5px 9px;background:#f5f9ff;color:#173653;font-weight:800;cursor:pointer;font-size:11px}
+#trackingModule .et-source-map-btn:hover{background:#e6f1ff;border-color:#9ec5f1}
+#trackingModule #etSingleTruckLocationModal{z-index:101700!important}
+#etSingleTruckLocationModal .box{width:min(470px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:hidden}
+#etSingleTruckLocationModal .mh{padding:11px 13px}
+#etSingleTruckLocationCanvas{height:285px;min-height:220px;background:#edf2f8;border-radius:9px;overflow:hidden}
+#etSingleTruckLocationDetail{font-size:11px;line-height:1.5;color:#52647a;margin-top:10px;overflow-wrap:anywhere}
+.et-single-map-loading{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:18px;color:#68758a;font-weight:700}
+</style>
 </head>
 
 <body>
@@ -2853,6 +2864,7 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
+<div class="modal" id="etSingleTruckLocationModal" onclick="if(event.target===this)window.EktaTracking.closeSingleTruckLocation()"><div class="box"><div class="mh"><b id="etSingleTruckLocationTitle">Truck Location</b><button class="x" type="button" aria-label="Close map" onclick="window.EktaTracking.closeSingleTruckLocation()">×</button></div><div class="mb"><div id="etSingleTruckLocationCanvas"></div><div id="etSingleTruckLocationDetail"></div></div></div></div>
 </body>
 </html>
 
