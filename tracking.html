@@ -992,6 +992,14 @@
 #etFastagMapPage .et-fastag-driver-assign{color:#087a4b;background:#e8f8f0;border-color:#b6e4ce}
 #etFastagMapPage .et-fastag-driver-btn:hover{filter:brightness(.97)}
 #etFastagMapPage .et-fastag-driver-btn:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+
+/* E-Way Register: operational trip stage, independent of E-Way bill validity. */
+#etEwayPage .et-eway-trip-stage{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border-radius:7px;padding:6px 9px;font-size:10px;font-weight:900;letter-spacing:.2px}
+#etEwayPage .et-eway-trip-running{background:#def7e9;color:#087a4b}
+#etEwayPage .et-eway-trip-reporting{background:#e3efff;color:#1264da}
+#etEwayPage .et-eway-trip-loading{background:#fff0d5;color:#a96b00}
+#etEwayPage .et-eway-trip-program{background:#eef2ff;color:#4f46a5}
+
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -1530,6 +1538,7 @@
                             <th>Trip</th>
                             <th>Party</th>
                             <th>Party Status</th>
+                            <th>Trip Status</th>
                             <th>From</th>
                             <th>To</th>
                             <th>Status</th>
@@ -2146,6 +2155,7 @@
                             <th>Truck / Trip</th>
                             <th>Party Name</th>
                             <th>Party Status</th>
+                            <th>Trip Status</th>
                             <th>From → To</th>
                             <th>E-Way Bill Number(s)</th>
                             <th>E-Way Date</th>
@@ -2157,7 +2167,7 @@
                     </thead>
                     <tbody id="etEwayRows">
                         <tr>
-                            <td colspan="10" class="empty">Loading E-Way records...</td>
+                            <td colspan="11" class="empty">Loading E-Way records...</td>
                         </tr>
                     </tbody>
                 </table>

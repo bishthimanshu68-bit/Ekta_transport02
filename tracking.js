@@ -3120,11 +3120,29 @@ function marketEwayBillColumn(bills,kind,id){
   return `<span>${ewayStatusLabel(b?ewayBillStatus(b):"PENDING")}</span>`;
  }).map(x=>`<div class="et-eway-bill-line">${x}</div>`).join("")}</div>`;
 }
+// E-Way register uses the actual trip lifecycle; never infer status from bill expiry.
+function ewayTripStage(t){
+ if(t?._market){
+  const s=clean(t.trip_status).toUpperCase().replace(/[_-]/g," ");
+  if(["DELIVERED","REPORTING","REPORTED","UNLOADING"].includes(s))return "REPORTING";
+  if(["PLANNED","PROGRAM","PROGRAMMED","PENDING"].includes(s))return "PROGRAM";
+  if(["LOADING","AT LOADING"].includes(s))return "LOADING";
+  if(["RUNNING","IN TRANSIT","INTRANSIT","ON TRIP","LOADED"].includes(s))return "RUNNING";
+  return s||"—";
+ }
+ const s=statusOf(t);
+ return s==="EMPTY"||s==="CANCELLED"?"—":s;
+}
+function ewayTripStageCell(t){
+ const s=ewayTripStage(t);
+ const color=s==="RUNNING"?"running":s==="REPORTING"?"reporting":s==="LOADING"?"loading":"program";
+ return `<span class="et-eway-trip-stage et-eway-trip-${color}">${esc(s)}</span>`;
+}
 function marketEwayRow(t){
  const bills=t._marketBills||[],s=marketEwayStatus(t),nearest=bills.filter(b=>b.valid_until).sort((a,b)=>new Date(a.valid_until)-new Date(b.valid_until))[0];
  const latest=bills.slice().sort((a,b)=>new Date(b.eway_bill_date||0)-new Date(a.eway_bill_date||0))[0];
  const id=esc(String(t.id));return `<tr class="et-market-eway-row"><td class="eway-truck-cell"><strong>${esc(t._marketTruck||"—")} <span class="et-market-eway-tag">MARKET</span></strong><span class="et-market-eway-owner" title="${esc(t._marketOwner)}">${esc(t._marketOwner||"Owner not recorded")}</span><small>${esc(t.trip_number||"")} · ${esc(fmt(t.program_date))}</small></td>
- <td class="et-party-cell">${esc(t.party_name||"—")}</td><td><span class="et-party-kind">MARKET</span></td>
+ <td class="et-party-cell">${esc(t.party_name||"—")}</td><td><span class="et-party-kind">MARKET</span></td><td>${ewayTripStageCell(t)}</td>
  <td class="et-route-cell">${esc(t.from_location||"—")} <span class="et-route-arrow">→</span> ${esc(t.to_location||"—")}</td>
  <td>${marketEwayBillColumn(bills,"number",id)}</td>
  <td>${marketEwayBillColumn(bills,"issued",id)}</td>
@@ -3298,6 +3316,7 @@ function renderEwayPage(){
  return `<tr><td class="eway-truck-cell"><strong>${esc(tr?.truck_number||"—")}</strong><small>${esc(t.trip_number||"")} · LR ${esc(fmt(t.lr_date||getNote(t.notes,"LR_DATE")))}</small></td>
  <td class="et-party-cell">${esc(p?.name||"—")}</td>
  <td><span class="et-party-kind ${p?(isBillingClient(p)?"billing":"transporter"):""}">${esc(partyKind)}</span></td>
+ <td>${ewayTripStageCell(t)}</td>
  <td class="et-route-cell">${esc(t.from_location||t.loading_point||"—")} <span class="et-route-arrow" aria-hidden="true">→</span> ${esc(t.to_location||t.destination||"—")}</td>
  <td>${ewayBillColumn(bills,"number",t.id)}</td>
  <td>${ewayBillColumn(bills,"issued",t.id)}</td>
@@ -3305,7 +3324,7 @@ function renderEwayPage(){
  <td>${ewayBillColumn(bills,"timer",t.id)}</td>
  <td>${ewayBillColumn(bills,"status",t.id)}</td><td><button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','${esc(bills[0]?.id||"")}')">✎ ${isTransporterEwayTrip(t)?'Edit Date':bills.length?'Edit Bill':'Enter Bill'}</button>${!isTransporterEwayTrip(t)&&bills.length?` <button type="button" class="btn eway-manage" onclick="window.EktaTracking.openEwayEdit('${esc(t.id)}','')">＋ Add</button>`:''}</td></tr>`;
  }).join("");
- if(!list.length&&!marketList.length)$("etEwayRows").innerHTML=`<tr><td colspan="10" class="empty">No active E-Way trips match this search.</td></tr>`;
+ if(!list.length&&!marketList.length)$("etEwayRows").innerHTML=`<tr><td colspan="11" class="empty">No active E-Way trips match this search.</td></tr>`;
 }
 function updateEwayCountdowns(){document.querySelectorAll('[data-eway-expiry]').forEach(el=>{const expiry=el.getAttribute('data-eway-expiry');el.textContent=ewayRemaining(expiry);const diff=new Date(expiry).getTime()-Date.now();el.classList.toggle('warn',diff>0&&diff<=28800000);el.classList.toggle('expired',diff<=0)});}
 window.setInterval(()=>{updateEwayCountdowns();if($("etEwayPage")?.classList.contains("show"))renderEwayPage();},60000);
