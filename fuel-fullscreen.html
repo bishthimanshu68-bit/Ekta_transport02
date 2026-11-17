@@ -277,7 +277,7 @@ html,body{max-width:100%;overflow-x:hidden}#ektaFuelModule,#fuelHpclPanel{min-wi
 </div>
 
 <div id="pumpLedgerPanel" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
- <div class="flex flex-wrap justify-between items-center gap-2"><div><h3 class="font-bold text-lg text-slate-800">Pump · Daily Register & Ledger</h3><p class="text-xs text-slate-500">Pump accounts · Daily transactions · Running balance</p></div><span class="text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-1"><span id="pumpCloudStatus">Connecting to Supabase…</span></span></div>
+ <div class="flex flex-wrap justify-between items-center gap-2"><div><h3 class="font-bold text-lg text-slate-800">Pump · Daily Register & Ledger</h3><p class="text-xs text-slate-500">Pump accounts · Daily transactions · Running balance</p></div><div class="flex flex-wrap items-end gap-2 border-l border-slate-200 pl-3"><label class="text-xs font-semibold text-slate-600">From Date<input type="date" id="pumpFrom" class="block mt-1 border border-slate-300 rounded-lg px-2 py-2 text-xs bg-white"></label><label class="text-xs font-semibold text-slate-600">To Date<input type="date" id="pumpTo" class="block mt-1 border border-slate-300 rounded-lg px-2 py-2 text-xs bg-white"></label><button type="button" id="pumpExportAllExcel" class="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 min-h-[36px]">Export All Pumps Excel</button></div><span class="text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-1"><span id="pumpCloudStatus">Connecting to Supabase…</span></span></div>
  <div class="pump-workspace"><aside class="pump-side-nav" aria-label="Pump ledger navigation"><div class="pump-side-heading"><i class="fa-solid fa-gas-pump"></i><span>PUMP MASTER<small>Manage fuel pumps</small></span></div><button type="button" id="pumpAdd" class="pump-add-sidebar" aria-label="Add new pump"><i class="fa-solid fa-plus"></i> Add Pump</button><div id="pumpTabs" role="tablist" aria-label="Pump names"></div><p id="pumpEmptySide" class="pump-empty-side">No pumps added yet.<br>Use <b>+ Add Pump</b> to create your first pump.</p></aside><div class="pump-workspace-content"> <form id="pumpAddForm" class="hidden rounded-xl border border-blue-200 bg-white p-5 text-sm shadow-sm space-y-4">
  <div class="flex items-center gap-3 border-b border-slate-100 pb-3"><span class="bg-blue-50 text-blue-700 rounded-lg p-3"><i class="fa-solid fa-gas-pump"></i></span><div><h3 id="pumpFormTitle" class="font-bold text-lg text-slate-800">Add New Pump</h3><p class="text-xs text-slate-500">Pump details and opening settings</p></div></div>
  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -311,7 +311,7 @@ html,body{max-width:100%;overflow-x:hidden}#ektaFuelModule,#fuelHpclPanel{min-wi
  </div><div class="flex flex-wrap gap-2 items-end"><label class="text-xs">Payment Source<select id="pumpPaySource" class="pump-input mt-1" disabled><option value="">Select Source</option><option value="HPCL OTP">HPCL OTP</option><option value="Bank">Bank Statement</option><option value="Cash">Cash</option><option value="Other">Other</option></select></label><label class="text-xs flex-1 min-w-[180px]">Remarks<input id="pumpRemarks" class="pump-input mt-1" placeholder="WhatsApp instruction / notes"></label><button type="submit" class="bg-emerald-700 text-white rounded px-4 py-2 text-xs font-bold">Save Entry</button><button type="reset" class="border rounded px-3 py-2 text-xs">Clear</button></div></form>
  <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-2 text-xs" id="pumpMonthlyTdsBox"><div class="font-bold text-sm text-indigo-900">Month-end TDS — Purchase Based</div><div class="flex flex-wrap gap-3 items-end"><label>Purchase Month<input id="pumpTdsMonth" type="month" class="pump-input mt-1"></label><label>TDS Rate % (accountant-approved)<input id="pumpTdsPercent" type="number" min="0" max="100" step="0.001" value="0" class="pump-input mt-1 w-28"></label><button type="button" id="pumpTdsCalculate" class="bg-indigo-700 text-white rounded px-3 py-2">Calculate Monthly TDS</button><button type="button" id="pumpTdsPost" class="bg-emerald-700 text-white rounded px-3 py-2" disabled>Confirm & Post TDS</button></div><p id="pumpTdsPreview" class="text-indigo-900">Choose month and applicable TDS rate, then Calculate. Only this pump's diesel purchase amount counts; payments and opening balance are excluded.</p><p class="text-amber-800">TDS is posted only after confirmation. Tax applicability, thresholds, base and rate must be checked by your accountant. One monthly TDS posting per pump.</p></div>
  <div class="text-xs text-slate-600">Opening Balance: <b id="pumpOpeningDisplay">₹0</b> · TDS adjusted: <b id="pumpTdsDisplay">₹0</b> · Positive balance = payable to pump; negative = advance.</div><div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs"><div class="rounded bg-blue-50 p-3">Diesel Litres<br><b id="pumpSumLitres" class="text-base">0</b></div><div class="rounded bg-amber-50 p-3">Diesel Net ₹<br><b id="pumpSumDiesel" class="text-base">₹0</b></div><div class="rounded bg-emerald-50 p-3">Payments ₹<br><b id="pumpSumPayments" class="text-base">₹0</b></div><div class="rounded bg-slate-100 p-3">Total Pump Balance ₹ (all dates)<br><b id="pumpSumDue" class="text-base">₹0</b></div></div>
- <div class="flex flex-wrap gap-2 items-end"><label class="text-xs">From<input type="date" id="pumpFrom" class="pump-input mt-1"></label><label class="text-xs">To<input type="date" id="pumpTo" class="pump-input mt-1"></label><label class="text-xs">Search Truck / Slip<input id="pumpSearch" class="pump-input mt-1" placeholder="Search"></label><button type="button" id="pumpClearFilters" class="border rounded px-3 py-2 text-xs">Clear Filters</button></div>
+ <div class="flex flex-wrap gap-2 items-end"><label class="text-xs">Search Truck / Slip<input id="pumpSearch" class="pump-input mt-1" placeholder="Search"></label><button type="button" id="pumpClearFilters" class="border rounded px-3 py-2 text-xs">Clear Filters</button></div>
  <div class="ekta-ledger-scroll overflow-auto max-h-[550px] rounded-lg border" tabindex="0" aria-label="Pump ledger table, scroll vertically and horizontally"><table class="pump-ledger-table w-full min-w-[1250px] text-xs"><thead class="bg-slate-100 sticky top-0"><tr><th class="p-2 text-left">Date</th><th class="p-2 text-left">Particulars</th><th class="p-2 text-left">Slip / Ref</th><th class="p-2 text-left">Vehicle</th><th class="p-2 text-right">Litres</th><th class="p-2 text-right">Rate</th><th class="p-2 text-right">Discount</th><th class="p-2 text-right">Debit ₹</th><th class="p-2 text-right">Credit ₹</th><th class="p-2 text-right">Running Balance ₹</th><th class="p-2 text-left">Remarks</th><th class="p-2 text-left">Action</th></tr></thead><tbody id="pumpRows"></tbody></table></div>
  
 </div></div></div>
@@ -815,6 +815,61 @@ el('hpExport').addEventListener('click',()=>{if(!view.length)return message('No 
  ['pumpFrom','pumpTo','pumpSearch'].forEach(id=>$(id).addEventListener('input',render));$('pumpClearFilters').addEventListener('click',()=>{['pumpFrom','pumpTo','pumpSearch'].forEach(id=>$(id).value='');render()});
  const runningBalanceFor=r=>{let n=currentPump()?.opening||0;for(const x of state.entries.filter(x=>x.pumpId===current).slice().sort((a,b)=>(a.date+' '+(a.time||'00:00:00')).localeCompare(b.date+' '+(b.time||'00:00:00'))||a.created-b.created)){n+=(x.kind==='PAYMENT'||x.kind==='TDS'?-x.amount:x.amount);if(x.id===r.id)return n}return n};
  const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+ $('pumpExportAllExcel').addEventListener('click',async()=>{
+  const btn=$('pumpExportAllExcel');
+  if(!cloudReady)return alert('Pump data is still loading from Supabase. Please wait and retry.');
+  if(!state.pumps.length)return alert('No pumps available for export.');
+  const from=$('pumpFrom').value,to=$('pumpTo').value;
+  if(from&&to&&from>to)return alert('From Date cannot be after To Date.');
+  btn.disabled=true;
+  try{
+   await excelLib();
+   const book=XLSX.utils.book_new(), aoa=[];
+   const columns=['Date & Time','Particulars','Slip / Ref No.','Truck Number','Litres','Rate / L','Discount / L','Debit (₹)','Credit (₹)','Running Balance (₹)','Payment Source','Remarks'];
+   aoa.push(['EKTA TRANSPORT — ALL PUMP LEDGER']);
+   aoa.push(['Period',from||'Beginning','To',to||'Latest']);
+   aoa.push(['Balance convention: Positive = Due; Negative = Advance']);
+   aoa.push([]);
+   let grandDebit=0,grandCredit=0,grandOpening=0,grandClosing=0;
+   const sorted=(a,b)=>(String(a.date||'')+' '+(a.time||'00:00:00')).localeCompare(String(b.date||'')+' '+(b.time||'00:00:00'))||(Number(a.created)||0)-(Number(b.created)||0)||String(a.id||'').localeCompare(String(b.id||''));
+   for(const p of state.pumps){
+    const all=state.entries.filter(e=>e.pumpId===p.id).slice().sort(sorted);
+    const opening=Number(p.opening)||0;
+    const delta=r=>(r.kind==='PAYMENT'||r.kind==='TDS'?-1:1)*(Number(r.amount)||0);
+    const prior=all.filter(r=>from&&r.date<from);
+    const period=all.filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
+    let balance=opening+prior.reduce((n,r)=>n+delta(r),0);
+    const periodOpening=balance;
+    let debit=0,credit=0;
+    aoa.push([p.name+(p.location?' — '+p.location:'')]);
+    aoa.push(['Opening Balance',,,,,,,,,periodOpening]);
+    aoa.push(columns);
+    for(const r of period){
+     const amount=Number(r.amount)||0;
+     const isCredit=r.kind==='PAYMENT'||r.kind==='TDS';
+     if(isCredit)credit+=amount;else debit+=amount;
+     balance+=delta(r);
+     const particulars=r.kind==='PAYMENT'?'Payment Credit (Through '+(r.source==='Bank'?'Bank':r.source||'Unspecified')+')':r.kind==='DIESEL'?'Diesel Debit':r.kind==='TDS'?'TDS Adjustment (Monthly)':r.kind;
+     aoa.push([(r.date||'')+(r.time?' '+r.time:''),particulars,r.slip||'',r.vehicle||'',Number(r.litres)||0,Number(r.rate)||0,Number(r.discount)||0,isCredit?0:amount,isCredit?amount:0,balance,r.source||'',r.remarks||'']);
+    }
+    aoa.push(['PUMP TOTAL',,,,,,,debit,credit,balance]);
+    aoa.push(['Closing Balance',,,,,,,,,balance]);
+    aoa.push([]);
+    grandOpening+=periodOpening;grandDebit+=debit;grandCredit+=credit;grandClosing+=balance;
+   }
+   aoa.push(['ALL PUMPS GRAND SUMMARY']);
+   aoa.push(['Total Opening Balance',,,,,,,,,grandOpening]);
+   aoa.push(['Total Debit',,,,,,,grandDebit]);
+   aoa.push(['Total Credit',,,,,,,,grandCredit]);
+   aoa.push(['Total Closing Balance',,,,,,,,,grandClosing]);
+   const sheet=XLSX.utils.aoa_to_sheet(aoa);
+   sheet['!cols']=[{wch:24},{wch:37},{wch:23},{wch:20},{wch:12},{wch:12},{wch:16},{wch:18},{wch:18},{wch:23},{wch:22},{wch:46}];
+   sheet['!autofilter']=undefined;
+   XLSX.utils.book_append_sheet(book,sheet,'All Pump Ledger');
+   XLSX.writeFile(book,'Ekta_All_Pumps_Ledger_'+(from||'Start')+'_to_'+(to||'Latest')+'.xlsx');
+   say('All Pumps Excel exported: '+state.pumps.length+' pumps. No ledger data changed.');
+  }catch(err){alert('All Pumps Excel export failed: '+err.message)}finally{btn.disabled=false}
+ });
  $('pumpExport').addEventListener('click',()=>{const heads=['Date & Time','Type','Slip','Truck Number','Litres','Rate','Discount per Litre','Amount','Remarks','Payment Source','Running Balance'];const lines=[heads,...shown.map(r=>[r.date+(r.time?' '+r.time:''),r.kind,r.slip,r.vehicle,r.litres,r.rate,r.discount,r.amount,r.remarks,r.source||'',runningBalanceFor(r)])].map(a=>a.map(csvCell).join(','));const url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Ekta_Pump_'+(currentPump()?.name||'Ledger').replace(/[^A-Za-z0-9]+/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
  function parseCSV(t){const rows=[];let line=[],cell='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'&&t[i+1]==='"'){cell+='"';i++}else if(c==='"')q=false;else cell+=c}else if(c==='"')q=true;else if(c===','){line.push(cell);cell=''}else if(c==='\r'||c==='\n'){if(c==='\r'&&t[i+1]==='\n')i++;line.push(cell);if(line.some(x=>String(x).trim()))rows.push(line);line=[];cell=''}else cell+=c}line.push(cell);if(line.some(x=>String(x).trim()))rows.push(line);return rows}
  async function excelLib(){if(window.XLSX)return;await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=()=>rej(Error('Excel library unavailable'));document.head.appendChild(s)})}
