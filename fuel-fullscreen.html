@@ -780,8 +780,12 @@ el('hpExport').addEventListener('click',()=>{if(!view.length)return message('No 
     if(b.classList.contains('pump-delete')){
       if(r.sourceTxnId)return alert('This HPCL-linked payment is an approved source transaction. Delete/correct it through an audited reversal workflow, not directly here.');
       if(!confirm(`Permanently delete ${r.kind} ${cash(r.amount)} dated ${r.date} from Supabase? This will recalculate the balance.`))return;
-      const {error}=await db.from('ekta_pump_ledger').delete().eq('id',r.id);
+      const {data:deleted,error}=await db.from('ekta_pump_ledger').delete().eq('id',r.id).select('id');
       if(error)throw error;
+      if(!deleted||deleted.length!==1||String(deleted[0].id)!==String(r.id))throw Error('Supabase did not confirm deletion (0 rows). Entry was not removed. Check existing permissions.');
+      const {data:remaining,error:verifyError}=await db.from('ekta_pump_ledger').select('id').eq('id',r.id).limit(1);
+      if(verifyError)throw Error('Delete verification failed: '+verifyError.message);
+      if(remaining?.length)throw Error('Entry remains in Supabase after delete. Local row kept.');
       state.entries=state.entries.filter(x=>x.id!==r.id);
       localStorage.setItem(STORE,JSON.stringify(state));render();cloudStatus('Deleted from Supabase');say('Entry deleted from Supabase.');
     }else{
