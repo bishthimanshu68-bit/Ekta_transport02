@@ -61,13 +61,6 @@ th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:n
 @keyframes podSaveFlash{0%{background:#dff8eb}100%{background:#fff}}
 
 
-/* Billing-party-only printed OCR preview */
-.pod-ocr-table{overflow:auto;margin-top:9px}.pod-ocr-table table{min-width:600px;width:100%}
-.pod-ocr-table th,.pod-ocr-table td{white-space:normal;padding:7px;font-size:11px}
-.pod-ocr-check{width:18px;height:18px;accent-color:#09995f;cursor:pointer}#podOcrSave{margin-top:10px}
-.pod-ocr-raw{white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;background:#f5f8fc;padding:10px}
-#podOcrArea{margin-top:12px;border:1px solid #d7e2ef;padding:12px;border-radius:9px}
-#podOcrArea[hidden],#podOcrPanel[hidden]{display:none}
 /* POD FINAL 05 — courier master fields + double-click row editing */
 #podRows tr:not(.pod-inline-edit-row){cursor:default}
 #podRows tr:not(.pod-inline-edit-row):hover{background:#fbfdff}
@@ -78,22 +71,15 @@ th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:n
 /* POD rate controls */
 .toolbar input[type="text"]{min-width:200px;flex:1 1 260px}.date-label{display:flex;align-items:center;gap:5px;color:#61728a;font-size:11px;font-weight:700}.date-label input{min-width:145px!important;width:145px}.ngt-trigger{background:#e9f8f1;border-color:#bfe8d4;color:#087a4b;white-space:nowrap}.ngt-help{font-size:11px;line-height:1.6;color:#68758a;margin-top:9px}.ngt-rate-input{width:100%;padding:10px;border:1px solid #cbd8e7;border-radius:8px;font-size:15px}.tablewrap{max-width:100%;overflow:auto}
 .pod-mini-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:9px}.pod-mini-card{border:1px solid #d7e2ef;background:#f8fafc;border-radius:8px;padding:7px;display:flex;align-items:center;gap:5px;min-width:0}.pod-mini-card b{white-space:nowrap;font-size:11px}.pod-mini-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-size:10px}.pod-mini-card .btn{min-height:25px;padding:3px 7px}@media(max-width:650px){.pod-mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-/* Split OCR reviewer */
-.pod-review-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-.pod-review-preview{border:1px solid #d7e2ef;border-radius:10px;background:#f7f9fc;overflow:hidden}
-.pod-review-preview iframe,.pod-review-preview img{width:100%;height:430px;object-fit:contain;border:0;display:block}
-.pod-review-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.pod-review-fields label{display:block;font-size:10px;font-weight:800;margin-bottom:3px}
-.pod-review-fields input{width:100%;min-width:0;border:1px solid #cbd8e7;border-radius:7px;padding:9px}
-.pod-review-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
-.pod-review-summary{overflow:auto;margin-top:12px}
-.pod-review-summary table{min-width:850px;width:100%}
-@media(max-width:800px){.pod-review-split{grid-template-columns:1fr}.pod-review-preview iframe,.pod-review-preview img{height:300px}}
 /* Market identification only inside existing Truck cell; no columns changed. */
 #podModule .pod-market-box{background:#f0eafe;border:1px solid #c9b5f0;border-radius:6px;padding:5px 7px;max-width:170px;min-width:0;line-height:1.3}
 #podModule .pod-market-tag{display:inline-block;background:#e0d3fa;color:#6846a0;font-size:8px;font-weight:700;border-radius:3px;padding:1px 3px;margin-left:4px}
 #podModule .pod-market-owner{display:block;font-size:9px;color:#675784;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;max-width:155px}
 
+/* Keep Trip Details open underneath; Upload POD always appears in front. */
+#podTripModal{z-index:100600}
+#podUploadModal{z-index:100700}
+#podNGTModal{z-index:100800}
 /* Freeze only Trip No., Truck and Party / Client; no other columns or layout changed. */
 #podModule .tablewrap > table{border-collapse:separate;border-spacing:0}
 #podModule .tablewrap > table > thead > tr > th:nth-child(1),
@@ -115,6 +101,22 @@ th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:n
 #podModule #podRows > tr.pod-inline-edit-row > td:nth-child(2),
 #podModule #podRows > tr.pod-inline-edit-row > td:nth-child(5){background:#fffdf4}
 #podModule #podRows > tr > td:nth-child(2):has(.pod-market-box){background:#f0eafe}
+
+/* POD popup visual polish: no changes to data handling. */
+#podTripModal .box{width:min(1180px,calc(100vw - 28px));max-height:calc(100vh - 28px)}
+#podTripModal .mh{padding:15px 22px;background:#f8fbff}
+#podTripModal .mh b{font-size:17px;letter-spacing:.1px}
+#podTripModal .mb{padding:16px 22px 20px}
+#podTripModal .pod-popup-grid{gap:13px 18px;align-items:end}
+#podTripModal .pod-popup-section{font-size:12px;font-weight:900;color:#173653;background:#f2f6fb;border-left:3px solid #3677b6;border-radius:5px;padding:10px 12px;margin-top:12px;letter-spacing:.2px}
+#podTripModal .pod-popup-section:first-child{margin-top:0}
+#podTripModal .field label{font-size:11px;color:#52657e;margin-bottom:6px}
+#podTripModal .field input,#podTripModal .field select{min-height:42px;font-size:13px;border:1px solid #d4e0ed;background:#fff;color:#173653}
+#podTripModal .field input[readonly]{background:#f5f7fa;color:#506078}
+#podTripModal .pod-popup-truck{max-width:300px!important;width:100%!important;font-weight:800;font-size:15px!important;letter-spacing:.35px;border-color:#9bbfe2!important}
+#podTripModal .footer{padding-top:16px;margin-top:20px;border-top:1px solid #e4ebf4}
+#podTripModal .footer .btn.green{min-height:40px;padding:9px 18px}
+@media(max-width:650px){#podTripModal .mb{padding:12px}#podTripModal .pod-popup-grid{grid-template-columns:1fr;gap:10px}#podTripModal .pod-popup-empty{display:none}#podTripModal .pod-popup-truck{max-width:100%!important}}
 </style>
 </head>
 <body>
@@ -223,14 +225,7 @@ th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:n
 
             <div id="podQueuedDocs" style="margin-top:10px"></div>
              <div id="podExistingDocs" style="margin-top:10px"></div>
-            <div id="podOcrArea" hidden>
-                <b>Billing Parties — Printed POD OCR</b>
-                <p class="mini">Every PDF page is read separately. Review LR number, date, quantity, consignee, vehicle size and truck before saving. Handwriting requires manual correction.</p>
-                <button id="podOcrRead" class="btn" type="button" onclick="window.EktaPOD.readAllPODOCR()">↻ Re-read OCR</button>
-                <div id="podOcrNote" class="mini" style="margin-top:8px">Add POD files, then Read All OCR before saving.</div>
-                <div id="podOcrPanel" hidden style="margin-top:10px"></div>
-            </div>
-            <div class="sendbar" style="margin-top:10px">
+<div class="sendbar" style="margin-top:10px">
                 <div>
                     <b>Supabase Storage</b>
                     <div class="mini">Files are stored separately in private bucket: pod-documents</div>
@@ -239,8 +234,7 @@ th,td{padding:10px;border-bottom:1px solid #edf1f6;text-align:left;white-space:n
             </div>
 
             <div class="footer">
-                <button type="button" class="btn" onclick="window.EktaPOD.closeModal('podUploadModal')">Cancel</button>
-                <button class="btn" id="podSubmitReview" type="button" onclick="window.EktaPOD.submitPODReview()">Submit for Review</button><button class="btn green" id="podSaveAll" type="submit" disabled>Final Save PODs</button>
+                <button type="button" class="btn" onclick="window.EktaPOD.closeModal('podUploadModal')">Cancel</button><button class="btn green" id="podSaveAll" type="submit" disabled>Save PODs</button>
             </div>
         </form>
     </div>

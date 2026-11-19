@@ -32,6 +32,24 @@ function putNote(notes,key,val){
 function podDocPath(t){return getNote(t.notes,"POD_DOC_PATH")||""}
 function podPaths(t){return Array.from({length:100},(_,i)=>getNote(t.notes,i?`POD_DOC_PATH_${i+1}`:"POD_DOC_PATH")).filter(Boolean)}
 function podSlot(t){return Array.from({length:100},(_,i)=>i?`POD_DOC_PATH_${i+1}`:"POD_DOC_PATH").find(k=>!getNote(t.notes,k))||null}
+// Mobile scanner saves OCR per document in notes; preserve any manually set trip LR.
+function mobilePODValue(t,key){
+ const notes=clean(t.notes);
+ for(let i=1;i<=100;i++){
+  const value=getNote(notes,`${key}_DOC_${i}`);
+  if(value)return value;
+ }
+ return getNote(notes,key);
+}
+function displayLRNumber(t){return clean(t.lr_number)||mobilePODValue(t,"POD_LR_NUMBER")}
+function podDocumentDetail(t,index){
+ const slot=index+1;
+ const fields=[["LR","POD_LR_NUMBER"],["Qty","POD_QTY"],["Consignee","POD_CONSIGNEE"],["Invoice","POD_INVOICE_NO"]];
+ return fields.map(([label,key])=>{
+  const value=getNote(t.notes,`${key}_DOC_${slot}`);
+  return value?`<span class="mini"><b>${label}:</b> ${esc(value)}</span>`:"";
+ }).filter(Boolean).join(" · ");
+}
 
 
 function available(){return S&&typeof S.from==="function"}
@@ -119,10 +137,7 @@ async function saveNGTRate(){
  finally{button.disabled=false}
 }
 let podEditingTripId=null;
-let podOCRValues={}, podOCRIndex=0;
 let podQueue=[];
-let podReview=[];let podReviewSignature="";let podReviewBusy=false;let podReviewIndex=0;let podSubmitted=false;let podPreviewUrl="";
-
 function editInput(id,type,value,extra=""){
  return `<input id="${id}" class="pod-edit-input" type="${type}" value="${esc(value??"")}" ${extra}>`;
 }
@@ -245,7 +260,7 @@ function render(){
     <td>${badge(podStatus(t))}</td>
     <td>${podActionsCell(t)}</td>
     <td>${editInput("podEditPODReceivedDate","date",dateOnly(podReceivedDate(t)))}</td>
-    <td>${editInput("podEditLRNumber","text",t.lr_number||"")}</td>
+    <td>${editInput("podEditLRNumber","text",displayLRNumber(t))}</td>
     <td>${editInput("podEditCourierName","text",courierName(t))}</td>
     <td>${editInput("podEditCourierAwb","text",courierAwb(t))}</td>
     <td>${editInput("podEditCourierDate","date",dateOnly(courierDate(t)))}</td>
@@ -254,7 +269,8 @@ function render(){
       <button class="btn green" onclick="window.EktaPOD.saveInlineEdit('${esc(t.id)}')">Save</button>
       <button class="btn" onclick="window.EktaPOD.cancelInlineEdit()">Cancel</button>
     </div></td>
-   </tr>`;
+   </tr>
+   `;
   }
 
   return `<tr ondblclick="window.EktaPOD.handleRowDoubleClick(event,'${esc(t.id)}')" title="Double-click row to edit">
@@ -279,7 +295,7 @@ function render(){
    <td>${badge(podStatus(t))}</td>
    <td>${podActionsCell(t)}</td>
    <td>${esc(fmt(podReceivedDate(t)))}</td>
-   <td>${esc(t.lr_number||"—")}</td>
+   <td>${esc(displayLRNumber(t)||"—")}</td>
    <td>${esc(courierName(t)||"—")}</td>
    <td>${esc(courierAwb(t)||"—")}</td>
    <td>${esc(fmt(courierDate(t)))}</td>
@@ -339,18 +355,39 @@ function handleRowDoubleClick(e,id){
   openInlineEdit(id);
 }
 
-function openInlineEdit(id){
-  if(trips.find(x=>String(x.id)===String(id))?._market){alert("Market POD details can be viewed and documents uploaded. Field editing is not enabled until market field mapping is verified.");return}
-  podEditingTripId=id;
- window.__podEditDirty=false;
- render();
- setTimeout(()=>document.querySelector(".pod-inline-edit-row")?.scrollIntoView({block:"nearest",behavior:"smooth"}),0);
-}
+function openInlineEdit(id){openTrip(id)}
 function cancelInlineEdit(){podEditingTripId=null;window.__podEditDirty=false;render()}
 function refreshEditDerived(){
  const p=party($("podEditParty")?.value);
  if($("podEditPartyType"))$("podEditPartyType").textContent=p?.party_type||"—";
  if($("podEditPartyZone"))$("podEditPartyZone").textContent=p?.zone||"—";
+ if($("podEditPartyTypeZone"))$("podEditPartyTypeZone").value=(p?.party_type||"—")+" / "+(p?.zone||"—");
+}
+function podInlineMaterialInput(t,key,id,label,numeric=false){
+ const value=getNote(t.notes,key);
+ return `<label class="pod-material-inline-field"><span>${label}</span><input id="${id}" class="pod-edit-input" ${numeric?'type="number" min="0" step="1"':'type="text"'} value="${esc(value)}" placeholder="Not entered"></label>`;
+}
+function podInlineMaterialValues(){
+ const fields=[
+  ["POD_VEHICLE_TYPE","podEditMaterialVehicleType"],
+  ["POD_QTY","podEditMaterialQty"],
+  ["POD_INVOICE_NO","podEditMaterialInvoice"],
+  ["POD_PACKING_DAMAGE_QTY","podEditMaterialDamage"],
+  ["POD_SHORT_QTY","podEditMaterialShort"]
+ ];
+ return fields.map(([key,id])=>{
+  const value=clean($(id)?.value ?? $({podEditMaterialVehicleType:"podMaterialVehicleType",podEditMaterialQty:"podMaterialQty",podEditMaterialInvoice:"podMaterialInvoice",podEditMaterialDamage:"podMaterialDamage",podEditMaterialShort:"podMaterialShort"}[id])?.value);
+  if(["POD_QTY","POD_PACKING_DAMAGE_QTY","POD_SHORT_QTY"].includes(key)&&value!==""&&(!Number.isInteger(Number(value))||Number(value)<0))throw Error("Qty, Packing Damage Qty and Short Qty must be non-negative whole numbers.");
+  if(/[\[\]\r\n]/.test(value))throw Error("Material details cannot contain brackets or line breaks.");
+  return [key,value];
+ });
+}
+function mergePODMaterialNotes(notes,values){
+ for(const [key,value] of values){
+  notes=notes.replace(new RegExp(`\\[TRACKING:${key}=[^\\]]*\\]`,"gi"),"").trim();
+  if(value!=="")notes=putNote(notes,key,value);
+ }
+ return notes;
 }
 async function saveInlineEdit(tripId){
  const t=trips.find(x=>String(x.id)===String(tripId));if(!t)return;
@@ -361,7 +398,9 @@ async function saveInlineEdit(tripId){
  const unloading=$("podEditUnloadingDate").value||null;
  const podReceived=$("podEditPODReceivedDate").value||"";
 
- let notes=clean(t.notes)||"";
+ let materialValues;
+ try{materialValues=podInlineMaterialValues()}catch(e){alert(e.message);return}
+ let notes=mergePODMaterialNotes(clean(t.notes)||"",materialValues);
  notes=putNote(notes,"OTHER_CHARGE",num($("podEditOther").value));
  const enteredNGT=num($("podEditNGT").value);
  const ngtChanged=Math.abs(enteredNGT-ngtAmount(t))>0.001;
@@ -405,11 +444,15 @@ async function saveInlineEdit(tripId){
  if(!payload.trip_number){alert("Trip No. cannot be blank.");return}
 
  try{
-  const r=await S.from(T.trips).update(payload).eq("id",tripId);
+  let q=S.from(T.trips).update(payload).eq("id",tripId);
+  q=t.notes==null?q.is("notes",null):q.eq("notes",t.notes);
+  const r=await q.select("id");
   if(r.error)throw r.error;
+  if(!r.data?.length)throw Error("Trip details changed elsewhere. Refresh and retry to avoid overwriting new POD data.");
 
   podEditingTripId=null;
   window.__podEditDirty=false;
+  closeModal("podTripModal");
   await loadAll();
  }catch(err){
   console.error("[EKTA POD] Inline edit failed:",err);
@@ -426,313 +469,14 @@ function safeName(name){
   .replace(/^-|-$/g,"") || "pod-document";
 }
 
-function isBillingParty(t){
-  if(t?._market)return true;
-  const p=party(t.party_id);
- const typ=clean(p?.party_type).toUpperCase().replace(/[\s_-]+/g,'');
- return typ.includes('BILLING');
-}
-function ocrReset(){
-  podOCRValues={};podOCRIndex=0;
- const b=$("podOcrRead"), panel=$("podOcrPanel"), note=$("podOcrNote");
- if(b){b.disabled=false;b.textContent="Read Printed Details (OCR)"}
- if(panel){panel.hidden=true;panel.innerHTML=""}
- if(note)note.textContent="OCR is optional. Nothing is saved or overwritten by OCR.";
-}
-function ocrExtract(text){
- const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const match=(re)=>{const m=text.match(re);return m?clean(m[1]):""};
- const vehicle=match(/(?:vehicle\s*(?:no\.?|number)|truck\s*(?:no\.?|number))\s*[:#-]?\s*([A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,3}\s*\d{3,4})/i);
- const lr=match(/\bLR\s*(?:No\.?|Number)\s*[:#-]?\s*([0-9]{4}[\/.-][0-9]{1,2}[\/.-][0-9]{4,})/i);
- const date=match(/\bLR\s*Date\s*[:#-]?\s*(\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2}|\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i);
- const qty=match(/\b(?:Total\s*Quantity|Qty|Quantity)\s*[:#-]?\s*(\d{1,7})\b/i);
- const size=match(/\bVehicle\s*(?:Type|Size)\s*[:#-]?\s*(\d{2}\s*FT[A-Z0-9]*)/i);
- // Route labels often share a line with transport/insurance columns.
- // Prefer the text immediately after From:/To:, stopping at the next column.
- const routeValue=(label)=>{
-  const re=new RegExp("(?:^|\\n)\\s*"+label+"\\s*[:：.-]\\s*([^\\n]{2,100})","im");
-  const m=text.match(re);if(!m)return "";
-  let v=m[1].split(/\s{2,}|\s*\|\s*|\t|\b(?:Transport|Insurance|Goods|Consignor|Consignee|Invoice|Vehicle|Freight|LR\s*No)\b/i)[0].trim();
-  v=v.replace(/^[|:;,.\s-]+|[|:;,.\s-]+$/g,"");
-  return v.length>=3?v:"";
- };
- const from=routeValue("From"),to=routeValue("To");
- const invoice=match(/\bInvoice\s*No\.?\s*[:#-]?\s*([A-Z0-9\/-]{5,})/i);
- const partyBlock=(label,stop)=>{
-  const start=lines.findIndex(x=>new RegExp("\\b"+label+"\\s*:","i").test(x));
-  if(start<0)return "";
-  const first=lines[start].replace(new RegExp("^.*?"+label+"\\s*:\\s*","i"),"");
-  const arr=[first];
-  for(let k=start+1;k<Math.min(lines.length,start+4);k++){
-   if(new RegExp(stop,"i").test(lines[k]))break;
-   arr.push(lines[k]);
-  }
-  return arr.join(" ").slice(0,300);
- };
- const consignor=partyBlock("Consignor","Consignee|Vehicle Details|Invoice No|Freight Details");
- const consignee=partyBlock("Consignee","Vehicle Details|Freight Details|Consignor Remarks|Invoice No");
- return {"Consignor / Address":consignor,"Consignee / Address":consignee,"LR Number":lr,"LR Date":date,"Vehicle Number":vehicle,"Vehicle Size":size,"From":from,"To":to,"Quantity":qty,"Goods Invoice Number":invoice};
-}
-function ocrNorm(s){return clean(s).toUpperCase().replace(/[^A-Z0-9]/g,"")}
-async function loadOCRLibrary(){
- if(window.Tesseract?.recognize)return;
- if(window.__ektaOCRLoad)return window.__ektaOCRLoad;
- window.__ektaOCRLoad=new Promise((resolve,reject)=>{
-  const script=document.createElement("script");
-  script.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-  script.onload=()=>window.Tesseract?.recognize?resolve():reject(new Error("OCR library unavailable"));
-  script.onerror=()=>reject(new Error("OCR library could not load. Check internet connection."));
-  document.head.appendChild(script);
- }).catch(e=>{window.__ektaOCRLoad=null;throw e});
- return window.__ektaOCRLoad;
-}
-async function loadPdfJs(){
- if(window.pdfjsLib?.getDocument)return window.pdfjsLib;
- if(!window.__ektaPdfPromise){
-  window.__ektaPdfPromise=new Promise((resolve,reject)=>{
-   const s=document.createElement("script");
-   s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-   s.onload=()=>{if(!window.pdfjsLib)return reject(new Error("PDF reader unavailable"));window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";resolve(window.pdfjsLib)};
-   s.onerror=()=>reject(new Error("PDF.js could not load; check internet"));document.head.appendChild(s);
-  }).catch(e=>{window.__ektaPdfPromise=null;throw e});
- }
- return window.__ektaPdfPromise;
-}
-async function recognizePODFile(file,note){
- const logger=m=>{if(m.status==="recognizing text")note.textContent=`Reading printed text... ${Math.round((m.progress||0)*100)}%`};
- if(file.type.startsWith("image/")){
-  const img=await createImageBitmap(file);
-  const scale=Math.min(3,Math.max(1,2000/Math.max(img.width,img.height)));
-  const canvas=document.createElement("canvas");canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
-  const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(img,0,0,canvas.width,canvas.height);img.close?.();
-  const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
-  for(let i=0;i<pixels.data.length;i+=4){const g=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];const v=Math.max(0,Math.min(255,(g-128)*1.55+145));pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=v}
-  ctx.putImageData(pixels,0,0);
-  note.textContent="Reading enhanced POD image...";
-  const enhanced=await window.Tesseract.recognize(canvas,"eng",{logger});
-  let result=clean(enhanced.data?.text||"");
-  // A second pass can recover route labels lost by contrast enhancement.
-  if(!/\bTo\s*[:：.-]\s*[A-Za-z]{3,}/i.test(result)||!/\bFrom\s*[:：.-]\s*[A-Za-z]{3,}/i.test(result)){
-   note.textContent="Checking route text with original image...";
-   const original=await window.Tesseract.recognize(file,"eng",{logger});
-   const plain=clean(original.data?.text||"");
-   if(plain)result=result+"\n"+plain;
-  }
-  canvas.width=canvas.height=0;return result;
- }
- const pdfjs=await loadPdfJs();
- const data=await file.arrayBuffer();
- const pdf=await pdfjs.getDocument({data:new Uint8Array(data)}).promise;
- if(pdf.numPages>10)throw new Error("Maximum 10 pages per PDF for OCR. Please split the file.");
- let raw="";
- for(let n=1;n<=pdf.numPages;n++){
-  note.textContent=`Reading PDF page ${n}/${pdf.numPages}...`;
-  const page=await pdf.getPage(n);
-  const content=await page.getTextContent();
-  let text=content.items.map(x=>x.str).join(" ");
-  // Scanned PDFs have no embedded text. Render those pages and run OCR.
-  if(text.trim().length<80){
-   const vp=page.getViewport({scale:2});const canvas=document.createElement("canvas");canvas.width=vp.width;canvas.height=vp.height;
-   await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
-   const r=await window.Tesseract.recognize(canvas,"eng",{logger});text=r.data?.text||"";
-   canvas.width=canvas.height=0;
-  }
-  raw+=`\n${text}`;
- }
- return clean(raw);
-}
-// Every PDF page is independently extracted: never merge two LR documents.
-async function recognizePODPages(file,status){
- await loadOCRLibrary();
- if(file.type.startsWith('image/'))return [{page:1,text:await recognizePODFile(file,status)}];
- const pdfjs=await loadPdfJs();const pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
- if(pdf.numPages>100)throw Error('This PDF has more than 100 pages. Split it before OCR.');
- const result=[];
- for(let i=1;i<=pdf.numPages;i++){
-  status.textContent=`${file.name}: reading page ${i}/${pdf.numPages}`;
-  const page=await pdf.getPage(i);const content=await page.getTextContent();
-  let text=content.items.map(x=>x.str).join(' ');
-  if(text.trim().length<80){
-   const vp=page.getViewport({scale:2});const canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
-   await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-   const resultOCR=await window.Tesseract.recognize(canvas,'eng');text=resultOCR.data?.text||'';
-   canvas.width=canvas.height=0;
-  }
-  result.push({page:i,text});
- }
- return result;
-}
-function reviewSignature(){return podQueue.map(f=>`${f.name}:${f.size}:${f.lastModified}`).join('|')}
-function revokePODPreview(){if(podPreviewUrl){URL.revokeObjectURL(podPreviewUrl);podPreviewUrl=""}}
-function clearPODReview(){revokePODPreview();podReview=[];podReviewSignature='';podReviewIndex=0;podSubmitted=false;const p=$('podOcrPanel');if(p){p.hidden=true;p.innerHTML=''}const n=$('podOcrNote');if(n)n.textContent='POD files will be read automatically. You can also type details manually.';const b=$('podSaveAll');if(b)b.disabled=true;}
-function ocrField(row,key){return `<label>${esc(key)}<input data-ocr-row="${row}" data-ocr-field="${esc(key)}" value="${esc(podReview[row].fields[key]||'')}"></label>`}
-function collectPODReview(){
- document.querySelectorAll('[data-ocr-row][data-ocr-field]').forEach(e=>{const r=podReview[Number(e.dataset.ocrRow)];if(r)r.fields[e.dataset.ocrField]=e.value.trim()});
- document.querySelectorAll('[data-ocr-confirm]').forEach(e=>{const r=podReview[Number(e.dataset.ocrConfirm)];if(r)r.confirmed=e.checked});
-}
-function podReviewGo(index){collectPODReview();revokePODPreview();podReviewIndex=Math.max(0,Math.min(podReview.length-1,index));renderPODReview()}
-function podReviewChanged(){podSubmitted=false;const b=$('podSaveAll');if(b)b.disabled=true;}
-function renderPODReview(){
- const panel=$('podOcrPanel');if(!panel)return;
- if(!podReview.length){panel.hidden=true;return}
- panel.hidden=false;
- const i=Math.max(0,Math.min(podReviewIndex,podReview.length-1)),r=podReview[i],file=podQueue[r.fileIndex];
- revokePODPreview();
- if(file)podPreviewUrl=URL.createObjectURL(file);
- const preview=file?(file.type.startsWith('image/')?`<img src="${esc(podPreviewUrl)}" alt="Original POD">`:`<iframe title="Original POD PDF" src="${esc(podPreviewUrl)}#page=${r.page}"></iframe>`):'<p>Preview unavailable</p>';
- const keys=['LR Number','LR Date','Quantity','Consignee / Address','Vehicle Size','Vehicle Number','From','To','Consignor / Address','Goods Invoice Number'];
- const fields=keys.map(k=>ocrField(i,k)).join('');
- panel.innerHTML=`<div class="pod-review-nav"><button type="button" class="btn" onclick="window.EktaPOD.podReviewGo(${i-1})" ${i===0?'disabled':''}>← Previous</button><b>POD / LR ${i+1} of ${podReview.length} — ${esc(r.filename)} (Page ${r.page})</b><button type="button" class="btn" onclick="window.EktaPOD.podReviewGo(${i+1})" ${i===podReview.length-1?'disabled':''}>Next →</button></div>
- <div class="pod-review-split"><div class="pod-review-preview">${preview}</div><div><b>OCR + Manual Entry</b><p class="mini">Correct or type any field. LR Number is required.</p><div class="pod-review-fields" oninput="window.EktaPOD.podReviewChanged()">${fields}</div><label style="display:block;margin-top:12px"><input type="checkbox" data-ocr-confirm="${i}" onchange="window.EktaPOD.podReviewChanged()" ${r.confirmed?'checked':''}> Verified against original POD</label></div></div>
- <p class="mini">Check each POD using Next / Previous, then Submit for Review to see all LR details together.</p>
- <div id="podReviewSummary" class="pod-review-summary"></div>`;
- if(podSubmitted)renderPODSummary();
-}
-function renderPODSummary(){
- const p=$('podReviewSummary');if(!p)return;
- p.innerHTML=`<b>Submitted LR Summary — check before Final Save</b><table><thead><tr><th>POD</th><th>LR Number</th><th>LR Date</th><th>QTY</th><th>Truck</th><th>Consignee</th><th>Verified</th><th>Edit</th></tr></thead><tbody>${podReview.map((r,i)=>`<tr><td>${esc(r.filename)} / ${r.page}</td><td>${esc(r.fields['LR Number'])}</td><td>${esc(r.fields['LR Date'])}</td><td>${esc(r.fields.Quantity)}</td><td>${esc(r.fields['Vehicle Number'])}</td><td>${esc(r.fields['Consignee / Address'])}</td><td>${r.confirmed?'Yes':'No'}</td><td><button class="btn" type="button" onclick="window.EktaPOD.podReviewGo(${i})">Edit</button></td></tr>`).join('')}</tbody></table>`;
-}
-function submitPODReview(){
- const t=trips.find(x=>String(x.id)===String($('podUploadTripId').value));
- try{
-  validatePODReview(t);
-  podSubmitted=true;renderPODSummary();
-  $('podSaveAll').disabled=false;
-  $('podOcrNote').textContent=`${podReview.length} LR page(s) submitted for review. Check summary and click Final Save.`;
-  $('podReviewSummary')?.scrollIntoView({block:'nearest',behavior:'smooth'});
- }catch(e){podSubmitted=false;$('podSaveAll').disabled=true;alert('Review incomplete: '+e.message)}
-}
-function validatePODReview(t){
- if(!podQueue.length)throw Error('Select a POD first.');
- if(!podReview.length||podReviewSignature!==reviewSignature())throw Error('Run Read All OCR for the currently selected documents first.');
- collectPODReview();
- const existing=new Set();for(let i=1;i<=100;i++){const raw=getNote(t.notes,`POD_OCR_${i}`);if(!raw)continue;try{const x=JSON.parse(decodeURIComponent(raw));if(x['LR Number'])existing.add(ocrNorm(x['LR Number']))}catch(_){}}
- const seen=new Set();
- for(const r of podReview){
-  const f=r.fields,lr=clean(f['LR Number']),qty=clean(f.Quantity),dt=clean(f['LR Date']);
-  if(!r.confirmed)throw Error(`${r.filename}, page ${r.page}: tick Verified after checking the document.`);
-  if(!lr||!/^[A-Za-z0-9][A-Za-z0-9\/._-]*$/.test(lr))throw Error(`${r.filename}, page ${r.page}: check LR Number.`);
-  if(dt&&!ocrISODate(dt))throw Error(`${r.filename}, page ${r.page}: check LR Date.`);
-  if(qty&&!/^\d+(?:\.\d+)?$/.test(qty))throw Error(`${r.filename}, page ${r.page}: check QTY.`);
-  // Optional OCR fields may be left blank when the LR image does not contain them.
-  if(existing.has(ocrNorm(lr))||seen.has(ocrNorm(lr)))throw Error(`Duplicate LR ${lr}. Already saved or repeated in this batch.`);
-  seen.add(ocrNorm(lr));
-  const expected=clean($('podUploadTruckNo')?.value),actual=clean(f['Vehicle Number']);
-  if(actual&&expected&&ocrNorm(actual)!==ocrNorm(expected))throw Error(`LR ${lr}: truck ${actual} does not match trip truck ${expected}. Correct or remove the file.`);
- }
- return podReview.map(r=>({...r.fields,'LR Date':r.fields['LR Date']?ocrISODate(r.fields['LR Date']):''}));
-}
-function confirmPODReview(){try{const t=trips.find(x=>String(x.id)===String($('podUploadTripId').value));validatePODReview(t);$('podOcrNote').textContent=`${podReview.length} LR page(s) verified. Click Save All PODs to upload files and save LR mapping together.`;alert(`${podReview.length} LR details verified. You can now Save All PODs.`)}catch(e){alert(e.message)}}
-async function readAllPODOCR(){
- if(podReviewBusy||!podQueue.length)return;
- const t=trips.find(x=>String(x.id)===String($('podUploadTripId').value));
- if(!t)return;
- const button=$('podOcrRead'),note=$('podOcrNote');
- podReviewBusy=true;button.disabled=true;podReview=podQueue.map((f,fi)=>({filename:f.name,fileIndex:fi,page:1,fields:{},confirmed:false}));podSubmitted=false;podReviewIndex=0;renderPODReview();note.textContent='Reading OCR… Manual fields are available.';
- try{
-  const rows=[];
-  for(let fi=0;fi<podQueue.length;fi++){
-   const file=podQueue[fi];
-   try{
-    const pages=await recognizePODPages(file,note);
-    for(const page of pages)rows.push({filename:file.name,fileIndex:fi,page:page.page,fields:ocrExtract(page.text),confirmed:false});
-   }catch(err){
-    console.warn('[POD] OCR failed; manual entry available',file.name,err);
-    rows.push({filename:file.name,fileIndex:fi,page:1,fields:{},confirmed:false,ocrError:err.message});
-   }
-  }
-  podReview=rows;podReviewSignature=reviewSignature();podReviewIndex=0;renderPODReview();
-  note.textContent=`${podReview.length} LR page(s) ready. Review or manually type fields, tick Verified, then Submit.`;
- }finally{podReviewBusy=false;button.disabled=false}
-}
 async function showPODList(t){
  const panel=$("podExistingDocs");if(!panel)return;
  const paths=podPaths(t);
- panel.innerHTML=`<b>Uploaded PODs (${paths.length})</b> <button type="button" class="btn" ${paths.length?"":"disabled"} onclick="window.EktaPOD.viewAllPODs('${esc(t.id)}')">👁 View All as PDF</button> <button type="button" class="btn" ${paths.length?"":"disabled"} onclick="window.EktaPOD.downloadAllPODs('${esc(t.id)}')">⬇ Download All as PDF</button>`+(paths.length?paths.map((path,i)=>`<div class="pod-doc"><b>POD ${i+1}</b><button type="button" class="btn" onclick="window.EktaPOD.viewPOD('${esc(t.id)}',${i})">View</button><button type="button" class="btn" onclick="window.EktaPOD.downloadPOD('${esc(t.id)}',${i})">Download</button></div>`).join(""):"<p class='mini'>No POD uploaded yet.</p>");
+ panel.innerHTML=`<b>Uploaded PODs (${paths.length})</b> <button type="button" class="btn" ${paths.length?"":"disabled"} onclick="window.EktaPOD.viewAllPODs('${esc(t.id)}')">👁 View All as PDF</button> <button type="button" class="btn" ${paths.length?"":"disabled"} onclick="window.EktaPOD.downloadAllPODs('${esc(t.id)}')">⬇ Download All as PDF</button>`+(paths.length?paths.map((path,i)=>`<div class="pod-doc"><b>POD ${i+1}<span style="display:block;font-weight:400;white-space:normal;margin-top:3px">${podDocumentDetail(t,i)}</span></b><button type="button" class="btn" onclick="window.EktaPOD.viewPOD('${esc(t.id)}',${i})">View</button><button type="button" class="btn" onclick="window.EktaPOD.downloadPOD('${esc(t.id)}',${i})">Download</button></div>`).join(""):"<p class='mini'>No POD uploaded yet.</p>");
  const full=paths.length>=100;
  $("podUploadFile").disabled=full;
  const submit=$("podUploadModal").querySelector('button[type="submit"]');if(submit)submit.disabled=full;
- if(full)$("podUploadNote").textContent="All 3 POD slots are occupied. Existing files remain safe.";
-}
-async function readSavedPOD(id,index){
- const t=trips.find(x=>String(x.id)===String(id));if(!t||!isBillingParty(t)){alert("OCR only for Billing Parties");return}
- const path=podPaths(t)[index];if(!path)return;
- try{
-  const url=await signedPODUrl(t,index);
-  const response=await fetch(url);if(!response.ok)throw new Error("Cannot download POD for OCR");
-  const blob=await response.blob();const filename=path.split("/").pop()||"pod.pdf";
-  const file=new File([blob],filename,{type:blob.type||(/\.pdf$/i.test(filename)?"application/pdf":"image/jpeg")});
-  const dt=new DataTransfer();dt.items.add(file);$("podUploadFile").disabled=false;$("podUploadFile").files=dt.files;
-  await readPrintedPOD();
-  // OCR is review-only. Do not re-upload this already saved document.
-  $("podUploadFile").value="";if(podPaths(t).length>=100)$("podUploadFile").disabled=true;
- }catch(e){alert("Read saved POD failed: "+e.message)}
-}
-async function readPrintedPOD(savedIndex=null){
- const file=$("podUploadFile")?.files?.[0], id=clean($("podUploadTripId")?.value);
- const t=trips.find(x=>String(x.id)===id);
- if(!t||!isBillingParty(t)){alert("OCR is available only for Billing Parties.");return}
- if(!file){alert("Please select a POD photo first.");return}
- if(!file.type.startsWith("image/") && file.type!=="application/pdf" && !/\.pdf$/i.test(file.name)){alert("Please choose JPG, PNG or PDF.");return}
- const btn=$("podOcrRead"),note=$("podOcrNote"),panel=$("podOcrPanel");
- btn.disabled=true;note.textContent="Loading OCR reader...";
- try{
-  await loadOCRLibrary();
-  const raw=await recognizePODFile(file,note);
-  const fields=ocrExtract(raw),tr=truck(t.truck_id);
-  podOCRValues=fields;podOCRIndex=savedIndex===null?podPaths(t).length:savedIndex;
-  const existing={"LR Number":t.lr_number,"LR Date":dateOnly(t.lr_date||t.start_date),"Vehicle Number":tr?.truck_number,"Vehicle Size":tr?.vehicle_type||"","From":t.loading_point||t.from_location,"To":t.destination||t.to_location,"Quantity":"","Goods Invoice Number":""};
-  const rows=Object.entries(fields).map(([key,value])=>{
-   const prev=clean(existing[key]);
-   const status=!value?"Not detected":prev?(ocrNorm(value)===ocrNorm(prev)?"Matches existing":"Review mismatch"):"OCR suggestion — verify";
-   const checked=!!value&&!prev;
-   return `<tr><td>${esc(key)}</td><td>${esc(prev||"—")}</td><td>${esc(value||"—")}</td><td>${esc(status)}</td><td><input type="checkbox" class="pod-ocr-check" data-ocr-key="${esc(key)}" ${checked?"checked":""} ${!value?"disabled":""} aria-label="Accept ${esc(key)}"></td></tr>`;
-  }).join("");
-  panel.innerHTML=`<b>Printed POD details — review only (not saved)</b><div class="pod-ocr-table"><table><thead><tr><th>Field</th><th>Tracking / Existing</th><th>OCR Reading</th><th>Status</th><th>✓ Accept</th></tr></thead><tbody>${rows}</tbody></table></div><button type="button" class="btn green" id="podOcrSave" onclick="window.EktaPOD.saveSelectedOCR()">✓ Save Selected Details</button><details><summary>View extracted text</summary><pre class="pod-ocr-raw">${esc(raw||"No text detected")}</pre></details><p class="mini">OCR can misread photos. Confirm against the original POD. Existing trip data remains unchanged.</p>`;
-  panel.hidden=false;
-  note.textContent="OCR finished. Tick only verified values, then Save Selected Details. Upload POD separately when ready.";
- }catch(err){console.error("[EKTA POD OCR]",err);note.textContent="OCR failed: "+(err.message||"Unable to read image")}
- finally{btn.disabled=false}
-}
-function ocrISODate(value){
- const m=clean(value).match(/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/);
- const n=clean(value).match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
- const y=m?Number(m[1]):n?Number(n[3]):0, mo=m?Number(m[2]):n?Number(n[2]):0, d=m?Number(m[3]):n?Number(n[1]):0;
- if(!y||mo<1||mo>12||d<1||d>31)return null;
- const dt=new Date(Date.UTC(y,mo-1,d));
- if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mo-1||dt.getUTCDate()!==d)return null;
- return `${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-}
-async function saveSelectedOCR(){
- const id=clean($("podUploadTripId")?.value),t=trips.find(x=>String(x.id)===id);
- if(!t||!isBillingParty(t)){alert("OCR saving is available only for Billing Parties.");return}
- const selected=[...document.querySelectorAll("#podOcrPanel .pod-ocr-check:checked")].map(x=>x.dataset.ocrKey);
- if(!selected.length){alert("Please tick at least one verified OCR field.");return}
- const values={};for(const key of selected){if(clean(podOCRValues[key]))values[key]=clean(podOCRValues[key])}
- const payload={};
- if(values["LR Number"])payload.lr_number=values["LR Number"];
- if(values["LR Date"]){const d=ocrISODate(values["LR Date"]);if(!d){alert("LR Date could not be validated. Untick it and retry.");return}payload.lr_date=d;payload.start_date=d}
- if(values["From"]){payload.from_location=values["From"];payload.loading_point=values["From"]}
- if(values["To"]){payload.to_location=values["To"];payload.destination=values["To"]}
- // Keep document-specific printed details in separate POD slots; do not change truck/party masters.
- const key=`POD_OCR_${podOCRIndex+1}`;
- let previous={};try{previous=JSON.parse(decodeURIComponent(getNote(t.notes,key)||"%7B%7D"))}catch(_){}
- const merged={...previous,...values};
- payload.notes=putNote(t.notes,key,encodeURIComponent(JSON.stringify(merged)));
- if(t._market){
-  for(const field of ["start_date","loading_point","destination"])delete payload[field];
-  // market_trips has from_location/to_location and lr_date/number, not fleet aliases.
- }
- const btn=$("podOcrSave");if(btn)btn.disabled=true;
- try{
-  const r=await S.from(tableFor(t)).update(payload).eq("id",id).select("id");
-  if(r.error)throw r.error;
-  if(!r.data?.length)throw new Error("No row updated. Check Supabase permissions.");
-  Object.assign(t,payload);
-  $("podOcrNote").textContent=`Saved ${selected.length} selected OCR field(s) to Supabase for POD ${podOCRIndex+1}. Unticked values were not changed.`;
-  await loadAll();
- }catch(e){console.error("[EKTA POD OCR] Save failed",e);alert("OCR save failed: "+(e.message||"Database error"))}
- finally{if(btn)btn.disabled=false}
+ if(full)$("podUploadNote").textContent="All 100 POD slots are occupied. Existing files remain safe.";
 }
 function openPODUpload(id){
  const t=trips.find(x=>String(x.id)===String(id));if(!t)return;
@@ -741,14 +485,9 @@ function openPODUpload(id){
  $("podUploadTripNo").value=t.trip_number||"";
  $("podUploadTruckNo").value=tr?.truck_number||"";
  $("podUploadFile").value="";
- podQueue=[];clearPODReview();
+ podQueue=[];
  $("podUploadNote").textContent="New PODs are added without replacing existing PODs.";
  $("podUploadTitle").textContent=`UPLOAD POD — ${t.trip_number||""}`;
-  // OCR section was present in HTML but remained hidden on every upload.
-  // Show it only for Billing Parties; never change any trip values here.
-  const ocrArea=$("podOcrArea");
-  if(ocrArea)ocrArea.hidden=false;
-  ocrReset();
   showPODList(t);renderPODQueue();
  $("podUploadModal").classList.add("show");
 }
@@ -758,10 +497,9 @@ function renderPODQueue(){
  if(!el||!t)return;
  const existing=podPaths(t).length;
  el.innerHTML=`<b>New PODs ready to save (${podQueue.length})</b>`+(podQueue.length?podQueue.map((f,i)=>`<div class="pod-doc"><b>POD ${existing+i+1} — ${esc(f.name)}</b><button class="btn" type="button" onclick="window.EktaPOD.removeQueuedPOD(${i})">Remove</button></div>`).join(""):'<p class="mini">Use + Add POD to select photos or PDFs.</p>');
- const save=$("podSaveAll");if(save)save.disabled=!podQueue.length||!podSubmitted;
+ const save=$("podSaveAll");if(save)save.disabled=!podQueue.length;
 }
 function queuePODFiles(){
- if(podReviewBusy){alert("Please wait for OCR reading to finish.");return}
  const input=$("podUploadFile"),t=trips.find(x=>String(x.id)===String($("podUploadTripId")?.value));
  if(!t)return;
  const chosen=Array.from(input.files||[]);
@@ -771,9 +509,9 @@ function queuePODFiles(){
   if(!file.type.startsWith("image/")&&file.type!=="application/pdf"&&!/\.pdf$/i.test(file.name)){alert("Only image and PDF documents are allowed.");continue}
   podQueue.push(file);
  }
- input.value="";clearPODReview();renderPODQueue();if(podQueue.length)readAllPODOCR();
+ input.value="";renderPODQueue();
 }
-function removeQueuedPOD(i){if(podReviewBusy){alert("Please wait for OCR reading to finish.");return}podQueue.splice(i,1);clearPODReview();renderPODQueue();const t=trips.find(x=>String(x.id)===String($("podUploadTripId")?.value));if(t&&podQueue.length)readAllPODOCR()}
+function removeQueuedPOD(i){podQueue.splice(i,1);renderPODQueue()}
 function chooseMorePOD(){const t=trips.find(x=>String(x.id)===String($("podUploadTripId")?.value));if(!t)return;
  if(podPaths(t).length+podQueue.length>=100){alert("Maximum 100 POD documents per trip.");return}
  $("podUploadFile").click();
@@ -782,10 +520,7 @@ async function savePODDocument(e){
  e.preventDefault();
  const tripId=clean($("podUploadTripId").value),t=trips.find(x=>String(x.id)===String(tripId));
  if(!t||!podQueue.length){alert("Please add a POD first.");return false}
- if(!podSubmitted){alert("First Submit for Review, then Final Save.");return false}
  if(podPaths(t).length+podQueue.length>100){alert("Maximum 100 PODs per trip.");return false}
- let verifiedRows=[];
- try{verifiedRows=validatePODReview(t)}catch(err){alert('OCR review required: '+err.message);return false}
  const btn=$("podSaveAll");btn.disabled=true;
  const uploaded=[];
  try{
@@ -796,10 +531,6 @@ async function savePODDocument(e){
   const keys=Array.from({length:100},(_,i)=>i?`POD_DOC_PATH_${i+1}`:"POD_DOC_PATH");
   const slots=keys.filter(k=>!getNote(notes,k));
   if(slots.length<podQueue.length)throw new Error("POD slots changed. Refresh and try again.");
-  const ocrSlots=Array.from({length:100},(_,i)=>`POD_OCR_${i+1}`).filter(k=>!getNote(notes,k));
-  if(ocrSlots.length<verifiedRows.length)throw Error('Not enough LR OCR slots for this trip.');
-  const already=new Set();for(let i=1;i<=100;i++){const raw=getNote(notes,`POD_OCR_${i}`);if(raw)try{already.add(ocrNorm(JSON.parse(decodeURIComponent(raw))['LR Number']))}catch(_){}}
-  for(const row of verifiedRows)if(already.has(ocrNorm(row['LR Number'])))throw Error('Duplicate LR already saved: '+row['LR Number']);
   for(let i=0;i<podQueue.length;i++){
    const file=podQueue[i];$("podUploadNote").textContent=`Uploading ${i+1}/${podQueue.length}: ${file.name}`;
    const path=`${t._market?"market/":""}${tripId}/${Date.now()}-${i}-${Math.random().toString(36).slice(2,10)}-${safeName(file.name)}`;
@@ -808,7 +539,6 @@ async function savePODDocument(e){
    uploaded.push(up.data?.path||path);
    notes=putNote(notes,slots[i],uploaded[i]);
   }
-  for(let i=0;i<verifiedRows.length;i++)notes=putNote(notes,ocrSlots[i],encodeURIComponent(JSON.stringify(verifiedRows[i])));
   notes=putNote(notes,"POD_STATUS","RECEIVED");
   notes=putNote(notes,"POD_RECEIVED_AT",new Date().toISOString());
   if(!getNote(notes,"POD_RECEIVED_DATE"))notes=putNote(notes,"POD_RECEIVED_DATE",today());
@@ -817,7 +547,7 @@ async function savePODDocument(e){
   const r=await q.select("id");
   if(r.error)throw r.error;
   if(!r.data?.length)throw new Error("POD record changed during upload. Please retry.");
-  const count=podQueue.length;podQueue=[];clearPODReview();
+  const count=podQueue.length;podQueue=[];
   await loadAll();
   const fresh=trips.find(x=>String(x.id)===String(tripId));if(fresh)showPODList(fresh);
   $("podUploadNote").textContent=`${count} POD(s) saved successfully. Add more without closing this form.`;
@@ -907,41 +637,108 @@ async function downloadPOD(id,index=0){
  }
 }
 
+// POD material fields are persisted in the existing trip notes, without schema/RLS changes.
+const POD_MATERIAL_FIELDS=[
+ ["POD_VEHICLE_TYPE","podMaterialVehicleType"],
+ ["POD_QTY","podMaterialQty"],
+ ["POD_INVOICE_NO","podMaterialInvoice"],
+ ["POD_PACKING_DAMAGE_QTY","podMaterialDamage"],
+ ["POD_SHORT_QTY","podMaterialShort"]
+];
+function podMaterialInput(t,key,id,label,numeric=false){
+ const value=getNote(t.notes,key);
+ return `<div class="field"><label>${label}</label><input id="${id}" ${numeric?'type="number" min="0" step="1"':'type="text"'} value="${esc(value)}" placeholder="Not entered"></div>`;
+}
+async function savePODMaterial(id){
+ const t=trips.find(x=>String(x.id)===String(id));if(!t)return;
+ const button=$("podMaterialSave");if(button)button.disabled=true;
+ try{
+  const values=POD_MATERIAL_FIELDS.map(([key,fieldId])=>{
+   const raw=clean($(fieldId)?.value);
+   if(["POD_QTY","POD_PACKING_DAMAGE_QTY","POD_SHORT_QTY"].includes(key)&&raw!==""&&(!Number.isFinite(Number(raw))||Number(raw)<0||!Number.isInteger(Number(raw))))throw Error("Quantity must be a non-negative whole number.");
+   if(/[\[\]\r\n]/.test(raw))throw Error("Please remove brackets or line breaks from material fields.");
+   return [key,raw];
+  });
+  const latest=await S.from(tableFor(t)).select("notes").eq("id",id).single();
+  if(latest.error)throw latest.error;
+  let notes=latest.data.notes||"";
+  for(const [key,value] of values){
+   // Empty means unknown; remove the tag rather than converting to zero.
+   const re=new RegExp(`\\[TRACKING:${key}=[^\\]]*\\]`,"gi");
+   notes=notes.replace(re,"").trim();
+   if(value!=="")notes=putNote(notes,key,value);
+  }
+  let q=S.from(tableFor(t)).update({notes}).eq("id",id);
+  q=latest.data.notes==null?q.is("notes",null):q.eq("notes",latest.data.notes);
+  const result=await q.select("id");
+  if(result.error)throw result.error;
+  if(!result.data?.length)throw Error("Trip was updated elsewhere. Please reopen and try again.");
+  t.notes=notes;
+  $("podMaterialMessage").textContent="Saved to Supabase successfully.";
+  alert("POD Material Details saved successfully.");
+ }catch(err){console.error("[POD] Material save failed",err);$("podMaterialMessage").textContent="Not saved: "+err.message;alert("POD material save failed: "+err.message)}
+ finally{if(button)button.disabled=false}
+}
+
+function popupField(label,id,value,type="text",extra=""){
+ return `<div class="field"><label>${label}</label><input id="${id}" type="${type}" value="${esc(value??"")}" ${extra}></div>`;
+}
+function popupSelect(label,id,items,selected){
+ return `<div class="field"><label>${label}</label><select id="${id}" class="pod-edit-select ${id==="podEditTruck"?"pod-popup-truck":""}" style="width:100%;padding:10px;border-radius:8px" ${id==="podEditParty"?'onchange="window.EktaPOD.refreshEditDerived()"':""}>${items.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(selected)?"selected":""}>${esc(x.name)}</option>`).join("")}</select></div>`;
+}
 function openTrip(id){
  const t=trips.find(x=>String(x.id)===String(id));if(!t)return;
- const tr=tripTruck(t),p=tripParty(t);
+ const tr=tripTruck(t),p=tripParty(t),market=!!t._market;
  const ld=loadingDetentionDays(t),ud=unloadingDetentionDays(t);
-
+ const field=(label,id,value,type="text",extra="")=>popupField(label,id,value,type,extra);
+ const read=(label,value)=>`<div class="field"><label>${label}</label><input readonly value="${esc(value??"—")}"></div>`;
  $("podTripTitle").textContent=`POD Trip — ${t.trip_number||""}`;
- $("podTripBody").innerHTML=`
-  <div class="grid2">
-   <div class="field"><label>Trip No.</label><input readonly value="${esc(t.trip_number||"—")}"></div>
-   <div class="field"><label>Truck</label><input readonly value="${esc(tr?.truck_number||"—")}"></div>
-   <div class="field"><label>Party / Client</label><input readonly value="${esc(p?.name||"—")}"></div>
-   <div class="field"><label>Party Type / Zone</label><input readonly value="${esc((p?.party_type||"—")+" / "+(p?.zone||"—"))}"></div>
-   <div class="field"><label>Loading Date</label><input readonly value="${esc(fmt(t.loading_date))}"></div>
-   <div class="field"><label>LR Date</label><input readonly value="${esc(fmt(t.lr_date||t.start_date))}"></div>
-   <div class="field"><label>LR Number</label><input readonly value="${esc(t.lr_number||"—")}"></div>
-   <div class="field"><label>Reporting Date</label><input readonly value="${esc(fmt(t.reporting_date))}"></div>
-   <div class="field"><label>Unloading Date</label><input readonly value="${esc(fmt(t.unloading_date||t.end_date))}"></div>
-   <div class="field full"><label>Route</label><input readonly value="${esc((t.loading_point||t.from_location||"—")+" → "+(t.destination||t.to_location||"—"))}"></div>
-   <div class="field"><label>Loading Detention</label><input readonly value="${ld} day(s) / ₹${loadingDetentionCharge(t).toFixed(2)}"></div>
-   <div class="field"><label>Unloading Detention</label><input readonly value="${ud} day(s) / ₹${unloadingDetentionCharge(t).toFixed(2)}"></div>
-   <div class="field"><label>Unloading Charge</label><input readonly value="₹${num(t.unloading_charge).toFixed(2)}"></div>
-   <div class="field"><label>Other / NGT</label><input readonly value="₹${num(t.other_charge??getNote(t.notes,"OTHER_CHARGE")).toFixed(2)} / ₹${ngtAmount(t).toFixed(2)}"></div>
-   <div class="field"><label>POD Status</label><input readonly value="${esc(podStatus(t))}"></div>
-   <div class="field"><label>POD Received Date</label><input readonly value="${esc(fmt(podReceivedDate(t)))}"></div>
-   <div class="field"><label>Courier Name</label><input readonly value="${esc(courierName(t)||"—")}"></div>
-   <div class="field"><label>AWB / Tracking No.</label><input readonly value="${esc(courierAwb(t)||"—")}"></div>
-   <div class="field"><label>Courier Date</label><input readonly value="${esc(fmt(courierDate(t)))}"></div>
-   <div class="field"><label>Courier Delivered Date</label><input readonly value="${esc(fmt(courierDeliveredDate(t)))}"></div>
-  </div>
-  <div class="footer">
-    ${podActionsCell(t)}
-        ${t._market?"":`<button class="btn" onclick="window.EktaPOD.closeModal('podTripModal');window.EktaPOD.openInlineEdit('${esc(t.id)}')">Edit</button>`}
-    <button class="btn" onclick="window.EktaPOD.closeModal('podTripModal')">Close</button>
-  </div>`;
+ $("podTripBody").innerHTML=`<div class="grid2 pod-popup-grid">
+ <div class="pod-popup-section full">Trip & Party Details</div>
+ ${market?read("Trip No.",t.trip_number):field("Trip No.","podEditTripNo",t.trip_number)}
+ ${market?read("Truck",tr?.truck_number):popupSelect("Truck","podEditTruck",trucks.map(x=>({id:x.id,name:x.truck_number||"Truck"})).sort((a,b)=>a.name.localeCompare(b.name)),t.truck_id)}
+ ${market?read("Party / Client",p?.name):popupSelect("Party / Client","podEditParty",parties.map(x=>({id:x.id,name:x.name||"Party"})).sort((a,b)=>a.name.localeCompare(b.name)),t.party_id)}
+ <div class="field"><label>Party Type / Zone</label><input id="podEditPartyTypeZone" readonly value="${esc((p?.party_type||"—")+" / "+(p?.zone||"—"))}"></div>
+ ${market?read("Loading Date",fmt(t.loading_date)):field("Loading Date","podEditLoadingDate",dateOnly(t.loading_date),"date")}
+ ${market?read("LR Date",fmt(t.lr_date||t.start_date)):field("LR Date","podEditLRDate",dateOnly(t.lr_date||t.start_date),"date")}
+ ${market?read("LR Number",displayLRNumber(t)):field("LR Number","podEditLRNumber",displayLRNumber(t))}
+ <div class="pod-popup-section full">POD Material Details</div>
+ ${podMaterialInput(t,"POD_VEHICLE_TYPE","podMaterialVehicleType","Vehicle Type")}
+ ${podMaterialInput(t,"POD_QTY","podMaterialQty","Qty",true)}
+ ${podMaterialInput(t,"POD_INVOICE_NO","podMaterialInvoice","Invoice No.")}
+ ${podMaterialInput(t,"POD_PACKING_DAMAGE_QTY","podMaterialDamage","Packing Damage Qty",true)}
+ ${podMaterialInput(t,"POD_SHORT_QTY","podMaterialShort","Short Qty",true)}
+ <div class="pod-popup-empty" aria-hidden="true"></div>
+ <div class="pod-popup-section full">Trip Movement & Route</div>
+ ${market?read("Reporting Date",fmt(t.reporting_date)):field("Reporting Date","podEditReportingDate",dateOnly(t.reporting_date),"date")}
+ ${market?read("Unloading Date",fmt(t.unloading_date||t.end_date)):field("Unloading Date","podEditUnloadingDate",dateOnly(t.unloading_date||t.end_date),"date")}
+ ${market?read("From",t.loading_point||t.from_location):field("From","podEditFrom",t.loading_point||t.from_location)}
+ ${market?read("To",t.destination||t.to_location):field("To","podEditTo",t.destination||t.to_location)}
+ <div class="pod-popup-section full">Charges & Detention</div>
+ ${read("Loading Detention Days",ld)}
+ ${market?read("Loading Detention ₹",loadingDetentionCharge(t)):field("Loading Detention ₹","podEditLoadDet",loadingDetentionCharge(t),"number",'min="0" step="0.01"')}
+ ${read("Unloading Detention Days",ud)}
+ ${market?read("Unloading Detention ₹",unloadingDetentionCharge(t)):field("Unloading Detention ₹","podEditUnloadDet",unloadingDetentionCharge(t),"number",'min="0" step="0.01"')}
+ ${market?read("Unloading Charge ₹",num(t.unloading_charge)):field("Unloading Charge ₹","podEditUnloadingCharge",num(t.unloading_charge),"number",'min="0" step="0.01"')}
+ ${market?read("Other ₹",num(t.other_charge??getNote(t.notes,"OTHER_CHARGE"))):field("Other ₹","podEditOther",num(t.other_charge??getNote(t.notes,"OTHER_CHARGE")),"number",'min="0" step="0.01"')}
+ ${market?read("NGT ₹",ngtAmount(t)):field("NGT ₹","podEditNGT",ngtAmount(t),"number",'min="0" step="0.01"')}
+ <div class="pod-popup-section full">POD & Courier Details</div>
+ ${read("POD Status",podStatus(t))}
+ ${market?read("POD Received Date",fmt(podReceivedDate(t))):field("POD Received Date","podEditPODReceivedDate",dateOnly(podReceivedDate(t)),"date")}
+ ${market?read("Courier Name",courierName(t)):field("Courier Name","podEditCourierName",courierName(t))}
+ ${market?read("AWB / Tracking No.",courierAwb(t)):field("AWB / Tracking No.","podEditCourierAwb",courierAwb(t))}
+ ${market?read("Courier Date",fmt(courierDate(t))):field("Courier Date","podEditCourierDate",dateOnly(courierDate(t)),"date")}
+ ${market?read("Courier Delivered Date",fmt(courierDeliveredDate(t))):field("Courier Delivered Date","podEditCourierDeliveredDate",dateOnly(courierDeliveredDate(t)),"date")}
+ </div><div class="footer" style="align-items:center;flex-wrap:wrap">
+ ${podActionsCell(t)}<span id="podMaterialMessage" class="mini">Blank material quantities mean not reported.</span>
+ <button class="btn" onclick="window.EktaPOD.closeModal('podTripModal')">Cancel / Close</button>
+ ${market?`<button id="podMaterialSave" class="btn green" onclick="window.EktaPOD.savePODMaterial('${esc(t.id)}')">Save Material Details</button>`:`<button id="podPopupSave" class="btn green" onclick="window.EktaPOD.savePopupTrip('${esc(t.id)}')">Save All Details</button>`}
+ </div>`;
  $("podTripModal").classList.add("show");
+}
+async function savePopupTrip(id){
+ const btn=$("podPopupSave");if(btn)btn.disabled=true;
+ try{await saveInlineEdit(id)}finally{if(btn&&document.contains(btn))btn.disabled=false}
 }
 function closeModal(id){$(id)?.classList.remove("show")}
 function shiftDate(n){}
@@ -1001,7 +798,7 @@ document.addEventListener("mousedown",function(e){
  }
 });
 
-window.EktaPOD={podReviewGo,podReviewChanged,submitPODReview,init:()=>{},render,refresh,openNGTRate,saveNGTRate,shiftDate,setToday,showAllDates,openPODUpload,readPrintedPOD,readSavedPOD,readAllPODOCR,confirmPODReview,saveSelectedOCR,ocrReset,savePODDocument,queuePODFiles,removeQueuedPOD,chooseMorePOD,downloadAllPODs,viewAllPODs,viewPOD,downloadPOD,saveDirectField,markEditDirty,handleRowDoubleClick,openTrip,openInlineEdit,cancelInlineEdit,saveInlineEdit,refreshEditDerived,closeModal,closePOD,scrollPage};
+window.EktaPOD={init:()=>{},render,refresh,openNGTRate,saveNGTRate,shiftDate,setToday,showAllDates,openPODUpload,savePODDocument,queuePODFiles,removeQueuedPOD,chooseMorePOD,downloadAllPODs,viewAllPODs,viewPOD,downloadPOD,saveDirectField,markEditDirty,handleRowDoubleClick,openTrip,savePODMaterial,savePopupTrip,openInlineEdit,cancelInlineEdit,saveInlineEdit,refreshEditDerived,closeModal,closePOD,scrollPage};
 
 async function init(){
  if(!$("podModule"))return;
