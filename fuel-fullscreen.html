@@ -335,8 +335,8 @@ const ownerOf=v=>norm(v)?(fleet.has(norm(v))?(fleet.get(norm(v))||'Owner not rec
 const pumpNorm=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 function validLocalDate(y,m,d,h,mi,s){const x=new Date(y,m-1,d,h,mi,s);return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d&&x.getHours()===h&&x.getMinutes()===mi&&x.getSeconds()===s?x.getTime():NaN}
 function parseHPTime(v){const s=String(v||'').trim();let m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(!m)return NaN;return validLocalDate(+m[3],+m[2],+m[1],+m[4],+m[5],+(m[6]||0))}
-// WhatsApp export dates are MM/DD/YYYY, unlike HPCL's DD-MM-YYYY.
-function parseWATime(v){const m=String(v||'').match(/\[(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM),\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\]/i);if(!m)return NaN;let h=(+m[1]%12)+(m[4].toUpperCase()==='PM'?12:0);return validLocalDate(+m[7],+m[5],+m[6],h,+m[2],+(m[3]||0))}
+// WhatsApp Reader export uses DD/MM/YYYY (e.g. 18/11/2026), same calendar order as HPCL.
+function parseWATime(v){const m=String(v||'').match(/\[(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM),\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\]/i);if(!m)return NaN;let h=(+m[1]%12)+(m[4].toUpperCase()==='PM'?12:0);return validLocalDate(+m[7],+m[6],+m[5],h,+m[2],+(m[3]||0))}
 function parseCSV(txt){txt=txt.replace(/^\uFEFF/,'');const out=[];let r=[],v='',quoted=false;for(let i=0;i<txt.length;i++){const c=txt[i];if(quoted){if(c==='"'&&txt[i+1]==='"'){v+='"';i++}else if(c==='"')quoted=false;else v+=c}else if(c==='"')quoted=true;else if(c===','){r.push(v);v=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&txt[i+1]==='\n')i++;r.push(v);if(r.some(x=>x.trim()))out.push(r);r=[];v=''}else v+=c}r.push(v);if(r.some(x=>x.trim()))out.push(r);return out}
  function matchWhats(){
   matchChoices.clear();
@@ -827,13 +827,38 @@ el('hpExport').addEventListener('click',()=>{if(!view.length)return message('No 
   if(from&&to&&from>to)return alert('From Date cannot be after To Date.');
   btn.disabled=true;
   try{
-   await excelLib();
-   const book=XLSX.utils.book_new(), aoa=[];
-   const columns=['Date & Time','Particulars','Slip / Ref No.','Truck Number','Litres','Rate / L','Discount / L','Debit (₹)','Credit (₹)','Running Balance (₹)','Payment Source','Remarks'];
-   aoa.push(['EKTA TRANSPORT — ALL PUMP LEDGER']);
-   aoa.push(['Period',from||'Beginning','To',to||'Latest']);
-   aoa.push(['Balance convention: Positive = Due; Negative = Advance']);
-   aoa.push([]);
+   // ExcelJS is used only for the styled All Pumps export; existing imports stay unchanged.
+   if(!window.ExcelJS)await new Promise((resolve,reject)=>{
+    const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload=resolve;s.onerror=()=>reject(Error('Excel formatting library could not load. Check internet connection.'));
+    document.head.appendChild(s);
+   });
+   const book=new ExcelJS.Workbook();book.creator='Ekta Transport';book.created=new Date();
+   const sheet=book.addWorksheet('All Pump Ledger',{views:[{state:'frozen',ySplit:4,showGridLines:false}],pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+   const widths=[21,37,21,19,12,13,16,18,18,23,31,43];
+   widths.forEach((w,i)=>sheet.getColumn(i+1).width=w);
+   const navy='17365D',blue='24476A',green='DDF1E5',lightBlue='E8F1FF',yellow='FFF1C9',paleGreen='E3F4E8',white='FFFFFF',ink='20334A',border='DCE5EF';
+   const moneyFmt='₹#,##0.00;[Red](₹#,##0.00);₹0.00';
+   const numFmt='#,##0.##';
+   const headers=['Date & Time','Particulars','Slip / Ref No.','Truck Number','Litres','Rate / L','Discount / L','Debit (₹)','Credit (₹)','Running Balance (₹)','Payment Source','Remarks'];
+   const addRow=(vals,kind)=>{
+    const row=sheet.addRow(vals);row.height=kind==='pump'?29:kind==='header'?31:kind==='title'?37:kind==='blank'?12:25;
+    row.eachCell({includeEmpty:true},(cell,col)=>{
+     cell.font={name:'Aptos',size:kind==='title'?16:kind==='pump'?12:10,bold:['title','pump','header','total','closing','summary','opening'].includes(kind),color:{argb:'FF'+(kind==='title'||kind==='header'?'FFFFFF':kind==='pump'?'14532D':ink)}};
+     cell.alignment={vertical:'middle',horizontal:col>=5&&col<=10?'right':'left',wrapText:kind==='header'||kind==='pump'||col===11||col===12,indent:col===1?1:0};
+     if(kind!=='blank')cell.border={bottom:{style:'hair',color:{argb:'FF'+border}}};
+     const fill=kind==='title'?navy:kind==='header'?blue:kind==='pump'?green:kind==='opening'?lightBlue:kind==='total'?yellow:kind==='closing'?paleGreen:kind==='summary'?'DCEAF8':null;
+     if(fill)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}};
+     if(col>=8&&col<=10&&typeof cell.value==='number')cell.numFmt=moneyFmt;
+     if(col>=5&&col<=7&&typeof cell.value==='number')cell.numFmt=numFmt;
+    });
+    return row;
+   };
+   const merged=(label,kind)=>{const r=addRow([label],kind);sheet.mergeCells(r.number,1,r.number,12);return r};
+   merged('EKTA TRANSPORT  |  ALL PUMP LEDGER','title');
+   const period=addRow(['REPORT PERIOD',from||'Beginning','TO',to||'Latest'],'opening');period.getCell(2).font={name:'Aptos',bold:true,color:{argb:'FF17365D'}};period.getCell(4).font={name:'Aptos',bold:true,color:{argb:'FF17365D'}};
+   merged('Balance convention: Positive = Due  •  Negative = Advance','opening');
+   addRow([],'blank');
    let grandDebit=0,grandCredit=0,grandOpening=0,grandClosing=0;
    const sorted=(a,b)=>(String(a.date||'')+' '+(a.time||'00:00:00')).localeCompare(String(b.date||'')+' '+(b.time||'00:00:00'))||(Number(a.created)||0)-(Number(b.created)||0)||String(a.id||'').localeCompare(String(b.id||''));
    for(const p of state.pumps){
@@ -843,34 +868,32 @@ el('hpExport').addEventListener('click',()=>{if(!view.length)return message('No 
     const prior=all.filter(r=>from&&r.date<from);
     const period=all.filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
     let balance=opening+prior.reduce((n,r)=>n+delta(r),0);
-    const periodOpening=balance;
-    let debit=0,credit=0;
-    aoa.push([p.name+(p.location?' — '+p.location:'')]);
-    aoa.push(['Opening Balance',,,,,,,,,periodOpening]);
-    aoa.push(columns);
+    const periodOpening=balance;let debit=0,credit=0;
+    merged((p.name||'Unnamed Pump')+(p.location?' — '+p.location:''),'pump');
+    addRow(['Opening Balance',null,null,null,null,null,null,null,null,periodOpening],'opening');
+    addRow(headers,'header');
     for(const r of period){
      const amount=Number(r.amount)||0;
      const isCredit=r.kind==='PAYMENT'||r.kind==='TDS';
      if(isCredit)credit+=amount;else debit+=amount;
      balance+=delta(r);
      const particulars=r.kind==='PAYMENT'?'Payment Credit (Through '+(r.source==='Bank'?'Bank':r.source||'Unspecified')+')':r.kind==='DIESEL'?'Diesel Debit':r.kind==='TDS'?'TDS Adjustment (Monthly)':r.kind;
-     aoa.push([(r.date||'')+(r.time?' '+r.time:''),particulars,r.slip||'',r.vehicle||'',Number(r.litres)||0,Number(r.rate)||0,Number(r.discount)||0,isCredit?0:amount,isCredit?amount:0,balance,r.source||'',r.remarks||'']);
+     addRow([(r.date||'')+(r.time?' '+r.time:''),particulars,r.slip||'',r.vehicle||'',Number(r.litres)||0,Number(r.rate)||0,Number(r.discount)||0,isCredit?0:amount,isCredit?amount:0,balance,r.source||'',r.remarks||''],'entry');
     }
-    aoa.push(['PUMP TOTAL',,,,,,,debit,credit,balance]);
-    aoa.push(['Closing Balance',,,,,,,,,balance]);
-    aoa.push([]);
+    addRow(['PUMP TOTAL',null,null,null,null,null,null,debit,credit,balance],'total');
+    addRow(['Closing Balance',null,null,null,null,null,null,null,null,balance],'closing');
+    addRow([],'blank');
     grandOpening+=periodOpening;grandDebit+=debit;grandCredit+=credit;grandClosing+=balance;
    }
-   aoa.push(['ALL PUMPS GRAND SUMMARY']);
-   aoa.push(['Total Opening Balance',,,,,,,,,grandOpening]);
-   aoa.push(['Total Debit',,,,,,,grandDebit]);
-   aoa.push(['Total Credit',,,,,,,,grandCredit]);
-   aoa.push(['Total Closing Balance',,,,,,,,,grandClosing]);
-   const sheet=XLSX.utils.aoa_to_sheet(aoa);
-   sheet['!cols']=[{wch:24},{wch:37},{wch:23},{wch:20},{wch:12},{wch:12},{wch:16},{wch:18},{wch:18},{wch:23},{wch:22},{wch:46}];
-   sheet['!autofilter']=undefined;
-   XLSX.utils.book_append_sheet(book,sheet,'All Pump Ledger');
-   XLSX.writeFile(book,'Ekta_All_Pumps_Ledger_'+(from||'Start')+'_to_'+(to||'Latest')+'.xlsx');
+   merged('ALL PUMPS  |  GRAND SUMMARY','pump');
+   addRow(['Total Opening Balance',null,null,null,null,null,null,null,null,grandOpening],'summary');
+   addRow(['Total Debit',null,null,null,null,null,null,grandDebit],'summary');
+   addRow(['Total Credit',null,null,null,null,null,null,null,grandCredit],'summary');
+   addRow(['Total Closing Balance',null,null,null,null,null,null,null,null,grandClosing],'closing');
+   sheet.pageSetup.printTitlesRow='1:4';
+   const bytes=await book.xlsx.writeBuffer();
+   const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+   const link=document.createElement('a');link.href=url;link.download='Ekta_All_Pumps_Ledger_'+(from||'Start')+'_to_'+(to||'Latest')+'.xlsx';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
    say('All Pumps Excel exported: '+state.pumps.length+' pumps. No ledger data changed.');
   }catch(err){alert('All Pumps Excel export failed: '+err.message)}finally{btn.disabled=false}
  });
