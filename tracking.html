@@ -1000,6 +1000,29 @@
 #etEwayPage .et-eway-trip-loading{background:#fff0d5;color:#a96b00}
 #etEwayPage .et-eway-trip-program{background:#eef2ff;color:#4f46a5}
 
+
+/* Fleet expiry reminder overlay — isolated from tracking controls */
+#etFleetExpiryReminder{position:fixed;inset:0;z-index:100800;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(9,25,46,.67);backdrop-filter:blur(5px)}
+#etFleetExpiryReminder.et-visible{display:flex}
+.et-fer-dialog{width:min(820px,100%);max-height:min(88vh,850px);background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 28px 90px #09192e66;display:flex;flex-direction:column}
+.et-fer-head{background:linear-gradient(115deg,#102b49,#24517c);color:white;padding:24px 27px 20px}
+.et-fer-kicker{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;font-weight:850;color:#b9dcff}
+.et-fer-head h2{font-size:25px;line-height:1.2;margin:9px 0 5px;color:white}
+.et-fer-head p{font-size:12px;margin:0;color:#d8e8f8}
+.et-fer-counts{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:17px 22px 12px}
+.et-fer-count{padding:12px 10px;border-radius:12px;background:#f7f9fc;border:1px solid #e8edf4;text-align:center}
+.et-fer-count strong{display:block;font-size:25px}.et-fer-count span{font-size:10px;font-weight:800;color:#52647a}
+.et-fer-count.critical strong{color:#d52b40}.et-fer-count.pink strong{color:#d83f92}.et-fer-count.yellow strong{color:#b17a0a}.et-fer-count.green strong{color:#148759}
+.et-fer-list{padding:6px 22px 16px;overflow-y:auto;min-height:0;flex:1}
+.et-fer-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;margin:7px 0;border:1px solid #e7edf5;border-left:5px solid #22a16c;border-radius:11px;background:#fff}
+.et-fer-row.critical{border-left-color:#e13648;background:#fff9fa}.et-fer-row.pink{border-left-color:#dc4b9a}.et-fer-row.yellow{border-left-color:#e6aa2b}
+.et-fer-truck{font-size:14px;font-weight:900;color:#193550}.et-fer-doc{font-size:12px;color:#56677d;margin-top:4px}.et-fer-days{font-size:11px;font-weight:900;white-space:nowrap;border-radius:8px;padding:8px 10px;background:#f1f5f9;color:#334155}
+.et-fer-row.critical .et-fer-days{background:#ffe3e7;color:#b71e35}.et-fer-row.pink .et-fer-days{background:#ffe4f3;color:#aa2875}.et-fer-row.yellow .et-fer-days{background:#fff3d3;color:#916100}.et-fer-row.green .et-fer-days{background:#dcf8e9;color:#08794b}
+.et-fer-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 22px;border-top:1px solid #e7edf5;background:#fbfcfe}
+.et-fer-foot small{font-size:11px;color:#6a7b91}.et-fer-actions{display:flex;gap:9px;flex-wrap:wrap}
+.et-fer-btn{border-radius:10px;border:1px solid #cbd8e7;background:#fff;color:#193550;font-weight:850;padding:11px 15px;cursor:pointer}
+.et-fer-btn.primary{background:#173d64;color:white;border-color:#173d64}
+@media(max-width:600px){.et-fer-head{padding:18px}.et-fer-head h2{font-size:20px}.et-fer-counts{padding:12px;gap:5px}.et-fer-count{padding:9px 4px}.et-fer-count strong{font-size:20px}.et-fer-count span{font-size:9px}.et-fer-list{padding:5px 12px}.et-fer-foot{padding:12px;align-items:stretch;flex-direction:column}.et-fer-actions>*{flex:1}}
 </style>
 <style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
@@ -2891,6 +2914,16 @@
 })();
 </script>
 <div class="modal" id="etSingleTruckLocationModal" onclick="if(event.target===this)window.EktaTracking.closeSingleTruckLocation()"><div class="box"><div class="mh"><b id="etSingleTruckLocationTitle">Truck Location</b><button class="x" type="button" aria-label="Close map" onclick="window.EktaTracking.closeSingleTruckLocation()">×</button></div><div class="mb"><div id="etSingleTruckLocationCanvas"></div><div id="etSingleTruckLocationDetail"></div></div></div></div>
+
+<!-- Fleet document expiry reminder: independent of tracking map and trip actions -->
+<div id="etFleetExpiryReminder" role="dialog" aria-modal="true" aria-labelledby="etFerTitle">
+ <section class="et-fer-dialog">
+  <header class="et-fer-head"><div class="et-fer-kicker">EKTA TRANSPORT · FLEET SAFETY</div><h2 id="etFerTitle">Document Expiry Alerts</h2><p>Important vehicle documents requiring attention within 30 days</p></header>
+  <div class="et-fer-counts" id="etFerCounts"></div>
+  <div class="et-fer-list" id="etFerList" tabindex="-1"></div>
+  <footer class="et-fer-foot"><small id="etFerUpdated">Live from Fleet Documents</small><div class="et-fer-actions"><button type="button" class="et-fer-btn" id="etFerRemind">Remind Me After 4 Hours</button><button type="button" class="et-fer-btn primary" id="etFerView">Review Alerts</button></div></footer>
+ </section>
+</div>
 </body>
 </html>
 

@@ -969,10 +969,9 @@
     <div class="px-5 py-3 flex flex-wrap items-center justify-between gap-2 bg-white border-t border-slate-200">
       <div id="fleetDocumentFileName" class="text-[10px] text-slate-500 truncate max-w-[45%]"></div>
       <div class="flex flex-wrap items-center justify-end gap-2">
-        <label class="cursor-pointer px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
-          <i class="fa-solid fa-rotate mr-1.5"></i>Replace
-          <input id="fleetDocumentReplaceInput" type="file" accept="image/*,.pdf" class="hidden" onchange="window.EktaFleet.replaceDocument(event)">
-        </label>
+        <button type="button" onclick="window.EktaFleet.replaceDocument()" class="cursor-pointer px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
+          <i class="fa-solid fa-rotate mr-1.5"></i>Replace via OCR
+        </button>
         <button type="button" onclick="window.EktaFleet.downloadCurrentDocument()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
           <i class="fa-solid fa-download mr-1.5"></i>Download
         </button>
@@ -1091,6 +1090,7 @@ if (!window.XLSX) {
     let documentStatusFilter = "all";
     let currentMedia = null;
     let currentDocument = null;
+    let ocrReplaceTarget = null;
     const TRUCK_MEDIA_BUCKET = "transport-files";
 
     let currentAIMode = "";
@@ -1274,23 +1274,21 @@ if (!window.XLSX) {
             return false;
         }
 
-        const { data, error } = await window.supabaseClient
-            .from("trucks")
-            .select(`
-                id,
-                truck_number,
-                vehicle_type,
-                capacity_ton,
-                owner_name,
-                status,
-                created_at,
-                updated_at
-            `)
-            .order("created_at", { ascending: true });
-
-        if (error) {
-            console.error("[EKTA FLEET] Supabase truck load error:", error);
-            return false;
+        const data = [];
+        const pageSize = 400;
+        for (let offset = 0; ; offset += pageSize) {
+            const { data: page, error } = await window.supabaseClient
+                .from("trucks")
+                .select("id, truck_number, vehicle_type, capacity_ton, owner_name, status, created_at, updated_at")
+                .order("created_at", { ascending: true })
+                .order("id", { ascending: true })
+                .range(offset, offset + pageSize - 1);
+            if (error) {
+                console.error("[EKTA FLEET] Supabase truck load error:", error);
+                return false;
+            }
+            data.push(...(page || []));
+            if (!page || page.length < pageSize) break;
         }
 
         // Current LocalStorage data temporarily kept
@@ -1359,42 +1357,82 @@ if (!window.XLSX) {
 }
 
 
+    // Read ALL document types across every page, without silently losing older rows.
     async function loadSupabaseDocuments() {
-        if (!window.supabaseClient || !Array.isArray(fleetData) || fleetData.length === 0) return false;
+        if (!window.supabaseClient || !Array.isArray(fleetData) || !fleetData.length) return false;
+        const docPanel = qs("fleetSectionDocuments");
+        let warning = qs("fleetDocumentLoadWarning");
+        if (!warning && docPanel) {
+            warning = document.createElement("div");
+            warning.id = "fleetDocumentLoadWarning";
+            warning.setAttribute("role", "alert");
+            warning.style.cssText = "display:none;padding:10px 14px;margin-bottom:8px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-weight:700;font-size:12px";
+            docPanel.prepend(warning);
+        }
         try {
             const truckIds = fleetData.map(t => t.id).filter(Boolean);
-            const { data, error } = await window.supabaseClient
-                .from("truck_documents")
-                .select("id, truck_id, document_type, expiry_date, file_name, file_url, created_at")
-                .in("truck_id", truckIds)
-                .order("created_at", { ascending: false });
-            if (error) throw error;
-
-            const seen = new Set();
-            (data || []).forEach(row => {
-                const truck = findTruckById(row.truck_id);
+            const pageSize = 400;
+            const allRows = [];
+            // Run independent truck-ID chunks concurrently; paginate each chunk safely.
+            const chunks = [];
+            for (let i = 0; i < truckIds.length; i += 80) chunks.push(truckIds.slice(i, i + 80));
+            const results = await Promise.all(chunks.map(async ids => {
+                const chunkRows = [];
+                for (let offset = 0; ; offset += pageSize) {
+                    const { data, error } = await window.supabaseClient
+                        .from("truck_documents")
+                        .select("id, truck_id, document_type, expiry_date, file_name, file_url, created_at")
+                        .in("truck_id", ids)
+                        .order("created_at", { ascending: false })
+                        .order("id", { ascending: false })
+                        .range(offset, offset + pageSize - 1);
+                    if (error) throw error;
+                    const rows = data || [];
+                    chunkRows.push(...rows);
+                    if (rows.length < pageSize) break;
+                }
+                return chunkRows;
+            }));
+            for (const rows of results) allRows.push(...rows);
+            // Only update after every query succeeds; do not erase a previously
+            // loaded file just because a newer metadata row has an empty URL.
+            const latest = new Map();
+            const validTypes = new Set(DOC_TYPES.map(d => d.key));
+            const trucks = new Map(fleetData.map(t => [String(t.id), t]));
+            for (const row of allRows) {
+                const truck = trucks.get(String(row.truck_id));
                 const key = String(row.document_type || "").trim().toLowerCase();
-                if (!truck || !DOC_TYPES.some(d => d.key === key)) return;
-                const unique = `${row.truck_id}::${key}`;
-                if (seen.has(unique)) return;
-                seen.add(unique);
+                if (!truck || !validTypes.has(key)) continue;
+                const unique = `${truck.id}::${key}`;
+                if (!latest.has(unique)) latest.set(unique, { truck, key, row });
+                else if (!latest.get(unique).row.file_url && row.file_url) {
+                    // Prefer a real uploaded document over an empty metadata row.
+                    latest.set(unique, { truck, key, row });
+                }
+            }
+            for (const { truck, key, row } of latest.values()) {
                 if (!truck.docs) truck.docs = createEmptyDocuments();
+                const previous = truck.docs[key] || {};
                 truck.docs[key] = {
-                    ...(truck.docs[key] || {}),
-                    expiry: row.expiry_date || "",
-                    file: row.file_url || null,
-                    name: row.file_name || ""
+                    ...previous,
+                    expiry: row.expiry_date || previous.expiry || "",
+                    file: row.file_url || previous.file || null,
+                    name: row.file_name || previous.name || ""
                 };
-            });
+            }
+            if (warning) warning.style.display = "none";
             saveData();
-            console.log(`[EKTA FLEET] ${seen.size} latest document records hydrated from Supabase.`);
+            console.log(`[EKTA FLEET] Loaded ${allRows.length} document records; ${latest.size} truck/type slots, all pages.`);
             return true;
         } catch (error) {
-            console.error("[EKTA FLEET] Supabase document hydration error:", error);
+            console.error("[EKTA FLEET] Document loading failed; cached files left untouched:", error);
+            if (warning) {
+                warning.textContent = "Documents could not be fully loaded from Supabase. Some Upload labels may be incorrect. Please retry later; do not re-upload existing documents.";
+                warning.style.display = "block";
+            }
             return false;
         }
     }
-
 
     function saveData() {
 
@@ -2152,27 +2190,29 @@ async function saveTruck(event) {
     // This rebuilds photoList/videoList after refresh, browser restart, or on another PC.
     async function hydrateTruckMediaFromStorage() {
         if (!window.supabaseClient) return;
-
-        let changed = false;
-
+        // Limit concurrency: 164 trucks x 2 folders used to make 328 serial requests.
+        const tasks = [];
         for (const truck of fleetData) {
             if (!truck?.id) continue;
-
             for (const cfg of [
                 { key: "photoList", folder: "photos" },
                 { key: "videoList", folder: "videos" }
-            ]) {
+            ]) tasks.push({ truck, cfg });
+        }
+        let next = 0;
+        let changed = false;
+        const worker = async () => {
+            while (next < tasks.length) {
+                const { truck, cfg } = tasks[next++];
                 try {
                     const prefix = `${truck.id}/${cfg.folder}`;
                     const { data, error } = await window.supabaseClient.storage
                         .from(TRUCK_MEDIA_BUCKET)
                         .list(prefix, { limit: 1000, sortBy: { column: "created_at", order: "asc" } });
-
                     if (error) {
                         console.warn(`[EKTA FLEET] Could not list ${prefix}:`, error);
                         continue;
                     }
-
                     const storageItems = (Array.isArray(data) ? data : [])
                         .filter(file => file && file.name && file.id)
                         .map(file => ({
@@ -2181,12 +2221,9 @@ async function saveTruck(event) {
                             path: `${prefix}/${file.name}`,
                             storage: true
                         }));
-
                     const current = Array.isArray(truck[cfg.key]) ? truck[cfg.key] : [];
                     const byPath = new Map(current.filter(x => x?.path).map(x => [x.path, x]));
                     for (const item of storageItems) byPath.set(item.path, { ...item, ...(byPath.get(item.path) || {}) });
-
-                    // Storage is authoritative: removed files must not reappear from stale LocalStorage.
                     const rebuilt = storageItems.map(item => byPath.get(item.path) || item);
                     if (JSON.stringify(current.map(x => x?.path || x?.data || "")) !== JSON.stringify(rebuilt.map(x => x?.path || ""))) changed = true;
                     truck[cfg.key] = rebuilt;
@@ -2194,8 +2231,8 @@ async function saveTruck(event) {
                     console.warn(`[EKTA FLEET] Media recovery failed for ${truck.truckNo}:`, error);
                 }
             }
-        }
-
+        };
+        await Promise.all(Array.from({ length: Math.min(12, tasks.length) }, () => worker()));
         if (changed) saveData();
     }
 
@@ -2841,11 +2878,10 @@ async function deleteTruck(id) {
                     <div class="flex flex-wrap items-center gap-1">
                         <button type="button" onclick="window.EktaFleet.viewDocument('${escapeAttr(truck.id)}','${doc.key}')"
                             class="fleet-doc-action fleet-doc-view" title="View"><i class="fa-solid fa-eye"></i><span>View</span></button>
-                        <label class="fleet-doc-action fleet-doc-replace cursor-pointer" title="Replace">
+                        <button type="button" class="fleet-doc-action fleet-doc-replace" title="Replace with OCR Review"
+                            onclick="window.EktaFleet.openOCRReplace('${escapeAttr(truck.id)}','${doc.key}')">
                             <i class="fa-solid fa-rotate"></i><span>Replace</span>
-                            <input type="file" accept="image/*,.pdf" class="hidden"
-                                onchange="window.EktaFleet.uploadDocument(event,'${escapeAttr(truck.id)}','${doc.key}')">
-                        </label>
+                        </button>
                         <button type="button" onclick="window.EktaFleet.downloadDocument('${escapeAttr(truck.id)}','${doc.key}')"
                             class="fleet-doc-icon fleet-doc-download" title="Download"><i class="fa-solid fa-download"></i></button>
                         <button type="button" onclick="window.EktaFleet.removeDocument('${escapeAttr(truck.id)}','${doc.key}')"
@@ -3491,12 +3527,37 @@ function updateExpiryBadgeUI(
         await downloadDocument(currentDocument.truckId, currentDocument.docKey);
     }
 
-    async function replaceDocument(event) {
+    function replaceDocument() {
         if (!currentDocument) return;
         const truckId = currentDocument.truckId;
         const docKey = currentDocument.docKey;
         closeDocumentViewer();
-        await uploadDocument(event, truckId, docKey);
+        openOCRReplace(truckId, docKey);
+    }
+
+    function openOCRReplace(truckId, docKey) {
+        const truck = findTruckById(truckId);
+        if (!truck || !DOC_TYPES.some(d => d.key === docKey)) {
+            alert("Truck or document type not found.");
+            return;
+        }
+        openAI("document");
+        ocrReplaceTarget = { truckId: String(truck.id), truckNo: truck.truckNo, docKey };
+        const select = qs("fleetAIDocType");
+        if (select) {
+            select.value = docKey;
+            select.disabled = true;
+            select.title = "Document type is fixed for this replacement";
+        }
+        const mode = qs("fleetOCRMode");
+        if (mode) { mode.value = "single"; mode.disabled = true; }
+        updateOCRMode();
+        const drop = qs("fleetAIDropText");
+        if (drop) drop.textContent = `Replace ${docKey.replace(/_/g, " ").toUpperCase()} for ${truck.truckNo}`;
+        const sub = qs("fleetAISubText");
+        if (sub) sub.textContent = "OCR will verify the vehicle number before saving. Existing document remains until you confirm.";
+        const input = qs("fleetAIFileInput");
+        if (input) input.multiple = false;
     }
 
     async function removeDocument(truckId = null, docKey = null) {
@@ -4137,18 +4198,17 @@ async function downloadDocument(truckId, docKey) {
 
         });
 
-        // Show only expired documents or documents expiring within 50 days.
-        const visibleAlerts = alerts.filter(item => item.status.days <= 50);
+        // Show expired documents and documents expiring within 30 days.
+        const visibleAlerts = alerts.filter(item => item.status.days <= 30);
 
-        alerts.sort(function (a, b) {
-
-            return (
-                a.date.getTime() -
-                b.date.getTime()
-            );
-
+        // Urgent first: expired, 0–5 critical, 6–10 pink, 11–20 yellow, 21–30 green.
+        // Within each group, fewer days remaining appear first.
+        visibleAlerts.sort(function (a, b) {
+            const daysA = a.status.days;
+            const daysB = b.status.days;
+            const rank = days => days <= 0 ? 0 : days <= 5 ? 1 : days <= 10 ? 2 : days <= 20 ? 3 : 4;
+            return rank(daysA) - rank(daysB) || daysA - daysB || a.truckNo.localeCompare(b.truckNo);
         });
-
 
         return visibleAlerts;
 
@@ -4159,28 +4219,28 @@ async function downloadDocument(truckId, docKey) {
        ALERTS RENDER
        ========================================================= */
 
-    // Alert-table-only colours; other document status badges remain unchanged.
+    // Expiry Alerts only: 30-day warning window, four colour stages.
     function alertStatusBadge(status) {
         const days = status?.days;
         if (days == null) return "";
         let classes, label;
-        if (days <= 0) {
+        if (days < 0) {
             classes = "bg-red-100 text-red-800";
             label = "Expired";
-        } else if (days <= 10) {
+        } else if (days === 0) {
+            classes = "bg-red-100 text-red-800";
+            label = "Expires Today · Critical";
+        } else if (days <= 5) {
             classes = "bg-red-100 text-red-800";
             label = `${days} Days Left · Critical`;
+        } else if (days <= 10) {
+            classes = "bg-pink-100 text-pink-800";
+            label = `${days} Days Left`;
         } else if (days <= 20) {
-            classes = "bg-red-50 text-red-700";
-            label = `${days} Days Left`;
-        } else if (days <= 30) {
-            classes = "bg-orange-50 text-orange-700";
-            label = `${days} Days Left`;
-        } else if (days <= 40) {
-            classes = "bg-yellow-50 text-yellow-800";
+            classes = "bg-yellow-100 text-yellow-800";
             label = `${days} Days Left`;
         } else {
-            classes = "bg-emerald-50 text-emerald-700";
+            classes = "bg-emerald-100 text-emerald-800";
             label = `${days} Days Left`;
         }
         return `<span class="inline-flex items-center px-2 py-1 rounded-md font-bold text-[10px] ${classes}">${escapeHTML(label)}</span>`;
@@ -4973,6 +5033,13 @@ async function downloadDocument(truckId, docKey) {
        ========================================================= */
 
     function openAI(mode) {
+        ocrReplaceTarget = null;
+        const docType = qs("fleetAIDocType");
+        if (docType) { docType.disabled = false; docType.title = ""; }
+        const ocrMode = qs("fleetOCRMode");
+        if (ocrMode) ocrMode.disabled = false;
+        const aiFileInput = qs("fleetAIFileInput");
+        if (aiFileInput) aiFileInput.multiple = true;
 
         currentAIMode =
             mode === "document"
@@ -5143,6 +5210,11 @@ async function downloadDocument(truckId, docKey) {
 
 
         currentAIResult = null;
+        ocrReplaceTarget = null;
+        const docType = qs("fleetAIDocType");
+        if (docType) docType.disabled = false;
+        const mode = qs("fleetOCRMode");
+        if (mode) mode.disabled = false;
         if(typeof ektaOCRPreviewUrl !== 'undefined' && ektaOCRPreviewUrl){URL.revokeObjectURL(ektaOCRPreviewUrl);ektaOCRPreviewUrl=null;}
 
 
@@ -6337,8 +6409,8 @@ async function downloadDocument(truckId, docKey) {
     // Rebuild media directly from transport-files so Fleet does not depend only on
     // yesterday's LocalStorage cache. This also restores media on a fresh browser/PC.
     if (loadedFromSupabase) {
-        await hydrateTruckMediaFromStorage();
-        await loadSupabaseDocuments();
+        // Documents and photo/video metadata are independent reads.
+        await Promise.all([loadSupabaseDocuments(), hydrateTruckMediaFromStorage()]);
     }
 
     renderAll();
@@ -7029,7 +7101,10 @@ async function downloadDocument(truckId, docKey) {
             ocrRows.forEach((r,i)=>{
                 const t=findTruckByNumber(r.truckNo);
                 const blocked=!!t?.docs?.[r.docKey]?.file;
-                const allowed=!!t && !r.error && (documentHasNoExpiry(r.docKey)||((r.docKey==='permit'||r.docKey==='five_year_permit')?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
+                const matchesReplace = !ocrReplaceTarget ||
+                    (r.docKey === ocrReplaceTarget.docKey &&
+                     normalizeTruckNumber(r.truckNo) === normalizeTruckNumber(ocrReplaceTarget.truckNo));
+                const allowed=matchesReplace && !!t && !r.error && (documentHasNoExpiry(r.docKey)||((r.docKey==='permit'||r.docKey==='five_year_permit')?!!permitSafeDate(r.expiry):/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)));
                 const cb=content.querySelector(`[data-ekta-ocr-select="${i}"]`);
                 if(cb){cb.disabled=!allowed;if(!allowed)cb.checked=false;r.selected=cb.checked;}
                 if(allowed)eligible++;
@@ -7037,7 +7112,7 @@ async function downloadDocument(truckId, docKey) {
                 if(blocked)existing++;
                 const status=content.querySelector(`[data-ekta-ocr-status="${i}"]`);
                 if(status){
-                    status.textContent=r.error || (!t?'Truck not found':!allowed?'Check expiry date':blocked?'Existing document — Replace on save':'Matched — New');
+                    status.textContent=r.error || (!matchesReplace?`Wrong vehicle — expected ${ocrReplaceTarget.truckNo}`:!t?'Truck not found':!allowed?'Check expiry date':blocked?'Existing document — Replace on save':'Matched — New');
                     status.className='ekta-ocr-status '+(allowed?'ok':'bad');
                 }
             });
@@ -7067,6 +7142,14 @@ async function downloadDocument(truckId, docKey) {
     async function saveOCRDocuments() {
         if(ocrBusy || !ocrRows.length) return;
         if(!window.supabaseClient) return showAIError('Supabase connection required.');
+        if (ocrReplaceTarget) {
+            const selected = ocrRows.filter(r => r.selected);
+            if (selected.length !== 1 ||
+                selected[0].docKey !== ocrReplaceTarget.docKey ||
+                normalizeTruckNumber(selected[0].truckNo) !== normalizeTruckNumber(ocrReplaceTarget.truckNo)) {
+                return showAIError(`Replacement is restricted to ${ocrReplaceTarget.truckNo} (${ocrReplaceTarget.docKey.replace(/_/g, " ")}). Check the OCR vehicle number; a different truck cannot be saved here.`);
+            }
+        }
         const valid=ocrRows.filter(r=>r.selected && findTruckByNumber(r.truckNo) && (documentHasNoExpiry(r.docKey) || ((r.docKey === 'permit'||r.docKey === 'five_year_permit') ? !!permitSafeDate(r.expiry) : /^\d{4}-\d{2}-\d{2}$/.test(r.expiry))) && !r.error);
         if(new Set(valid.map(r=>normalizeTruckNumber(r.truckNo))).size!==valid.length) return showAIError('Duplicate vehicle numbers in preview. Correct duplicates before saving.');
         if(!valid.length) return showAIError('No eligible documents. Check truck number and (except RC/Fitment) expiry date in preview.');
@@ -7147,6 +7230,7 @@ async function downloadDocument(truckId, docKey) {
         viewDocument,
         closeDocumentViewer,
         replaceDocument,
+        openOCRReplace,
         removeDocument,
         downloadCurrentDocument,
 
