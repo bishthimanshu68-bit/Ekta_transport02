@@ -260,7 +260,7 @@ html,body{max-width:100%;overflow-x:hidden}#ektaFuelModule,#fuelHpclPanel{min-wi
 </div>
 <div id="hpHistoryPanel" class="hidden rounded-xl border border-blue-200 bg-blue-50 p-3 space-y-2">
 <div class="flex flex-wrap justify-between items-center gap-2"><b class="text-sm text-blue-900">Saved Fuel History (Supabase)</b><div class="flex items-center gap-3"><span id="hpHistoryStatus" class="text-xs text-slate-600">Not loaded</span><button type="button" id="hpHistoryClose" aria-label="Close saved history" class="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-blue-100">✕ Close</button></div></div>
-<div class="flex flex-wrap items-end gap-2"><label class="text-xs">From Date <input id="hpHistoryFrom" type="date" class="block border rounded p-2 mt-1"></label><label class="text-xs">To Date <input id="hpHistoryTo" type="date" class="block border rounded p-2 mt-1"></label><button id="hpHistoryReload" type="button" class="bg-blue-700 text-white rounded px-3 py-2 text-xs">Load / Refresh</button><button id="hpHistoryClear" type="button" class="border rounded px-3 py-2 text-xs">All Dates</button></div>
+<div class="flex flex-wrap items-end gap-2"><label class="text-xs">From Date <input id="hpHistoryFrom" type="date" class="block border rounded p-2 mt-1"></label><label class="text-xs">To Date <input id="hpHistoryTo" type="date" class="block border rounded p-2 mt-1"></label><button id="hpHistoryReload" type="button" class="bg-blue-700 text-white rounded px-3 py-2 text-xs">Load / Refresh</button><button id="hpHistoryClear" type="button" class="border rounded px-3 py-2 text-xs">All Dates</button><button id="hpHistoryExcel" type="button" class="bg-emerald-700 hover:bg-emerald-800 text-white rounded px-3 py-2 text-xs font-semibold" disabled>⬇ Export Excel</button></div>
 <div class="ekta-ledger-scroll overflow-auto max-h-72 rounded border bg-white" tabindex="0" aria-label="Saved fuel history table, scroll vertically and horizontally"><table class="min-w-[1050px] w-full text-xs"><thead class="bg-slate-100"><tr><th class="p-2 text-left">Txn ID</th><th class="p-2 text-left">HPCL Date</th><th class="p-2 text-left">Pump</th><th class="p-2 text-left">Vehicle Number (Actual)</th><th class="p-2 text-left">Type</th><th class="p-2 text-right">Litres</th><th class="p-2 text-right">Amount</th><th class="p-2 text-left">Status</th><th class="p-2 text-left">Manage</th></tr></thead><tbody id="hpHistoryRows"><tr><td colspan="8" class="p-4 text-center text-slate-500">Click Load / Refresh to view saved transactions.</td></tr></tbody></table></div></div>
 <div data-hp-upload class="fuel-import-grid">
 <label class="block border border-dashed border-blue-300 bg-blue-50 rounded-xl p-4 text-sm font-semibold">Upload HPCL Official CustomerTransactionDetails.xlsx<input id="hpFile" type="file" accept=".xlsx,.xls" class="block w-full mt-2 text-xs"></label>
@@ -588,6 +588,27 @@ async function markExistingSaved(){
  }catch(e){message('Saved-ID lookup unavailable: '+safeErr(e)+'; entries not marked saved. Do not retry saving blindly.');}
 }
 let hpHistoryCache=new Map();
+let hpHistoryExportRows=[];
+// Excel-compatible UTF-8 CSV of exactly the currently displayed saved-history records.
+el('hpHistoryExcel').addEventListener('click',()=>{
+ if(!hpHistoryExportRows.length){alert('No loaded saved-history records to export.');return;}
+ const headings=['Txn ID','HPCL Date','Pump','Vehicle Number (Actual)','Type','Litres','Amount','Status'];
+ const safeCell=value=>{
+  let v=String(value??'');
+  // Prevent spreadsheet formula execution from imported text fields.
+  if(/^[\s]*[=+@-]/.test(v))v="'"+v;
+  return '"'+v.replace(/"/g,'""')+'"';
+ };
+ const data=hpHistoryExportRows.map(r=>[r.txn_id,r.txn_datetime_raw,r.pump_name,r.actual_vehicle||'Vehicle Pending',r.txn_type,r.litres,r.amount,r.review_status]);
+ const csv='\uFEFF'+[headings,...data].map(row=>row.map(safeCell).join(',')).join('\r\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;
+ const from=el('hpHistoryFrom').value||'all',to=el('hpHistoryTo').value||'all';
+ a.download=`Ekta_HPCL_Saved_History_${from}_to_${to}.csv`;
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 el('hpHistoryRows').addEventListener('click',async event=>{
  const button=event.target.closest('.hp-history-edit');if(!button)return;
  const record=hpHistoryCache.get(button.dataset.txn);if(!record)return;
@@ -613,7 +634,7 @@ el('hpHistoryRows').addEventListener('click',async event=>{
  }catch(err){alert('Save failed: '+safeErr(err));button.disabled=false;}
 });
 async function loadSavedHistory(){
- const status=el('hpHistoryStatus'),body=el('hpHistoryRows');status.textContent='Loading…';
+ const status=el('hpHistoryStatus'),body=el('hpHistoryRows');status.textContent='Loading…';hpHistoryExportRows=[];el('hpHistoryExcel').disabled=true;
  try{
   if(!S?.from)throw Error("Supabase client unavailable. Check db.js.");
   const from=el('hpHistoryFrom').value,to=el('hpHistoryTo').value;
@@ -626,6 +647,7 @@ async function loadSavedHistory(){
   }
   const filtered=data.filter(r=>{const d=dateKey(r.txn_datetime_raw);return (!from||d>=from)&&(!to||d<=to)});
   hpHistoryCache=new Map(data.map(r=>[String(r.txn_id),r]));
+  hpHistoryExportRows=filtered.slice();el('hpHistoryExcel').disabled=!filtered.length;
   body.innerHTML=filtered.map(r=>`<tr class="border-t"><td class="p-2">${esc(r.txn_id)}</td><td class="p-2 whitespace-nowrap">${esc(r.txn_datetime_raw)}</td><td class="p-2">${esc(r.pump_name)}</td><td class="p-2 font-semibold">${esc(r.actual_vehicle||'Vehicle Pending')}</td><td class="p-2">${esc(r.txn_type)}</td><td class="p-2 text-right">${esc(r.litres)}</td><td class="p-2 text-right">${money(r.amount)}</td><td class="p-2 font-semibold">${esc(r.review_status)}</td><td class="p-2"><button type="button" class="hp-history-edit border border-blue-200 text-blue-700 rounded px-3 py-1 font-semibold" data-txn="${esc(r.txn_id)}">✎ Edit</button></td></tr>`).join('')||'<tr><td colspan="9" class="p-4 text-center">No saved records for the selected date range.</td></tr>';
   status.textContent=`${filtered.length} displayed / ${data.length} saved records loaded${data.length>=10000?' (first 10,000 only)':''}`;
   const savedById=new Map(data.map(r=>[String(r.txn_id),r]));
