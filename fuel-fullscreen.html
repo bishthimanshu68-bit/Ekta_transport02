@@ -335,8 +335,47 @@ const ownerOf=v=>norm(v)?(fleet.has(norm(v))?(fleet.get(norm(v))||'Owner not rec
 const pumpNorm=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 function validLocalDate(y,m,d,h,mi,s){const x=new Date(y,m-1,d,h,mi,s);return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d&&x.getHours()===h&&x.getMinutes()===mi&&x.getSeconds()===s?x.getTime():NaN}
 function parseHPTime(v){const s=String(v||'').trim();let m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(!m)return NaN;return validLocalDate(+m[3],+m[2],+m[1],+m[4],+m[5],+(m[6]||0))}
-// WhatsApp Reader export uses DD/MM/YYYY (e.g. 18/11/2026), same calendar order as HPCL.
-function parseWATime(v){const m=String(v||'').match(/\[(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM),\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\]/i);if(!m)return NaN;let h=(+m[1]%12)+(m[4].toUpperCase()==='PM'?12:0);return validLocalDate(+m[7],+m[6],+m[5],h,+m[2],+(m[3]||0))}
+// Flexible WhatsApp timestamp reader: US/Indian dates, ISO, month names, 12/24-hour clock,
+// optional seconds, 2/4-digit years and common separators. Ambiguous numeric dates never guessed.
+const waMonthNames={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+function waStampParts(raw){
+ const s=String(raw||'').replace(/[\u200e\u200f\u202a-\u202e]/g,'').replace(/\u00a0/g,' ').trim();
+ const bracket=s.match(/\[([^\]]+)\]/);let t=bracket?bracket[1]:s.split(/\s+\+?\d{9,}/)[0];
+ t=t.replace(/\b(?:at|on)\b/gi,' ').replace(/\s+/g,' ').trim();
+ const clock=t.match(/(?:^|[\s,])((?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?)(?:\s*(AM|PM))?(?=$|[\s,])/i);
+ if(!clock)return null;
+ const hm=clock[1].split(':').map(Number);let hour=hm[0],minute=hm[1],second=hm[2]||0;
+ if(clock[2]){if(hour<1||hour>12)return null;hour=hour%12+(clock[2].toUpperCase()==='PM'?12:0)}
+ let date=t.slice(0,clock.index)+' '+t.slice(clock.index+clock[0].length);
+ date=date.replace(/\b(?:AM|PM)\b/gi,'').replace(/^[\s,;|]+|[\s,;|]+$/g,'').trim();
+ const months='Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+ let m=date.match(new RegExp('^(\\d{1,2})[\\s,./-]+('+months+')[\\s,./-]+(\\d{2,4})$','i'));
+ if(m)return {y:waYear(m[3]),month:waMonthNames[m[2].slice(0,3).toUpperCase()],day:+m[1],hour,minute,second,explicit:true};
+ m=date.match(new RegExp('^('+months+')[\\s,./-]+(\\d{1,2})[\\s,./-]+(\\d{2,4})$','i'));
+ if(m)return {y:waYear(m[3]),month:waMonthNames[m[1].slice(0,3).toUpperCase()],day:+m[2],hour,minute,second,explicit:true};
+ m=date.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+ if(m)return {y:+m[1],month:+m[2],day:+m[3],hour,minute,second,explicit:true};
+ m=date.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+ if(!m)return null;
+ return {a:+m[1],b:+m[2],y:waYear(m[3]),hour,minute,second,explicit:false};
+}
+function waYear(v){const n=+v;return String(v).length===2?(n>=70?1900+n:2000+n):n}
+function waDateOrder(){
+ let us=0,indian=0;
+ for(const w of whatsRows){const p=waStampParts(w.pre);if(!p||p.explicit)continue;
+  if(p.a>=1&&p.a<=12&&p.b>12&&p.b<=31)us++;
+  else if(p.b>=1&&p.b<=12&&p.a>12&&p.a<=31)indian++;
+ }
+ return us&&!indian?'MDY':indian&&!us?'DMY':null;
+}
+function parseWATime(v){
+ const p=waStampParts(v);if(!p)return NaN;
+ if(p.explicit)return validLocalDate(p.y,p.month,p.day,p.hour,p.minute,p.second);
+ let order=waDateOrder();
+ if(p.a>12&&p.b<=12)order='DMY';else if(p.b>12&&p.a<=12)order='MDY';
+ if(!order)return NaN;
+ return validLocalDate(p.y,order==='MDY'?p.a:p.b,order==='MDY'?p.b:p.a,p.hour,p.minute,p.second);
+}
 function parseCSV(txt){txt=txt.replace(/^\uFEFF/,'');const out=[];let r=[],v='',quoted=false;for(let i=0;i<txt.length;i++){const c=txt[i];if(quoted){if(c==='"'&&txt[i+1]==='"'){v+='"';i++}else if(c==='"')quoted=false;else v+=c}else if(c==='"')quoted=true;else if(c===','){r.push(v);v=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&txt[i+1]==='\n')i++;r.push(v);if(r.some(x=>x.trim()))out.push(r);r=[];v=''}else v+=c}r.push(v);if(r.some(x=>x.trim()))out.push(r);return out}
  function matchWhats(){
   matchChoices.clear();
