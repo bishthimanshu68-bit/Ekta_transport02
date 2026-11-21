@@ -1370,23 +1370,18 @@
 
         <div class="et-head-tools" id="etHeaderTools">
           <button type="button" class="et-head-btn" id="etBellBtn" aria-expanded="false" aria-controls="etBellPanel" onclick="window.EktaTracking.toggleHeaderPanel('bell')">🔔 <span class="et-head-count" id="etBellCount">0</span></button>
-          <button type="button" class="et-head-btn" id="etAIBtn" aria-expanded="false" aria-controls="etAIPanel" onclick="window.EktaTracking.toggleHeaderPanel('ai')">✦ AI Assistant</button>
+          <button type="button" class="et-head-btn" id="etLocationImportBtn" aria-expanded="false" aria-controls="etLocationImportPanel" onclick="window.EktaTracking.toggleHeaderPanel('locations')">📍 Import Locations</button>
           <section class="et-head-panel" id="etBellPanel" aria-label="Tracking notifications">
             <div class="et-head-panel-title"><b>🔔 Notifications</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
             <div id="etBellItems" class="et-head-notices">Loading notifications...</div>
           </section>
-          <section class="et-head-panel" id="etAIPanel" aria-label="Tracking assistant">
-            <div class="et-head-panel-title"><b>✦ Ekta Tracking Assistant</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
-            <div class="et-upload-group">
-              <b>📋 Program File Upload</b>
-              <p class="muted">Excel, CSV, PDF या Photo चुनें। एक बार में एक File।</p>
-              <input type="file" id="etProgramUpload" accept=".xlsx,.xls,.csv,.pdf,image/*" onchange="window.EktaTracking.previewAIUpload('program')">
-              <div class="et-upload-status" id="etProgramUploadStatus" aria-live="polite">No file selected</div>
-              <button type="button" class="et-ai-send" onclick="window.EktaTracking.prepareProgramUpload()">Review Program File</button>
-            </div>
-            <div class="et-upload-status" id="etAIUploadMessage" aria-live="polite">AI extraction requires the existing Gemini backend connection. No data will be saved without confirmation.</div>
-          <div style="margin-top:8px"><label style="font-size:11px;font-weight:700">Or paste Excel rows here</label><textarea id="etProgramPaste" rows="3" placeholder="Paste copied Excel cells (tab-separated)" style="width:100%;font-size:11px;border:1px solid #ccd9e9;border-radius:7px;padding:8px"></textarea></div>
-            <div id="etAIProgramPreview" style="max-height:310px;overflow:auto"></div>
+          <section class="et-head-panel" id="etLocationImportPanel" aria-label="Import location master" style="width:min(510px,calc(100vw - 24px))">
+            <div class="et-head-panel-title"><b>📍 Import Location Master</b><button type="button" class="et-head-close" onclick="window.EktaTracking.toggleHeaderPanel('')">✕</button></div>
+            <p class="muted" style="margin:5px 0 10px">Choose India Location Master Excel or CSV. Review names before importing.</p>
+            <input type="file" id="etLocationImportFile" accept=".xlsx,.xls,.csv" style="max-width:100%;width:100%;padding:9px;border:1px solid #d6e0ec;border-radius:8px" onchange="window.EktaTracking.previewLocationImport()">
+            <div id="etLocationImportStatus" class="et-upload-status" aria-live="polite" style="margin:10px 0">No file selected.</div>
+            <div id="etLocationImportPreview" style="max-height:260px;overflow:auto"></div>
+            <button type="button" class="btn green" id="etLocationImportSave" disabled onclick="window.EktaTracking.saveLocationImport()">Confirm & Save to Supabase</button><p class="muted" style="font-size:11px;margin-top:10px">Rows missing a district use “District Pending” until verified. Duplicate locations are skipped. Existing tracking records are unchanged.</p>
           </section>
         </div>
 
