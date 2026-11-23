@@ -3063,6 +3063,58 @@ function openSelectedMapFullScreen(){
 function closeSelectedMapFullScreen(){const p=$("etSelectedMapPage");if(!p)return;p.classList.remove("show");p.setAttribute("aria-hidden","true")}
 
 
+/* E-Way duplicate protection — read-only cross-fleet lookup before saving. */
+function etEwayNumber(v){return clean(v).replace(/\s+/g,"")}
+function etEwayDuplicatePopup(number,vehicle,tripLabel){
+ document.getElementById("etEwayDuplicateOverlay")?.remove();
+ const layer=document.createElement("div");layer.id="etEwayDuplicateOverlay";
+ layer.style.cssText="position:fixed;inset:0;z-index:2147483600;background:rgba(15,35,60,.60);display:flex;align-items:center;justify-content:center;padding:18px";
+ layer.innerHTML=`<div role="alertdialog" aria-modal="true" aria-labelledby="etEwayDuplicateTitle" style="width:min(420px,100%);background:#fff;border-radius:20px;padding:27px 23px;box-shadow:0 25px 80px #10233b55;text-align:center;font-family:Inter,Segoe UI,Arial,sans-serif;color:#173653"><div style="width:62px;height:62px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:#fff0d5;color:#c47a00;font-size:30px">⚠</div><h2 id="etEwayDuplicateTitle" style="font-size:20px;margin:0 0 8px">E-Way Bill Already Exists!</h2><p style="font-size:13px;color:#68758a;margin:0 0 18px">यह E-Way Bill पहले से रजिस्टर है।</p><div style="background:#f5f8fc;border:1px solid #e4ebf4;border-radius:12px;padding:14px;margin-bottom:12px"><div style="font-size:11px;color:#68758a">E-Way Bill Number</div><div style="font-size:20px;font-weight:900;letter-spacing:.4px;margin:4px 0 12px">${esc(number)}</div><div style="border-top:1px solid #e4ebf4;padding-top:11px;font-size:12px;color:#68758a">Already Registered Vehicle</div><div style="font-size:19px;font-weight:900;color:#b42335;margin-top:4px">${esc(vehicle||"Vehicle not available")}</div>${tripLabel?`<div style="font-size:11px;color:#68758a;margin-top:5px">Trip: ${esc(tripLabel)}</div>`:""}</div><p style="font-size:12px;color:#5b6b82;margin:0 0 16px">कृपया Number चेक करें। Duplicate Save नहीं होगा।</p><button type="button" id="etEwayDuplicateOK" style="width:100%;background:#3677b6;color:white;border:0;border-radius:10px;padding:12px;font-weight:800;cursor:pointer">OK, समझ गया</button></div>`;
+ document.body.appendChild(layer);
+ const close=()=>layer.remove();layer.querySelector("#etEwayDuplicateOK").onclick=close;
+ layer.addEventListener("keydown",e=>{if(e.key==="Escape"||e.key==="Enter"){e.preventDefault();close()}});
+ layer.querySelector("#etEwayDuplicateOK").focus();
+}
+async function etEwayFetchAll(table,columns){
+ const result=[];
+ for(let offset=0;offset<100000;offset+=1000){
+  const r=await S.from(table).select(columns).range(offset,offset+999);
+  if(r.error)throw new Error(table+": "+r.error.message);
+  const batch=r.data||[];result.push(...batch);
+  if(batch.length<1000)return result;
+ }
+ throw new Error(table+" has too many records to verify safely. Contact administrator.");
+}
+async function etEwayFindDuplicate(number,exclude){
+ const target=etEwayNumber(number);if(!target)return null;
+ // Fetch from Supabase rather than trusting cached/active-only register rows.
+ // Includes completed trips and Market notes, not just current active trips.
+ const fleet=await etEwayFetchAll(T.eway,"id,trip_id,truck_id,eway_bill_number");
+ const own=fleet.find(b=>etEwayNumber(b.eway_bill_number)===target&&!(exclude?.kind==="own"&&String(b.id)===String(exclude.id)));
+ if(own){
+  const v=trucks.find(t=>String(t.id)===String(own.truck_id));
+  let vehicle=clean(v?.truck_number),tripLabel=clean(trips.find(t=>String(t.id)===String(own.trip_id))?.trip_number);
+  if(!vehicle||!tripLabel){
+   const r=await S.from(T.trips).select("id,truck_id,trip_number").eq("id",own.trip_id).maybeSingle();
+   if(r.error)throw new Error("Trip lookup failed: "+r.error.message);
+   if(!vehicle){const tr=await S.from(T.trucks).select("truck_number").eq("id",own.truck_id||r.data?.truck_id).maybeSingle();if(tr.error)throw new Error("Truck lookup failed: "+tr.error.message);vehicle=clean(tr.data?.truck_number)}
+   tripLabel=tripLabel||clean(r.data?.trip_number);
+  }
+  return {vehicle:vehicle||"Vehicle not found",tripLabel};
+ }
+ const market=await etEwayFetchAll("market_trips","id,vehicle_id,trip_number,notes");
+ let match=null;
+ for(const t of market){
+  if(exclude?.kind==="market"&&String(exclude.id)===String(t.id))continue;
+  if(marketEwayDecode(t.notes).some(b=>etEwayNumber(b.eway_bill_number)===target)){match=t;break}
+ }
+ if(match){
+  const r=await S.from("market_vehicles").select("truck_number").eq("id",match.vehicle_id).maybeSingle();
+  if(r.error)throw new Error("Market vehicle lookup failed: "+r.error.message);
+  return {vehicle:clean(r.data?.truck_number)||"Vehicle not found",tripLabel:clean(match.trip_number)};
+ }
+ return null;
+}
 /* Market E-Way integration: separate market_trips records, no fleet trip duplication. */
 let etMarketEwayTrips=[];
 const marketEwayMarker=/\[MARKET_EWAY_V1:([A-Za-z0-9_-]+)\]/;
@@ -3204,13 +3256,21 @@ function openMarketEwayEdit(id){
     if(!/^\d{12}$/.test(number)){error.textContent="Each E-Way Bill number must have 12 digits.";return}
     if(!/^\d{4}-\d{2}-\d{2}$/.test(expiry)||!Number.isFinite(Date.parse(expiry+"T12:00:00"))){error.textContent="Enter a valid expiry date.";return}
     if(expiry<issue){error.textContent="Expiry cannot be before issue date.";return}
-    if(seen.has(number)){error.textContent="Duplicate bill number: "+number;return}seen.add(number);
+    if(seen.has(number)){etEwayDuplicatePopup(number,t._marketTruck,t.trip_number);return}seen.add(number);
     const prior=(t._marketBills||[]).find(b=>b.eway_bill_number===number);
     entries.push({eway_bill_number:number,eway_bill_date:prior?.eway_bill_date&&dateOnly(prior.eway_bill_date)===issue?prior.eway_bill_date:issue+"T00:00:00+05:30",valid_until:expiry+"T23:59:59+05:30"});
    }
   }
   const button=overlay.querySelector("#etMarketEwaySave");button.disabled=true;
   try{
+   if(!transporter){
+    // An existing bill in THIS Market trip is an edit, not a duplicate.
+    // A repeated number in the form was rejected above.
+    for(const entry of entries){
+     const match=await etEwayFindDuplicate(entry.eway_bill_number,{kind:"market",id:t.id});
+     if(match){etEwayDuplicatePopup(entry.eway_bill_number,match.vehicle,match.tripLabel);return}
+    }
+   }
    let notes=clean(t.notes);
    if(transporter)notes=putNote(notes,"TRANSPORTER_EWAY_VALID_UNTIL",expiryDate);
    else{
@@ -3548,13 +3608,17 @@ async function saveEwayRecord(e){
  for(const r of rows){
   if(!/^\d{12}$/.test(r.number))return alertUser("Each E-Way Bill number must contain exactly 12 digits.");
   if(!/^\d{4}-\d{2}-\d{2}$/.test(r.expiry)||!Number.isFinite(new Date(r.expiry+"T00:00:00").getTime()))return alertUser("Enter a valid expiry date for every bill.");
-  if(seen.has(r.number))return alertUser("Duplicate E-Way Bill number in this form: "+r.number);seen.add(r.number);
-  if(billsForTrip(tripId).some(b=>String(b.id)!==String(r.id)&&clean(b.eway_bill_number)===r.number))return alertUser("Bill already exists for this trip: "+r.number);
+  if(seen.has(r.number)){etEwayDuplicatePopup(r.number,clean(truck(t.truck_id)?.truck_number),t.trip_number);return false}seen.add(r.number);
+  if(billsForTrip(tripId).some(b=>String(b.id)!==String(r.id)&&clean(b.eway_bill_number)===r.number)){etEwayDuplicatePopup(r.number,clean(truck(t.truck_id)?.truck_number),t.trip_number);return false}
  }
  const issueDate=clean($("etEWIssueDate").value);
  if(!issueDate)return alertUser("Enter the E-Way Bill issue date from the document.");
  const saveBtn=e?.submitter;if(saveBtn)saveBtn.disabled=true;
  try{
+  for(const r of rows){
+   const match=await etEwayFindDuplicate(r.number,{kind:"own",id:r.id});
+   if(match){etEwayDuplicatePopup(r.number,match.vehicle,match.tripLabel);return false}
+  }
   for(const r of rows){
    const existing=r.id?(ewayBills||[]).find(x=>String(x.id)===String(r.id)):null;
    // Use the actual E-Way issue date entered by staff, not a trip date.
