@@ -4430,10 +4430,13 @@ async function exportTracking(){
   ].sort((a,b)=>dateOnly(a.t[dateField]).localeCompare(dateOnly(b.t[dateField]))||
    clean(a.market?marketVehicleById.get(String(a.t.vehicle_id))?.truck_number:truck(a.t.truck_id)?.truck_number)
    .localeCompare(clean(b.market?marketVehicleById.get(String(b.t.vehicle_id))?.truck_number:truck(b.t.truck_id)?.truck_number)));
-  headers=[{DATE_PROGRAM:"Program Date",DATE_LOADING:"Loading Date",DATE_REPORTING:"Reporting Date",DATE_UNLOADING:"Unloading Date"}[category],"Vehicle No.","Fleet Type","Party Code","Party Name","Party Status","From","To","Trip Status","Freight"];
+  headers=[{DATE_PROGRAM:"Program Date",DATE_LOADING:"Loading Date",DATE_REPORTING:"Reporting Date",DATE_UNLOADING:"Unloading Date"}[category],"Vehicle No.","Fleet Type","Party Code","Party Name",category==="DATE_LOADING"?"Party Type":"Party Status","From","To","Trip Status",category==="DATE_LOADING"?"Freight Amount":"Freight"];
+  // Loading Date Wise only: show the actual Program Date from the same trip.
+  // No changes to database writes, date filters, or other export categories.
+  if(category==="DATE_LOADING")headers=["Program Date","Loading Date","Vehicle No.","Party Code","Party Name","Party Type","Freight Amount","Fleet Type","From","To","Trip Status"];
   list=matching.map(({t,market})=>{
    if(!market){const p=party(t.party_id);return [
-    dateOnly(t[dateField]).split("-").reverse().join("-"),truck(t.truck_id)?.truck_number||"","OWN",
+    dateOnly(t[dateField]).split("-").reverse().join("-"),...(category==="DATE_LOADING"?[dateOnly(t.program_date).split("-").reverse().join("-")]:[]),truck(t.truck_id)?.truck_number||"","OWN",
     p?.party_code||"",p?.name||"",p?.party_type||"",t.from_location||t.loading_point||"",t.to_location||t.destination||"",statusOf(t),
     t.freight_amount??t.revenue??""
    ];}
@@ -4442,12 +4445,15 @@ async function exportTracking(){
    const p=party(t.party_id)||(namedParties.length===1?namedParties[0]:null);
    return [
     dateOnly(t[dateField]).split("-").reverse().join("-"),
+    ...(category==="DATE_LOADING"?[dateOnly(t.program_date).split("-").reverse().join("-")]:[]),
     marketVehicleById.get(String(t.vehicle_id))?.truck_number||t.truck_number||"","MTK",
     p?.party_code||t.party_code||"",t.party_name||p?.name||"",p?.party_type||t.party_type||"",
     t.from_location||"",t.to_location||"",clean(t.trip_status).toUpperCase(),
     t.customer_freight??t.freight_amount??""
    ];
   });
+  // Reorder only Loading Date Wise export; preserve all existing values and other exports.
+  if(category==="DATE_LOADING")list=list.map(row=>[row[1],row[0],row[2],row[4],row[5],row[6],row[10],row[3],row[7],row[8],row[9]]);
   sheetName={DATE_PROGRAM:"Program Date",DATE_LOADING:"Loading Date",DATE_REPORTING:"Reporting Date",DATE_UNLOADING:"Unloading Date"}[category];
  }else if(category==="FASTAG"){
   // The very same FASTag rows/geocoded label that power the Tracking screen.
