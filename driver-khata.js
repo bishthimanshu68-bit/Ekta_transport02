@@ -1,296 +1,553 @@
-/* Ekta Transport Driver Khata — standalone; never writes to Trip Accounts. */
-(() => {'use strict';
-const $=id=>document.getElementById(id), money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2}),num=x=>Number(x)||0,fmt=x=>x?String(x).slice(0,10):'—',esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const client=()=>{const c=window.supabaseClient||window.ektaSupabaseClient||window.dbClient;return c&&typeof c.from==='function'?c:null};
-const S={driver:null,drivers:[],trucks:[],assignments:[],trips:[],advances:[],expenses:[],payments:[],settlements:[],opening:null,vehicles:[],paper:true,currentId:null,loaded:false,sourceStatus:{},sourceRows:[],bankAdvances:[],cashAdvances:[],fuelRows:[],sourceReady:false,verifiedFuel:[],fuelReview:[],fuelIncomplete:false,fixedRates:[],fixedReady:false,fixedError:"",fixedConflicts:[]};
-const say=(m,error=false)=>{$('message').textContent=m;$('message').style.color=error?'#b42335':'#1e5f8b'};
-async function get(table,filter){const c=client();if(!c?.from)throw Error('Supabase client not connected. Load db.js and initialize window.supabaseClient.');let q=c.from(table).select('*');if(filter)for(const [k,v] of Object.entries(filter))q=q.eq(k,v);const {data,error}=await q;if(error)throw Error(`${table}: ${error.message}`);return data||[]}
-async function insert(table,row){const c=client();if(!c?.from)throw Error('Supabase not connected');const {data,error}=await c.from(table).insert(row).select().single();if(error)throw Error(`${table}: ${error.message}`);return data}
-async function update(table,id,row){const {error}=await client().from(table).update(row).eq('id',id);if(error)throw Error(`${table}: ${error.message}`)}
-const rangeDate=r=>fmt(r.transaction_date||r.txn_datetime_raw||r.entry_date||r.advance_date||r.expense_date||r.payment_date||r.trip_date||r.loading_date||r.created_at);
-const openingDate=()=>{const m=String(S.opening?.note||'').match(/\[EKTA_OPENING_DATE:(\d{4}-\d{2}-\d{2})\]/);return m?m[1]:''};
-const openingKm=()=>{const m=String(S.opening?.note||'').match(/\[EKTA_OPENING_KM:([^\]]+)\]/);if(!m)return null;try{return JSON.parse(decodeURIComponent(m[1]))}catch{return null}};
-const openingTotals=()=>{const m=String(S.opening?.note||'').match(/\[EKTA_OPENING_TOTALS:([^\]]+)\]/);if(!m)return {fixed:0,advance:0,diesel:0};try{const o=JSON.parse(decodeURIComponent(m[1]));return {fixed:num(o.fixed),advance:num(o.advance),diesel:num(o.diesel)}}catch{return {fixed:0,advance:0,diesel:0}}};
-const effectiveFrom=()=>{const start=$('fromDate').value,cutoff=openingDate();if(!cutoff)return start;const d=new Date(cutoff+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);const next=d.toISOString().slice(0,10);return next>start?next:start};
-const within=r=>{const d=rangeDate(r);return d!=='—'&&d>=effectiveFrom()&&d<=$('toDate').value};
-const tripVehicle=t=>t.truck_id||t.vehicle_id||'';
-const truckName=id=>S.trucks.find(t=>String(t.id)===String(id))?.truck_number||S.trucks.find(t=>String(t.id)===String(id))?.vehicle_number||'—';
-const driverName=d=>d.name||d.driver_name||d.full_name||'Unnamed Driver';
-function filteredTrips(){return S.trips.filter(t=>String(t.driver_id)===String(S.driver?.id)&&within(t)&&(!$('vehicleFilter').value||String(tripVehicle(t))===$('vehicleFilter').value))}
-function filtered(rows){return rows.filter(within)}
-// Fixed Kharcha Master: one undirected route; same-city routes are valid.
-const routeNorm=v=>String(v??'').trim().toUpperCase().replace(/\s+/g,' ');
-const routeKey=(a,b)=>window.EktaLocation?window.EktaLocation.key(a,b):[routeNorm(a),routeNorm(b)].sort().join(' ⇄ ');
-const tripOrigin=t=>t.from_location||t.loading_point||t.from||'';
-const tripDestination=t=>t.to_location||t.destination||t.to||'';
-function fixedInfo(t){
- const a=routeNorm(tripOrigin(t)),b=routeNorm(tripDestination(t));
- const result=window.EktaLocation?.resolve(S.fixedRates,a,b);
- if(result&&result.source!=='MISSING')return {amount:result.amount||0,...result};
- const old=t.fixed_kharcha??t.fixed_expense??t.driver_trip_expense??t.trip_kharcha;
- if(old!==null&&old!==undefined&&old!=='')return {amount:num(old),source:'TRIP',reason:'No master match; existing trip rate used — review'};
- return {amount:0,source:'MISSING',reason:result?.reason||'Route missing in Fixed Kharcha Master'};
+/* Ekta Transport Driver Khata V2 — Card 1 only. Read-only Supabase queries.
+   Opening KM is a browser-only draft, NOT a database entry. No writes or RLS changes. */
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const L={en:{header:'Driver Khata',back:'← Back to Dashboard',title:'Driver Khata',subtitle:'Card 1 — Truck & Driver Record',card:'01 — Truck & Driver Record',desc:'Truck, driver, joining/leaving dates from existing ERP records. Opening KM can be entered for review.',truckFilter:'Truck Number',driverFilter:'Driver Name',refresh:'Refresh',truck:'Truck Number',driver:'Driver Name',driverId:'Driver ID',phone:'Phone Number',joined:'Joined Date',left:'Left Date',opening:'Opening KM',status:'Status',hint:'Opening KM is a temporary browser draft only, not saved to Supabase. Assignment dates are displayed only when available in the existing history.',allTrucks:'All Trucks',allDrivers:'All Drivers',active:'Current',previous:'Previous',unknown:'Not recorded',none:'No assignment records found for these filters.',ready:'Assignment history loaded (read-only).',missing:'Assignment history is unavailable. No dates have been inferred.',db:'Supabase connection unavailable. Check db.js.'},hi:{header:'ड्राइवर खाता',back:'← डैशबोर्ड पर वापस',title:'ड्राइवर खाता',subtitle:'कार्ड 1 — गाड़ी और ड्राइवर रिकॉर्ड',card:'01 — गाड़ी और ड्राइवर रिकॉर्ड',desc:'ERP के रिकॉर्ड से गाड़ी, ड्राइवर और चढ़ने/उतरने की तारीख। Opening KM जाँच के लिए भर सकते हैं।',truckFilter:'गाड़ी नंबर',driverFilter:'ड्राइवर का नाम',refresh:'रिफ्रेश',truck:'गाड़ी नंबर',driver:'ड्राइवर',driverId:'ड्राइवर आईडी',phone:'मोबाइल नंबर',joined:'चढ़ने की तारीख',left:'उतरने की तारीख',opening:'ओपनिंग KM',status:'स्थिति',hint:'Opening KM फिलहाल सिर्फ इस ब्राउज़र का ड्राफ्ट है; Supabase में सेव नहीं होगा। तारीख केवल मौजूदा हिस्ट्री में उपलब्ध होने पर दिखाई जाएगी।',allTrucks:'सभी गाड़ियाँ',allDrivers:'सभी ड्राइवर',active:'वर्तमान',previous:'पुराना',unknown:'रिकॉर्ड नहीं',none:'इस फ़िल्टर के लिए कोई असाइनमेंट रिकॉर्ड नहीं मिला।',ready:'असाइनमेंट हिस्ट्री लोड हो गई (सिर्फ पढ़ने के लिए)।',missing:'असाइनमेंट हिस्ट्री उपलब्ध नहीं है। तारीख अनुमान से नहीं भरी गई।',db:'Supabase कनेक्शन उपलब्ध नहीं है। db.js जाँचें।'}};
+let lang='en',trucks=[],drivers=[],assignments=[],failed=false;
+const photoUrls=new Map(); // Signed URLs from the existing Driver Master document storage.
+
+const dict=()=>L[lang], esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pick=(obj,keys)=>{for(const k of keys)if(obj?.[k]!==undefined&&obj[k]!==null&&obj[k]!=='')return obj[k];return null};
+const truckName=t=>pick(t,['truck_number','vehicle_number','registration_number','number'])||String(t?.id||'—');
+const driverName=d=>pick(d,['name','driver_name','full_name'])||String(d?.id||'—');
+const driverIdentifier=d=>pick(d,['driver_code','driver_id','employee_code','code','id'])||'—';
+const driverPhone=d=>pick(d,['phone','phone_number','mobile','mobile_number','contact_number','contact_no','driver_phone','driver_mobile'])||'—';
+const date=v=>v?String(v).slice(0,10):'—';
+const client=()=>[window.supabaseClient,window.ektaSupabaseClient,window.dbClient].find(c=>c&&typeof c.from==='function');
+function notice(message,error=false){$('notice').textContent=message;$('notice').classList.toggle('error',error)}
+function setLang(next){lang=next;document.documentElement.lang=next;document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=dict()[el.dataset.i18n]);$('langEn').classList.toggle('active',next==='en');$('langHi').classList.toggle('active',next==='hi');fillOptions();render();if(!failed)notice(dict().ready)}
+function fillOptions(){
+ $('truckSuggestions').innerHTML=trucks.map(t=>'<option value="'+esc(truckName(t))+'"></option>').join('');
+ $('driverSuggestions').innerHTML=drivers.map(d=>'<option value="'+esc(driverName(d))+'"></option>').join('');
+ $('truckSelect').placeholder=lang==='hi'?'गाड़ी नंबर टाइप करें…':'Type truck number…';
+ $('driverSelect').placeholder=lang==='hi'?'ड्राइवर नाम / ID टाइप करें…':'Type driver name / ID…';
 }
-function getFixed(t){return fixedInfo(t).amount}
-async function loadFixedRates(){
- S.fixedReady=false;S.fixedError='';S.fixedRates=[];S.fixedConflicts=[];
+const photoOf=d=>{const saved=photoUrls.get(String(d?.id));if(saved)return saved;const v=pick(d,['photo_url','profile_photo_url','driver_photo_url','profile_image_url','avatar_url','image_url','photo','profile_photo','driver_photo']);return typeof v==='string'&&/^https:\/\//i.test(v)?v:null};
+const initials=d=>driverName(d).trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'?';
+function driverCell(d){const p=photoOf(d);const avatar=p?'<img class="driver-avatar" src="'+esc(p)+'" alt="" loading="lazy">':'<span class="driver-avatar" aria-hidden="true">'+esc(initials(d))+'</span>';return '<span class="driver-cell">'+avatar+'<span>'+esc(driverName(d))+'</span></span>'}
+function render(){
+ const truckQ=$('truckSelect').value.trim().toLowerCase(),driverQ=$('driverSelect').value.trim().toLowerCase();
+ const truckMap=new Map(trucks.map(t=>[String(t.id),t])),driverMap=new Map(drivers.map(d=>[String(d.id),d]));
+ const filtered=assignments.filter(a=>{
+   const t=truckMap.get(String(a.truck_id)),d=driverMap.get(String(a.driver_id));
+   return (!truckQ||truckName(t).toLowerCase().includes(truckQ))&&(!driverQ||driverName(d).toLowerCase().includes(driverQ)||String(driverIdentifier(d)).toLowerCase().includes(driverQ));
+ });
+ $('rows').innerHTML=filtered.map(a=>{
+   const d=driverMap.get(String(a.driver_id));
+   const joined=pick(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at']);
+   const left=pick(a,['unassigned_at','end_date','to_date','left_at','released_at']);
+   const status=left?'previous':'active';
+   const key='ekta-dk-v2-km:'+String(a.id??(a.truck_id+'-'+a.driver_id+'-'+joined));
+   let km='';try{km=localStorage.getItem(key)||''}catch{}
+   return '<tr><td>'+esc(truckName(truckMap.get(String(a.truck_id))))+'</td><td>'+driverCell(d)+'</td><td>'+esc(driverIdentifier(d))+'</td><td>'+esc(driverPhone(d))+'</td><td>'+esc(date(joined))+'</td><td>'+esc(date(left))+'</td><td><input type="number" min="0" step="1" class="km" data-key="'+esc(key)+'" value="'+esc(km)+'" placeholder="KM" aria-label="Opening KM"></td><td><span class="tag '+(status==='previous'?'old':'')+'">'+esc(dict()[status])+'</span></td></tr>';
+ }).join('')||'<tr><td class="empty" colspan="8">'+esc(dict().none)+'</td></tr>';
+}
+// Driver Master stores photos in driver_documents, not in drivers.photo_url.
+// Read-only lookup, using the same storage bucket and signed URL flow as drivers.js.
+async function loadDriverPhotos(){
+ const db=client();if(!db)return;
  try{
-  // Read every page; Supabase API can limit responses to 1000 rows.
-  for(let off=0;off<20000;off+=500){
-   const {data,error}=await client().from('fixed_kharcha_rates').select('id,from_location,to_location,amount').range(off,off+499);
-   if(error)throw Error(error.message);
-   S.fixedRates.push(...(data||[]));
+  const docs=[];
+  for(let offset=0;offset<10000;offset+=500){
+   const {data,error}=await db.from('driver_documents')
+     .select('driver_id,document_type,storage_path,created_at')
+     .eq('document_type','photo')
+     .order('created_at',{ascending:false})
+     .range(offset,offset+499);
+   if(error)throw error;
+   docs.push(...(data||[]));
    if((data||[]).length<500)break;
   }
-  const grouped=new Map();
-  for(const r of S.fixedRates){const k=routeKey(r.from_location,r.to_location);if(!grouped.has(k))grouped.set(k,new Set());grouped.get(k).add(num(r.amount))}
-  S.fixedConflicts=[...grouped].filter(([,values])=>values.size>1).map(([k])=>k);
-  S.fixedReady=true;
- }catch(e){S.fixedError=String(e.message||e);say('Fixed Kharcha Master load failed: '+S.fixedError,true)}
-}
-function fixedStatus(){
- const el=$('fixedRateStatus');if(!el)return;
- if(!S.fixedReady){el.textContent='Fixed Kharcha Master unavailable: '+(S.fixedError||'Not loaded');el.style.color='#b42335';return}
- const trips=filteredTrips(),missing=trips.filter(t=>fixedInfo(t).source==='MISSING'),conflicts=trips.filter(t=>fixedInfo(t).source==='CONFLICT'),legacy=trips.filter(t=>fixedInfo(t).source==='TRIP'),ncr=trips.filter(t=>fixedInfo(t).source==='NCR');
- el.textContent=`Master: ${S.fixedRates.length} routes loaded · ${trips.length-missing.length-conflicts.length-legacy.length} matched · ${ncr.length} NCR fallback · ${legacy.length} trip fallback · ${missing.length} missing · ${conflicts.length} conflicting`;
- el.style.color=missing.length||conflicts.length||legacy.length?'#a05b00':'#087c57';
-}
-
-function diesel(){const old=num($('oldKm').value),cur=num($('currentKm').value),avg=num($('average').value),taken=num($('dieselTaken').value),rate=num($('dieselRate').value),extra=num($('extraKm').value);const km=Math.max(0,cur-old),expected=avg>0?Math.max(0,km-extra)/avg:0,difference=expected-taken;return {km,expected,difference,amount:difference*rate,ready:!S.fuelIncomplete&&avg>0&&rate>0&&cur>=old&&$('oldKm').value!==''&&$('currentKm').value!==''&&$('dieselTaken').value!==''}}
-function calc(){const trips=filteredTrips(),advs=filtered([...S.advances,...S.bankAdvances,...S.cashAdvances]),exps=filtered(S.expenses),pays=filtered(S.payments),fixed=trips.reduce((a,t)=>a+getFixed(t),0)+openingTotals().fixed,advance=advs.reduce((a,t)=>a+num(t.amount),0)+openingTotals().advance,expense=exps.reduce((a,t)=>a+num(t.amount),0),d=diesel(),opening=openingDate()?0:num(S.opening?.amount)*(S.opening?.side==='DRIVER_OWES'?-1:1),pay=pays.reduce((a,t)=>a+num(t.amount)*(t.direction==='PAID_TO_DRIVER'?-1:1),0);const credits=fixed+expense+Math.max(0,d.amount)+Math.max(0,opening)+Math.max(0,pay),debits=advance+(S.paper?100:0)+Math.max(0,-d.amount)+Math.max(0,-opening)+Math.max(0,-pay),net=credits-debits;return {trips,advs,exps,pays,fixed,advance,expense,d,opening,pay,credits,debits,net}}
-function rowEmpty(n,msg){return `<tr><td colspan="${n}" class="small">${esc(msg)}</td></tr>`}
-function render(){const x=calc();$('tripCount').textContent=x.trips.length;$('fixedStat').textContent=money(x.fixed);$('advanceStat').textContent=money(x.advance);$('expenseStat').textContent=money(x.expense);$('openingStat').textContent='Fixed '+money(openingTotals().fixed)+' · Advance '+money(openingTotals().advance)+' · Diesel '+openingTotals().diesel.toFixed(2)+' L';if($('openingDateView'))$('openingDateView').textContent=openingDate()?'Opening Date: '+openingDate():'Opening Date: Not set';$('openingSide').textContent=openingDate()?'Old book totals (included in account)':'Not set';$('driverOwes').textContent=money(Math.max(0,-x.net));$('companyOwes').textContent=money(Math.max(0,x.net));$('totalKm').textContent=x.d.km.toLocaleString('en-IN');$('expectedDiesel').textContent=x.d.expected.toFixed(2)+' L';$('dieselDiff').textContent=x.d.difference.toFixed(2)+' L';$('dieselExplanation').textContent=x.d.ready?`${x.d.difference>=0?'Diesel saved (Ekta Transport Company Ke Naam)':'Extra diesel taken (driver ke naam)'}: ${money(Math.abs(x.d.amount))}`:'KM, average, diesel taken and rate भरकर Diesel calculation verify करें।';
-fixedStatus();$('tripRows').innerHTML=(openingDate()?`<tr><td>${esc(openingDate())}</td><td>Old Book</td><td>Opening Fixed Kharcha</td><td class="num">${money(openingTotals().fixed)}</td></tr>`:'')+x.trips.map(t=>`<tr><td>${esc(rangeDate(t))}</td><td>${esc(truckName(tripVehicle(t)))}</td><td>${esc(t.from_location||t.loading_point||t.from||'—')} → ${esc(t.to_location||t.destination||t.to||'—')}</td><td class="num">${money(getFixed(t))}${['MASTER','NCR'].includes(fixedInfo(t).source)&&fixedInfo(t).reason==='Exact route'?'':` <span title="${esc(fixedInfo(t).reason||'')}" style="color:#a05b00">⚠ ${esc(fixedInfo(t).source)}</span>`}</td></tr>`).join('')||rowEmpty(4,'No trips in selected period');
-$('advanceRows').innerHTML=(openingDate()?`<tr><td>${esc(openingDate())}</td><td>Opening Advance · Old Book</td><td>Opening Hissab</td><td class="num">${money(openingTotals().advance)}</td></tr>`:'')+x.advs.map(t=>`<tr><td>${esc(rangeDate(t))}</td><td>${esc(t.source||t.payment_mode||t.mode||'Advance')}</td><td>${esc(t.reference||t.utr||t.transaction_ref||'—')}</td><td class="num">${money(t.amount)}</td></tr>`).join('')||rowEmpty(4,'No linked advances');
-$('expenseRows').innerHTML=x.exps.map(t=>`<tr><td>${esc(rangeDate(t))}</td><td>${esc(truckName(t.truck_id))}</td><td>${esc(t.expense_type)}</td><td class="num">${money(t.amount)}</td></tr>`).join('')||rowEmpty(4,'No expenses');
-$('paymentRows').innerHTML=x.pays.map(t=>`<tr><td>${esc(rangeDate(t))}</td><td>${t.direction==='PAID_TO_DRIVER'?'Paid to Driver':'Recovered from Driver'}</td><td>${esc(t.mode)}</td><td>${esc(t.reference)}</td><td class="num">${money(t.amount)}</td></tr>`).join('')||rowEmpty(5,'No payments / recoveries');
-const items=(arr)=>arr.filter(t=>t[1]>0).map(t=>`<tr><td>${esc(t[0])}</td><td class="num">${money(t[1])}</td></tr>`).join('');$('debitRows').innerHTML=items([['Driver Advance',x.advance],['Extra Diesel',Math.max(0,-x.d.amount)],['Paper Charge',S.paper?100:0],['Opening: Driver ke naam',Math.max(0,-x.opening)],['Paid to Driver',Math.max(0,-x.pay)]])+`<tr><td><b>Total driver ke naam</b></td><td class="num"><b>${money(x.debits)}</b></td></tr>`;$('creditRows').innerHTML=items([['Fixed Trip Kharcha',x.fixed],['Driver Running Expenses',x.expense],['Diesel Saved',Math.max(0,x.d.amount)],['Opening: Ekta Transport Company Ke Naam',Math.max(0,x.opening)],['Recovery Received',Math.max(0,x.pay)]])+`<tr><td><b>Total Ekta Transport Company Ke Naam</b></td><td class="num"><b>${money(x.credits)}</b></td></tr>`;}
-function setDates(){const d=new Date(),end=d.toISOString().slice(0,10),start=new Date(d);start.setMonth(start.getMonth()-3);$('fromDate').value=start.toISOString().slice(0,10);$('toDate').value=end}
-// Show vehicles from historical assignments AND trip records, not just current trips.
-function driverVehicleIds(driverId){
- const ids=new Set();
- S.trips.forEach(t=>{if(String(t.driver_id)===String(driverId)&&tripVehicle(t))ids.add(String(tripVehicle(t)))});
- S.assignments.forEach(a=>{if(String(a.driver_id)===String(driverId)&&a.truck_id)ids.add(String(a.truck_id))});
- return [...ids];
-}
-function driverVehicleLabels(driverId){return driverVehicleIds(driverId).map(id=>truckName(id)).filter(v=>v&&v!=='—')}
-const searchNorm=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-function chooseSearchDriver(id){
- const d=S.drivers.find(x=>String(x.id)===String(id));if(!d)return;
- $('driverSelect').value=String(d.id);
- $('driverNameSearch').value=driverName(d);
- $('search').value='';
- $('vehicleMatches').hidden=true;$('nameMatches').hidden=true;
- say(`${driverName(d)} selected. Click Load Khata to view records.`);
-}
-function showLiveMatches(container,matching,kind){
- const box=$(container);box.hidden=false;
- if(!matching.length){box.innerHTML='<div class="live-empty">No matching driver / vehicle</div>';return}
- box.innerHTML=matching.slice(0,35).map(d=>{
-  const vehicles=driverVehicleLabels(d.id);
-  return `<button type="button" class="live-result" data-driver-id="${esc(d.id)}">${esc(kind==='vehicle'?(vehicles.join(', ')||'Vehicle not linked'):driverName(d))}<small>${esc(kind==='vehicle'?driverName(d):(vehicles.join(', ')||'Vehicle not linked'))}</small></button>`;
- }).join('')+(matching.length>35?`<div class="live-empty">Showing first 35 of ${matching.length}; type more to narrow results</div>`:'');
-}
-function filterDrivers(){
- const vehicleTerm=searchNorm($('search').value),nameTerm=searchNorm($('driverNameSearch').value),select=$('driverSelect');
- const previous=select.value;
- const vehicleMatches=vehicleTerm?S.drivers.filter(d=>driverVehicleLabels(d.id).some(v=>searchNorm(v).includes(vehicleTerm))):[];
- const nameMatches=nameTerm?S.drivers.filter(d=>searchNorm(driverName(d)).includes(nameTerm)):[];
- const matching=vehicleTerm?vehicleMatches:nameTerm?nameMatches:S.drivers;
- select.innerHTML='<option value="">'+(matching.length?'Select driver':'No matching driver')+'</option>'+matching.map(d=>{
- const vehicles=driverVehicleLabels(d.id);
- return `<option value="${esc(d.id)}">${esc(driverName(d))}${vehicles.length?' — '+esc(vehicles.join(', ')):' — Vehicle not linked'}</option>`;
- }).join('');
- if(matching.some(d=>String(d.id)===String(previous)))select.value=previous;
- else if(matching.length===1&&(vehicleTerm||nameTerm))select.value=String(matching[0].id);
- $('vehicleMatches').hidden=!vehicleTerm;
- $('nameMatches').hidden=!nameTerm;
- if(vehicleTerm)showLiveMatches('vehicleMatches',vehicleMatches,'vehicle');
- if(nameTerm)showLiveMatches('nameMatches',nameMatches,'name');
-}
-
-async function init(){setDates();if(!client()?.from){$('setupNotice').className='note error';$('setupNotice').textContent='Database client unavailable. Confirm that the existing db.js is in this folder and exposes window.supabaseClient.';say('DB not connected: keep your existing db.js beside driver-khata.html. It must initialize window.supabaseClient. No database changes were made.',true);return}try{[S.drivers,S.trucks,S.trips]=await Promise.all([get('drivers'),get('trucks'),get('trips')]);await loadFixedRates();try{S.assignments=await get('truck_driver_assignments')}catch(e){S.assignments=[];say('Assignment history unavailable: '+e.message,true)}filterDrivers();$('setupNotice').hidden=true;say('Drivers and trips loaded. Select a driver.')}catch(e){$('setupNotice').className='note error';$('setupNotice').textContent='Database read failed: '+e.message;say(e.message,true)}}
-async function carryForwardVehicleKm(){
- const vehicleId=$('vehicleFilter').value;
- $('oldKm').value='';
- if(!vehicleId)return;
- const c=client();
- const before=$('fromDate').value;
- // Look up the vehicle, not the current driver. Only a previously FINAL settlement
- // with an earlier period can become the next opening reading.
- const {data,error}=await c.from('driver_khata_settlements')
-  .select('id,to_date,snapshot').eq('vehicle_id',vehicleId).eq('status','FINAL')
-  .lt('to_date',before).order('to_date',{ascending:false}).limit(50);
- if(error){say('Previous vehicle KM lookup failed: '+error.message,true);return}
- const prior=(data||[]).find(r=>Number.isFinite(Number(r.snapshot?.diesel?.current_km))&&r.snapshot?.diesel?.current_km!==null&&r.snapshot?.diesel?.current_km!==undefined);
- if(prior){$('oldKm').value=String(prior.snapshot.diesel.current_km);render();return}
- const km=openingKm();
- if(km&&String(km.vehicle_id)===String(vehicleId))$('oldKm').value=String(km.reading);
- render();
-}
-function vehicleOptions(){
- const ids=driverVehicleIds(S.driver?.id);
- $('vehicleFilter').innerHTML='<option value="">All vehicles</option>'+ids.map(id=>`<option value="${esc(id)}">${esc(truckName(id))}</option>`).join('');
-}
-
-async function load(){const id=$('driverSelect').value;if(!id){say('Select driver first.',true);return}S.driver=S.drivers.find(d=>String(d.id)===id);S.loaded=false;await loadFixedRates();$('autoSourceStatus').textContent='Loading Bank, HPCL, Pump and Cash Diesel…';$('autoSourceRows').innerHTML=rowEmpty(6,'Loading source entries…');say('Loading '+driverName(S.driver)+' account and diesel entries…');try{const [a,e,p,o,h]=await Promise.all([get('driver_advances',{driver_id:id}),get('driver_khata_expenses',{driver_id:id}),get('driver_khata_payments',{driver_id:id}),get('driver_khata_openings',{driver_id:id}),get('driver_khata_settlements',{driver_id:id})]);S.advances=a.filter(t=>!['CANCELLED','REJECTED'].includes(String(t.status||'').toUpperCase()));S.expenses=e;S.payments=p;S.opening=o.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0]||null;S.settlements=h;vehicleOptions();S.loaded=true;await carryForwardVehicleKm();await loadAutoSources(id);render();say(`${driverName(S.driver)} loaded. Bank matched by Driver ID; fuel needs verification before settlement.`)}catch(e){$('autoSourceStatus').textContent='Load failed: '+e.message;$('autoSourceRows').innerHTML=rowEmpty(6,'Unable to load account. See error above.');say('Driver Khata could not load: '+e.message,true)}}
-
-const normalVehicle=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-async function sourceRead(table){const db=client();let all=[];for(let off=0;off<10000;off+=500){const {data,error}=await db.from(table).select('*').range(off,off+499);if(error)throw Error(error.message);all.push(...(data||[]));if((data||[]).length<500)break;}return all;}
-function sourceDate(r){
- const raw=String(r.transaction_date||r.entry_date||r.txn_datetime_raw||r.created_at||'').trim();
- if(!raw)return '—';
- const iso=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
- if(iso)return `${iso[1]}-${iso[2].padStart(2,'0')}-${iso[3].padStart(2,'0')}`;
- const dmy=raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
- if(dmy)return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
- return '—';
-}
-function sourceVehicle(r){return normalVehicle(r.actual_vehicle||r.vehicle||r.vehicle_number||r.original_vehicle||'')}
-function hpclVehicle(r){
- const actual=normalVehicle(r.actual_vehicle),original=normalVehicle(r.original_vehicle);
- const isTruck=v=>v&&v!=='PAID'&&v!=='PENDING'&&v!=='UNKNOWN'&&v!=='NA';
- return isTruck(actual)?actual:isTruck(original)?original:'';
-}
-
-// Verify the driver operating this vehicle on the transaction date, not the current driver.
-function fuelDriverMatch(driverId,vehicle,date){
- const truck=S.trucks.find(t=>normalVehicle(t.truck_number||t.vehicle_number)===vehicle);
- if(!truck||!S.assignments.length)return false;
- const active=S.assignments.filter(a=>String(a.truck_id)===String(truck.id)&&
-   String(a.assigned_from||a.created_at||'').slice(0,10)<=date&&
-   (!a.assigned_until||String(a.assigned_until).slice(0,10)>=date));
- const drivers=[...new Set(active.map(a=>String(a.driver_id)))];
- return drivers.length===1&&drivers[0]===String(driverId);
-}
-function updateDieselTaken(){
- const selected=$('vehicleFilter').value;
- const vehicle=selected?normalVehicle(truckName(selected)):'';
- const start=effectiveFrom(),end=$('toDate').value;
- const entries=S.verifiedFuel.filter(x=>x.date>=start&&x.date<=end&&(!vehicle||x.vehicle===vehicle));
- // Opening diesel belongs to the old book, never charge it again.
-  const total=entries.reduce((sum,x)=>sum+x.litres,0);
- $('dieselTaken').value=total.toFixed(2);
- $('dieselTaken').readOnly=true;
- $('dieselTaken').title='Automatically calculated from verified HPCL / fuel issue records; review entries are excluded';
- const totalBox=$('dieselAutoSummary');
- if(totalBox)totalBox.textContent=`New-period Diesel Taken: ${total.toFixed(2)} L (${entries.length} entries) · Old Book: ${openingTotals().diesel.toFixed(2)} L (excluded) · ${S.fuelReview.length} records require review${S.fuelIncomplete?' · Final settlement blocked':''}`;
-}
-
-function renderSources(){
- const adv=$('autoAdvanceRows'),fuel=$('autoDieselRows');
- const advances=S.sourceRows.filter(r=>r.date>=effectiveFrom()&&/Advance/i.test(r.source));
- const diesel=S.sourceRows.filter(r=>r.date>=effectiveFrom()&&!/Advance/i.test(r.source));
- const tr=r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.source)}</td><td>${esc(r.vehicle||'—')}</td><td>${esc(r.description)}</td><td class="num">${esc(r.value)}</td><td>${esc(r.status)}</td></tr>`;
- if(adv)adv.innerHTML=advances.map(tr).join('')||rowEmpty(6,'No linked advances');
- if(fuel)fuel.innerHTML=(openingDate()?`<tr><td>${esc(openingDate())}</td><td>Opening Diesel · Old Book</td><td>—</td><td>Opening Hissab</td><td class="num">${openingTotals().diesel.toFixed(2)} L</td><td>Old Book · Excluded from new settlement</td></tr>`:'')+(diesel.map(tr).join('')||(!openingDate()?rowEmpty(6,'No diesel transactions'):''));
- const old=$('autoSourceRows');if(old)old.innerHTML=S.sourceRows.map(tr).join('')||rowEmpty(6,'No source records');
- const st=$('autoSourceStatus');if(st)st.textContent=Object.entries(S.sourceStatus).map(([k,v])=>`${k}: ${v}`).join(' | ');
- const totalAdv=filtered([...S.advances,...S.bankAdvances,...S.cashAdvances]).reduce((s,r)=>s+num(r.amount),0)+openingTotals().advance;
- if($('sourceAdvanceTotal'))$('sourceAdvanceTotal').textContent=money(totalAdv);
- const fuelTotal=S.verifiedFuel.filter(x=>x.date>=effectiveFrom()&&x.date<=$('toDate').value).reduce((s,r)=>s+r.litres,0);
- if($('sourceDieselTotal'))$('sourceDieselTotal').textContent=fuelTotal.toFixed(2)+' L (new period)';
-}
-async function loadAutoSources(id){
- S.sourceRows=[];S.bankAdvances=[];S.cashAdvances=[];S.fuelRows=[];S.verifiedFuel=[];S.fuelReview=[];S.fuelIncomplete=false;S.sourceStatus={};S.sourceReady=false;
- const jobs=[['Bank', 'account_transactions'],['HPCL','hpcl_fuel_transactions'],['Pump','ekta_pump_ledger'],['Cash Diesel','diesel_cash_entries'],['Cash Advance','cash_ledger_entries']];
- const results=await Promise.allSettled(jobs.map(x=>sourceRead(x[1])));
- const start=effectiveFrom(),end=$('toDate').value,validDate=d=>d!=='—'&&d>=start&&d<=end;
- results.forEach((result,i)=>{
-  const [name]=jobs[i];if(result.status==='rejected'){S.sourceStatus[name]='Read failed: '+result.reason.message;return}
-  const rows=result.value;S.sourceStatus[name]='Read '+rows.length+' rows';
-  if(name==='Bank'){
-   // Bank diesel is a fuel issue, not a driver cash advance. Attribute only to
-   // the unique driver assigned to the saved truck on the transaction date.
-   // Read existing account_transactions; NEVER insert a second fuel transaction.
-   const assignedVehicles=new Set(driverVehicleIds(id).map(vehicleId=>normalVehicle(truckName(vehicleId))));
-   for(const r of rows){
-    const date=sourceDate(r);
-    if(!validDate(date)||String(r.posting_status||'').toUpperCase()!=='CONFIRMED'||String(r.category||'').toUpperCase()!=='DIESEL')continue;
-    const truck=S.trucks.find(t=>String(t.id)===String(r.truck_id));
-    const vehicle=normalVehicle(truck?.truck_number||truck?.vehicle_number);
-    if(!vehicle||!assignedVehicles.has(vehicle))continue;
-    const litres=num(r.quantity_litres);
-    const key='Bank:'+String(r.id);
-    if(S.fuelRows.some(x=>x.key===key))continue;
-    const attributable=litres>0&&fuelDriverMatch(id,vehicle,date);
-    const entry={source:'Bank Diesel',record:r,date,vehicle,litres,key,verified:attributable};
-    S.fuelRows.push(entry);
-    if(attributable)S.verifiedFuel.push(entry);else S.fuelReview.push(entry);
-    S.sourceRows.push({date,source:'Bank Diesel',vehicle,description:r.reference_number||r.bank_narration||'',value:litres>0?litres.toFixed(2)+' L':money(r.debit),status:attributable?'Verified · Included in Diesel Taken':'Review driver assignment / litres · Not counted'});
-   }
-   for(const r of rows){const date=sourceDate(r);if(!validDate(date)||String(r.posting_status).toUpperCase()!=='CONFIRMED'||String(r.category).toUpperCase()!=='DRIVER_ADVANCE')continue;
-    if(String(r.driver_id)!==String(id))continue; // strict identity; never use currently assigned driver
-    const amount=num(r.debit);if(amount<=0)continue;
-    const duplicate=S.advances.some(a=>String(a.source_transaction_id||a.account_transaction_id||'')===String(r.id));
-    if(!duplicate){S.bankAdvances.push({id:r.id,driver_id:id,amount,advance_date:date,source:'Bank Statement',reference:r.reference_number||r.bank_narration||'',source_table:'account_transactions'});}
-    S.sourceRows.push({date,source:'Bank Advance',vehicle:truckName(r.truck_id),description:r.reference_number||r.bank_narration||'',value:money(amount),status:duplicate?'Already linked (not added)':'Matched by Driver ID'});
-   }
-  } else if(name==='Cash Advance'){
-   for(const r of rows){
-    const date=sourceDate(r);
-    if(!validDate(date)||String(r.entry_kind).toUpperCase()!=='CASH_OUT'||String(r.category||'').trim().toLowerCase()!=='driver advance')continue;
-    // Never attribute a cash payment using today's truck assignment or a free-text name.
-    if(String(r.driver_id||'')!==String(id))continue;
-    const amount=num(r.amount);if(amount<=0)continue;
-    const duplicate=[...S.advances,...S.bankAdvances].some(a=>String(a.source_transaction_id||a.cash_entry_id||a.source_id||'')===String(r.id));
-    if(!duplicate)S.cashAdvances.push({id:r.id,driver_id:id,amount,advance_date:date,source:'Cash Book',reference:r.reference_no||r.remarks||'',source_table:'cash_ledger_entries'});
-    S.sourceRows.push({date,source:'Cash Advance',vehicle:r.truck_number||'—',description:r.reference_no||r.paid_to||r.remarks||'',value:money(amount),status:duplicate?'Already linked (not added)':'Matched by Driver ID'});
-   }
-  } else {
-   const assignedVehicles=new Set(driverVehicleIds(id).map(vehicleId=>normalVehicle(truckName(vehicleId))));
-   for(const r of rows){const date=sourceDate(r);if(!validDate(date))continue;
-    const vehicle=name==='HPCL'?hpclVehicle(r):sourceVehicle(r);if(!vehicle||!assignedVehicles.has(vehicle))continue;
-    const status=name==='HPCL'?String(r.review_status||''):'Review driver/date';
-    if(name==='HPCL'&&String(r.review_status).toUpperCase()!=='APPROVED')continue;
-    const litres=num(r.litres??r.quantity_litres);
-    // Only actual fuel issues with a positive litre value can be counted.
-    // Pump ledger includes credits, payments and non-fuel records: never count those as diesel.
-    const fuelKind=String(r.entry_type||r.transaction_type||r.kind||r.category||'').toUpperCase();
-    const pumpIssue=name!=='Pump'||(/DIESEL|FUEL|ISSUE|SALE|PURCHASE/.test(fuelKind)&&!/PAYMENT|CREDIT|BANK|TDS|ADVANCE/.test(fuelKind));
-    const uniqueKey=name+':'+String(r.id||r.txn_id||r.reference_number||JSON.stringify(r));
-    if(S.fuelRows.some(x=>x.key===uniqueKey))continue;
-    const attributable=pumpIssue&&litres>0&&fuelDriverMatch(id,vehicle,date);
-    const entry={source:name,record:r,date,vehicle,litres,key:uniqueKey,verified:attributable};
-    S.fuelRows.push(entry);
-    if(attributable)S.verifiedFuel.push(entry);else S.fuelReview.push(entry);
-    S.sourceRows.push({date,source:name,vehicle,description:[r.txn_id||r.reference||r.reference_number||'',r.pump_name||r.kind||''].filter(Boolean).join(' · '),value:litres?litres.toFixed(2)+' L':money(r.amount),status:attributable?'Verified · Included in Diesel Taken':'Review only · Not counted'});
-   }
+  const latest=new Map();
+  for(const d of docs){const id=String(d.driver_id??'');if(id&&!latest.has(id)&&d.storage_path)latest.set(id,d.storage_path)}
+  const entries=[...latest.entries()].filter(([id])=>drivers.some(d=>String(d.id)===id));
+  // Small concurrent batches prevent flooding Storage with signed-URL requests.
+  for(let i=0;i<entries.length;i+=8){
+   await Promise.all(entries.slice(i,i+8).map(async([id,path])=>{
+    try{
+     const {data,error}=await db.storage.from('driver-documents').createSignedUrl(path,3600);
+     if(!error&&data?.signedUrl)photoUrls.set(id,data.signedUrl);
+    }catch(e){console.warn('[Driver Khata] Photo URL unavailable:',id,e)}
+   }));
   }
- });
- S.sourceReady=results.every(r=>r.status==='fulfilled');
- // An unread source or ambiguous fuel attribution must not silently produce a final diesel figure.
- S.fuelIncomplete=!S.sourceReady||S.fuelReview.some(x=>x.litres>0);
- updateDieselTaken();
- renderSources();
- if(S.bankAdvances.length)say(`Verified Bank Advances: ${S.bankAdvances.length}. Fuel rows are review-only until historical trip mapping is confirmed.`);
- if(!S.sourceReady)say('Some source tables could not be read. Review Auto Source status; Final save is blocked.',true);
+  render();
+ }catch(e){console.warn('[Driver Khata] Driver photos could not be loaded:',e)}
 }
-function openModal(title,fields,save){
- $('modalTitle').textContent=title;
- $('modalFields').innerHTML=fields+'<div id="modalError" role="alert" style="display:none;color:#a32335;background:#fff1f2;border:1px solid #fecdd3;padding:9px;border-radius:6px;margin:8px 0;white-space:pre-wrap"></div>';
- $('modal').classList.add('show');
- const button=$('modalSave');button.disabled=false;button.textContent='Save';
- let busy=false;
- const submit=async()=>{
-  if(busy)return;
-  const err=$('modalError');err.style.display='none';err.textContent='';
-  busy=true;button.disabled=true;button.textContent='Saving…';
-  try{await save();$('modal').classList.remove('show');await load();}
-  catch(e){const message=String(e?.message||e);err.textContent=message+( /row.level security|permission denied|42501/i.test(message)?'\nSupabase permission (RLS) is blocking this save. An authorized database policy is required; do not disable RLS.':'');err.style.display='block';say('Save failed: '+message,true)}
-  finally{busy=false;button.disabled=false;button.textContent='Save'}
- };
- button.onclick=submit;
- $('modalFields').onkeydown=e=>{if(e.key==='Enter'&&e.target.tagName!=='TEXTAREA'&&e.target.tagName!=='SELECT'&&!e.isComposing){e.preventDefault();submit()}};
-}
+async function readAll(table){const out=[];for(let i=0;i<20000;i+=500){const {data,error}=await client().from(table).select('*').range(i,i+499);if(error)throw Error(table+': '+error.message);out.push(...(data||[]));if((data||[]).length<500)break}return out}
+async function load(){if(!client()){failed=true;notice(dict().db,true);return}notice('Loading…');try{const results=await Promise.allSettled(['trucks','drivers','truck_driver_assignments'].map(readAll));if(results[0].status==='rejected'||results[1].status==='rejected')throw Error([results[0],results[1]].filter(r=>r.status==='rejected').map(r=>r.reason.message).join('; '));trucks=results[0].value.sort((a,b)=>truckName(a).localeCompare(truckName(b)));drivers=results[1].value.sort((a,b)=>driverName(a).localeCompare(driverName(b)));failed=results[2].status==='rejected';assignments=failed?[]:results[2].value;fillOptions();render();void loadDriverPhotos();notice(failed?dict().missing+' '+results[2].reason.message:dict().ready,failed)}catch(e){failed=true;notice(e.message,true)}}
+$('langEn').onclick=()=>setLang('en');$('langHi').onclick=()=>setLang('hi');$('refreshBtn').onclick=load;$('truckSelect').oninput=render;$('driverSelect').oninput=render;$('rows').addEventListener('input',e=>{if(!e.target.classList.contains('km'))return;try{localStorage.setItem(e.target.dataset.key,e.target.value)}catch{}});load();
 
-const f=(id,label,type='text',extra='')=>`<div class="field"><label>${label}</label><input id="m_${id}" type="${type}" ${extra}></div>`;
-function requireDriver(){if(!S.loaded){say('Load driver first.',true);return false}return true}
-$('openingBtn').onclick=()=>{if(!requireDriver())return;const o=openingTotals();openModal('Opening Hissab — Old Book',`<p class="small">Old book totals through the opening date. Online entries start the next day. Old diesel is shown as history only and excluded from the new diesel calculation. Start new KM readings from the cutoff.</p><div class="field"><label>Opening Date</label><input type="date" id="m_openDate" required value="${openingDate()||new Date().toISOString().slice(0,10)}"></div>${f('fixed','Total Fixed Kharcha ₹','number',`min="0" step="0.01" value="${o.fixed}" required`)}${f('advance','Total Advance ₹','number',`min="0" step="0.01" value="${o.advance}" required`)}${f('diesel','Total Diesel Taken (Litres)','number',`min="0" step="0.01" value="${o.diesel}" required`)}<div class="field"><label>Vehicle at Opening KM</label><select id="m_openVehicle"><option value="">Select vehicle</option>${$('vehicleFilter').innerHTML.replace('All vehicles','Select vehicle')}</select></div>${f('openKm','Closing Odometer KM at Opening','number',`min="0" step="1" value="${openingKm()?.reading??''}"`)}${f('note','Old book reference / remarks')}`,async()=>{const date=$('m_openDate').value;if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Select valid Opening Date');const vals={fixed:num($('m_fixed').value),advance:num($('m_advance').value),diesel:num($('m_diesel').value)};if(Object.entries(vals).some(([k,v])=>!Number.isFinite(v)||v<0||$('m_'+k).value===''))throw Error('Enter valid non-negative opening totals');const readingRaw=$('m_openKm').value.trim();const vehicleId=$('m_openVehicle').value;if(readingRaw===''||!Number.isFinite(Number(readingRaw))||Number(readingRaw)<0)throw Error('Enter the vehicle KM reading at opening');if(!vehicleId)throw Error('Select vehicle for the opening KM reading');if(!confirm('Old book totals through '+date+' will be included once. Online transactions after this date will be added. Continue?'))return;const km={vehicle_id:vehicleId,reading:Number(readingRaw)};const note='[EKTA_OPENING_DATE:'+date+'][EKTA_OPENING_TOTALS:'+encodeURIComponent(JSON.stringify(vals))+'][EKTA_OPENING_KM:'+encodeURIComponent(JSON.stringify(km))+'] '+$('m_note').value;await insert('driver_khata_openings',{driver_id:S.driver.id,amount:0,side:'COMPANY_OWES',note})})};
-$('addExpenseBtn').onclick=()=>{if(!requireDriver())return;openModal('Add Running Expense',`${f('date','Expense date','date',`value="${$('toDate').value}"`)}<div class="field"><label>Vehicle</label><select id="m_truck"><option value="">No vehicle selected</option>${$('vehicleFilter').innerHTML.replace('All vehicles','Select vehicle')}</select></div><div class="field"><label>Expense type</label><select id="m_type">${['Puncture','RTO / Police','Toll','Parking','Work','Food','Others'].map(v=>`<option>${v}</option>`).join('')}</select></div>${f('amount','Amount ₹','number','min="0.01" step="0.01"')}${f('note','Remarks / Bill reference')}`,async()=>{if(!$('m_date').value)throw Error('Select Expense date');if(num($('m_amount').value)<=0)throw Error('Enter valid amount');await insert('driver_khata_expenses',{driver_id:S.driver.id,truck_id:$('m_truck').value||null,expense_date:$('m_date').value,expense_type:$('m_type').value,amount:num($('m_amount').value),note:$('m_note').value})})};
-$('addAdvanceBtn').onclick=()=>{if(!requireDriver())return;openModal('Manual Driver Advance',`${f('date','Advance date','date',`value="${$('toDate').value}"`)}<div class="field"><label>Source</label><select id="m_source"><option>Office Cash</option><option>Pump Cash</option><option>Other</option></select></div>${f('amount','Amount ₹','number','min="0.01" step="0.01"')}${f('reference','Reference / Remark')}`,async()=>{if(num($('m_amount').value)<=0)throw Error('Enter valid amount');await insert('driver_advances',{driver_id:S.driver.id,advance_date:$('m_date').value,amount:num($('m_amount').value),source:$('m_source').value,reference:$('m_reference').value})})};
-$('paymentBtn').onclick=()=>{if(!requireDriver())return;openModal('Payment / Recovery',`${f('date','Payment date','date',`value="${$('toDate').value}"`)}<div class="field"><label>Direction</label><select id="m_direction"><option value="PAID_TO_DRIVER">Paid to driver</option><option value="RECOVERED_FROM_DRIVER">Recovered from driver</option></select></div><div class="field"><label>Mode</label><select id="m_mode"><option>Cash</option><option>Bank</option><option>Pump</option><option>Other</option></select></div>${f('amount','Amount ₹','number','min="0.01" step="0.01"')}${f('reference','UTR / Voucher / Remark')}`,async()=>{if(num($('m_amount').value)<=0)throw Error('Enter valid amount');await insert('driver_khata_payments',{driver_id:S.driver.id,payment_date:$('m_date').value,direction:$('m_direction').value,mode:$('m_mode').value,amount:num($('m_amount').value),reference:$('m_reference').value})})};
-$('historyBtn').onclick=()=>{if(!requireDriver())return;openModal('Saved Settlement History',`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Status</th><th>Final balance</th></tr></thead><tbody>${S.settlements.map(s=>`<tr><td>${esc(fmt(s.created_at))}</td><td>${esc(s.status)}</td><td>${money(Math.abs(num(s.net_balance)))} ${num(s.net_balance)<0?'Driver ke naam':'Ekta Transport Company Ke Naam'}</td></tr>`).join('')||rowEmpty(3,'No saved settlements')}</tbody></table></div>`,async()=>{})};
-$('saveBtn').onclick=async()=>{if(!requireDriver())return;const x=calc();if(!S.sourceReady){say('Source reads incomplete. Settlement save blocked.',true);return}if(S.fuelIncomplete){say('Fuel source read or driver attribution is incomplete. Final settlement blocked until review.',true);return}if(!S.fixedReady){say('Fixed Kharcha Master unavailable. Settlement save blocked.',true);return}if(x.trips.some(t=>fixedInfo(t).source==='MISSING'||fixedInfo(t).source==='CONFLICT'||fixedInfo(t).source==='TRIP'||getFixed(t)<=0)){say('Missing/conflicting Fixed Kharcha for one or more trips. Settlement save blocked.',true);return}if(!x.d.ready){say('Verify KM, average, diesel taken and diesel rate before saving.',true);return}if($('settlementStatus').value==='FINAL'&&!$('vehicleFilter').value){say('Select one vehicle before FINAL settlement so its KM can carry forward safely.',true);return}if(!confirm('Save a new settlement snapshot for this driver?'))return;try{await insert('driver_khata_settlements',{driver_id:S.driver.id,from_date:$('fromDate').value,to_date:$('toDate').value,vehicle_id:$('vehicleFilter').value||null,status:$('settlementStatus').value,remarks:$('remarks').value,net_balance:x.net,snapshot:{trips:x.trips.map(t=>({...t,settlement_fixed_kharcha:getFixed(t),settlement_fixed_source:fixedInfo(t).source})),advances:x.advs,expenses:x.exps,payments:x.pays,opening:S.opening,totals:{fixed:x.fixed,advance:x.advance,expense:x.expense,debit:x.debits,credit:x.credits,net:x.net},diesel:{old_km:num($('oldKm').value),current_km:num($('currentKm').value),average:num($('average').value),taken:num($('dieselTaken').value),rate:num($('dieselRate').value),extra_km:num($('extraKm').value),...x.d},paper_charge:S.paper?100:0}});say('Settlement snapshot saved in Supabase.');await load()}catch(e){say(e.message,true)}};
-$('paperBtn').onclick=()=>{S.paper=!S.paper;$('paperBtn').textContent='Paper Charge ₹100: '+(S.paper?'On':'Off');render()};$('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};$('printBtn').onclick=()=>window.print();$('pdfBtn').onclick=()=>{window.print()};$('search').oninput=()=>{ $('driverNameSearch').value='';filterDrivers()};$('driverNameSearch').oninput=()=>{ $('search').value='';filterDrivers()};['vehicleMatches','nameMatches'].forEach(id=>$(id).addEventListener('click',e=>{const b=e.target.closest('[data-driver-id]');if(b){chooseSearchDriver(b.dataset.driverId);load()}}));$('driverSelect').onchange=()=>{const d=S.drivers.find(x=>String(x.id)===String($('driverSelect').value));if(d){$('driverNameSearch').value=driverName(d);$('nameMatches').hidden=true;$('vehicleMatches').hidden=true;load()}};$('loadBtn').onclick=load;$('vehicleFilter').onchange=async()=>{await carryForwardVehicleKm();updateDieselTaken();render()};$('fromDate').onchange=()=>{if(S.loaded)load();else render()};$('toDate').onchange=()=>{if(S.loaded)load();else render()};['oldKm','currentKm','average','dieselTaken','dieselRate','extraKm'].forEach(id=>$(id).addEventListener('input',render));init();
+// Opening KM bulk import: spreadsheet is parsed locally; only confirmed matches enter localStorage drafts.
+let kmImportMatches=[];
+const kmNorm=v=>String(v??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+const kmHeader=v=>String(v??'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+const kmField=(row,keys)=>{for(const k of keys){if(row[k]!==undefined&&row[k]!==null&&String(row[k]).trim()!=='')return row[k]}return ''};
+const kmHeaders={truck:['trucknumber','truckno','vehiclenumber','vehicleno','registrationnumber','gadinumber','truck'],driver:['driverid','drivercode','drivername','driver'],km:['openingkm','openingreading','openingkilometer','openingkilometre','startkm','initialkm','kmreading']};
+function kmImportText(key){const hi=lang==='hi';return ({importTitle:hi?'Excel से Opening KM भरें':'Import Excel — Opening KM',importHelp:hi?'Excel/CSV में Truck Number और Opening KM रखें। वर्तमान ड्राइवर अपने आप चुना जाएगा। Supabase में सेव नहीं होगा।':'Excel/CSV: Vehicle Number / Truck Number and KM Reading / Opening KM. Header row is detected automatically. Preview before applying; no Supabase writes.',importRead:hi?'Excel पढ़ें':'Read Excel',importApply:hi?'Matched KM भरें (Browser Draft)':'Apply Matched KM (Browser Draft)',importCancel:hi?'रद्द करें':'Cancel'})[key]}
+function kmTranslate(){document.querySelectorAll('.km-import [data-i18n]').forEach(el=>{const t=kmImportText(el.dataset.i18n);if(t)el.textContent=t})}
+$('langEn').addEventListener('click',kmTranslate);$('langHi').addEventListener('click',kmTranslate);
+function kmDraftKey(a){const joined=pick(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at']);return 'ekta-dk-v2-km:'+String(a.id??(a.truck_id+'-'+a.driver_id+'-'+joined))}
+// Match by truck first, then its current assignment. Historical drivers never receive a new import.
+function kmCurrentAssignment(matches){
+ const current=matches.filter(a=>!pick(a,['unassigned_at','end_date','to_date','left_at','released_at']));
+ if(!current.length)return {error:'No current driver assignment'};
+ const joined=a=>String(pick(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at'])||'');
+ current.sort((a,b)=>joined(b).localeCompare(joined(a)));
+ if(current.length>1&&joined(current[0])===joined(current[1])&&String(current[0].driver_id)!==String(current[1].driver_id))
+  return {error:'Multiple current drivers with same joining date — review'};
+ return {assignment:current[0]};
+}
+function kmParseRows(rows){
+ // Real Ekta opening registers contain a title, notes and blank rows before the headings.
+ // Locate the actual header; do not mistake Diesel/Advance Opening for Opening KM.
+ let headerIndex=-1,idx={};
+ for(let i=0;i<Math.min(rows.length,35);i++){
+  const header=(rows[i]||[]).map(kmHeader),candidate={};
+  for(const [key,aliases] of Object.entries(kmHeaders))candidate[key]=header.findIndex(h=>aliases.includes(h));
+  if(candidate.truck>=0&&candidate.km>=0){headerIndex=i;idx=candidate;break}
+ }
+ if(headerIndex<0)throw Error('Vehicle Number / Truck Number and KM Reading / Opening KM headings not found in first 35 rows.');
+ const data=rows.slice(headerIndex+1).map((r,i)=>({line:headerIndex+i+2,truck:r[idx.truck]??'',driver:idx.driver>=0?r[idx.driver]??'':'',raw:r[idx.km]??''})).filter(r=>String(r.truck).trim()||String(r.driver).trim()||String(r.raw).trim());
+ const tmap=new Map(trucks.map(t=>[String(t.id),t]));
+ const dmap=new Map(drivers.map(d=>[String(d.id),d]));
+ const prepared=data.map(r=>{
+  const raw=String(r.raw).trim();
+  if(!raw)return {...r,status:'Skipped — blank KM',key:'',skipped:true};
+  const n=Number(raw.replace(/,/g,''));
+  if(!Number.isFinite(n)||n<0||!Number.isInteger(n))return {...r,status:'Invalid KM',key:''};
+  const tn=kmNorm(r.truck);
+  const matches=assignments.filter(a=>tn&&kmNorm(truckName(tmap.get(String(a.truck_id))))===tn);
+  if(!matches.length)return {...r,km:n,status:'No current truck assignment found',key:''};
+  const choice=kmCurrentAssignment(matches);
+  if(!choice.assignment)return {...r,km:n,status:choice.error,key:''};
+  const a=choice.assignment,d=dmap.get(String(a.driver_id));
+  return {...r,km:n,driver:driverIdentifier(d),status:'Matched — latest current driver',key:kmDraftKey(a)};
+ });
+ // A truck appearing twice in Excel must be reviewed even if it maps to different assignments.
+ const counts=new Map();for(const r of prepared){const n=kmNorm(r.truck);if(n)counts.set(n,(counts.get(n)||0)+1)}
+ for(const r of prepared)if(kmNorm(r.truck)&&counts.get(kmNorm(r.truck))>1){r.status='Duplicate vehicle rows in Excel — review';r.key='';r.skipped=false}
+ return prepared;
+}
+function kmPreview(rows){
+ kmImportMatches=rows;
+ const good=rows.filter(r=>r.key).length,skipped=rows.filter(r=>r.skipped).length,review=rows.length-good-skipped;
+ $('kmImportSummary').textContent=`${rows.length} rows · ${good} matched · ${skipped} blank skipped · ${review} review needed`;
+ $('kmPreviewRows').innerHTML=rows.slice(0,500).map(r=>`<tr><td>${r.line}</td><td>${esc(r.truck)}</td><td>${esc(r.driver)}</td><td>${esc(r.raw)}</td><td class="${r.key?'ok':r.skipped?'warn':'bad'}">${esc(r.status)}</td></tr>`).join('');
+ $('kmImportPreview').hidden=false;
+ $('kmApplyBtn').disabled=good===0;
+ $('kmImportStatus').textContent=review?`${review} rows need review. You can still apply the ${good} safely matched readings; skipped/review rows will not be applied.`:`${good} current-driver readings ready. Blank KM rows are skipped.`;
+}
+$('kmImportBtn').addEventListener('click',async()=>{
+ const f=$('kmExcelFile').files?.[0];if(!f){$('kmImportStatus').textContent='Select an Excel or CSV file first.';return}
+ $('kmImportPreview').hidden=true;$('kmImportStatus').textContent='Reading file locally…';
+ try{
+  let rows=[];
+  if(/\.csv$/i.test(f.name)){
+   if(!window.XLSX)throw Error('Excel reader library unavailable. Check internet/CDN and reload.');
+   const text=await f.text();const wb=XLSX.read(text,{type:'string'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  }else{
+   if(!window.XLSX)throw Error('Excel reader library unavailable. Check internet/CDN and reload.');
+   const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  }
+  if(rows.length<2)throw Error('No data rows found in first worksheet.');
+  kmPreview(kmParseRows(rows));
+ }catch(e){$('kmImportStatus').textContent='Import error: '+e.message}
+});
+$('kmCancelBtn').addEventListener('click',()=>{$('kmImportPreview').hidden=true;kmImportMatches=[];$('kmImportStatus').textContent='Import cancelled. No changes applied.'});
+$('kmApplyBtn').addEventListener('click',()=>{
+ const valid=kmImportMatches.filter(r=>r.key);
+ if(!valid.length)return;
+ try{for(const r of valid)localStorage.setItem(r.key,String(r.km));render();$('kmImportStatus').textContent=`Applied ${valid.length} Opening KM readings to browser drafts. Nothing saved to Supabase.`;$('kmImportPreview').hidden=true;kmImportMatches=[]}
+ catch(e){$('kmImportStatus').textContent='Browser storage error: '+e.message}
+});
+
+// Export current filtered Driver/Truck records and Opening KM drafts as Excel-compatible CSV.
+// This reads the existing in-memory records; it does NOT write to Supabase.
+function exportDriverKhataCsv(){
+ const tq=$('truckSelect').value.trim().toLowerCase(),dq=$('driverSelect').value.trim().toLowerCase();
+ const tm=new Map(trucks.map(t=>[String(t.id),t]));
+ const dm=new Map(drivers.map(d=>[String(d.id),d]));
+ const headers=['Truck Number','Driver Name','Driver ID','Phone Number','Joined Date','Left Date','Opening KM','Status'];
+ const records=assignments.filter(a=>{
+  const t=tm.get(String(a.truck_id)),d=dm.get(String(a.driver_id));
+  return (!tq||truckName(t).toLowerCase().includes(tq))&&(!dq||driverName(d).toLowerCase().includes(dq)||String(driverIdentifier(d)).toLowerCase().includes(dq));
+ });
+ if(!records.length){notice(lang==='hi'?'Export के लिए कोई रिकॉर्ड नहीं मिला।':'No records to export for current filters.',true);return}
+ const csvCell=value=>{
+  let v=String(value??'');
+  if(/^[\s]*[=+@\-]/.test(v)&&!/^\-?\d+(\.\d+)?$/.test(v.trim()))v="'"+v;
+  return '"'+v.replace(/"/g,'""')+'"';
+ };
+ const lines=[headers.map(csvCell).join(',')];
+ for(const a of records){
+  const d=dm.get(String(a.driver_id)),t=tm.get(String(a.truck_id));
+  const joined=pick(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at']);
+  const left=pick(a,['unassigned_at','end_date','to_date','left_at','released_at']);
+  const key='ekta-dk-v2-km:'+String(a.id??(a.truck_id+'-'+a.driver_id+'-'+joined));
+  let km='';try{km=localStorage.getItem(key)||''}catch{}
+  lines.push([truckName(t),driverName(d),driverIdentifier(d),driverPhone(d),date(joined),date(left),km,left?'Previous':'Current'].map(csvCell).join(','));
+ }
+ const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='driver-khata-opening-km-'+new Date().toISOString().slice(0,10)+'.csv';
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ notice((lang==='hi'?'Excel Export तैयार: ':'Excel export ready: ')+records.length+' records (CSV).');
+}
+$('kmExportBtn').addEventListener('click',exportDriverKhataCsv);
+$('kmFileName').addEventListener('click',()=>$('kmExcelFile').click());
+$('kmFileName').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('kmExcelFile').click()}});
+$('kmExcelFile').addEventListener('change',()=>{$('kmFileName').textContent=$('kmExcelFile').files?.[0]?.name||'No file chosen'});
+
+})();
+
+
+/* Card 2 — all-truck Trip Fixed Kharcha (read-only). */
+(()=>{'use strict';
+ const el=id=>document.getElementById(id), clean=v=>String(v??'').trim(), norm=v=>clean(v).toUpperCase().replace(/[^A-Z0-9]/g,''), esc=v=>clean(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const field=(obj,keys)=>{for(const k of keys)if(obj?.[k]!==undefined&&obj[k]!==null&&obj[k]!=='')return obj[k];return ''};
+ const db=()=>[window.supabaseClient,window.ektaSupabaseClient,window.dbClient].find(x=>x&&typeof x.from==='function');
+ const truckNo=t=>field(t,['truck_number','vehicle_number','registration_number','number']);
+ const driverName=d=>field(d,['name','driver_name','full_name']);
+ const rupee=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+ let loaded=false, loading=null, all=[] , masterCount=0;
+ const routeSnapshotKey='ekta-dk-fixed-route-snapshot-v1';
+ let changedRoutes=new Map();
+ const fixedPhotoUrls=new Map();
+ const fixedInitials=name=>clean(name).split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'?';
+ function fixedDriverCell(r){
+  const url=r.driverId?fixedPhotoUrls.get(String(r.driverId)):null;
+  const avatar=url?`<img class="driver-avatar" src="${esc(url)}" alt="" loading="lazy">`:`<span class="driver-avatar" aria-hidden="true">${esc(fixedInitials(r.driver))}</span>`;
+  return `<span class="driver-cell">${avatar}<span>${esc(r.driver)}</span></span>`;
+ }
+ // Same driver_documents photo storage as Card 1. Read-only, no database changes.
+ async function loadFixedDriverPhotos(drivers){
+  try{
+   const ids=new Set(drivers.map(d=>String(d.id)));
+   const docs=await readAll('driver_documents');
+   const latest=new Map();
+   docs.filter(d=>d.document_type==='photo'&&d.storage_path&&ids.has(String(d.driver_id)))
+    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))
+    .forEach(d=>{const id=String(d.driver_id);if(!latest.has(id))latest.set(id,d.storage_path)});
+   const entries=[...latest.entries()];
+   for(let i=0;i<entries.length;i+=8){
+    await Promise.all(entries.slice(i,i+8).map(async([id,path])=>{
+     try{const {data,error}=await db().storage.from('driver-documents').createSignedUrl(path,3600);if(!error&&data?.signedUrl)fixedPhotoUrls.set(id,data.signedUrl)}catch(e){console.warn('[Driver Khata] Trip driver photo:',e)}
+    }));
+   }
+   render();
+  }catch(e){console.warn('[Driver Khata] Trip driver photos unavailable:',e)}
+ }
+
+ async function readAll(table){const rows=[];for(let start=0;start<50000;start+=500){const {data,error}=await db().from(table).select('*').range(start,start+499);if(error)throw Error(table+': '+error.message);rows.push(...(data||[]));if((data||[]).length<500)break;}return rows}
+ function status(msg,error=false){el('fixedStatus').textContent=msg;el('fixedStatus').classList.toggle('error',error)}
+ function render(){
+  const tq=norm(el('fixedTruckSearch').value),fromDate=el('fixedFromDate').value,toDate=el('fixedToDate').value;
+  const rows=all.filter(r=>{const d=String(r.date).slice(0,10);return (!tq||norm(r.truck).includes(tq))&&(!fromDate||d>=fromDate)&&(!toDate||d<=toDate);});
+  el('fixedTripCount').textContent=rows.length;el('fixedAmount').textContent=rupee(rows.filter(r=>r.matched).reduce((s,r)=>s+r.amount,0));el('fixedMissing').textContent=rows.filter(r=>!r.matched).length;el('fixedMasterCount').textContent=masterCount;
+  el('fixedRows').innerHTML=rows.map(r=>{const missing=r.status==='Missing rate'&&r.from&&r.to;
+   const cell=r.matched?rupee(r.amount):(missing?`<span class="fixed-rate-editor"><input type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹ Amount" aria-label="Fixed Kharcha for ${esc(r.route)}" data-rate-input="${esc(r.id)}"><button type="button" class="fixed-rate-save" data-rate-save="${esc(r.id)}">Save Rate</button></span>`:'—');
+   return `<tr><td>${esc(r.date)}</td><td>${esc(r.truck)}</td><td>${fixedDriverCell(r)}</td><td>${esc(r.route)}</td><td>${cell}</td><td class="${r.matched?'fixed-ok':'fixed-bad'}">${esc(r.status)}${r.changed?' · Tracking route changed':''}</td></tr>`;
+  }).join('')||'<tr><td colspan="6" class="empty">No matching trips.</td></tr>';
+ }
+ // Save into the SAME fixed_kharcha_rates master used by Trip Accounts.
+ // Both directions share a single canonical route pair. Never silently overwrite an existing rate.
+ let saving=false;
+ async function saveRate(tripId){
+  if(saving)return;
+  const r=all.find(x=>x.id===tripId);if(!r||r.status!=='Missing rate'||!r.from||!r.to)return;
+  const input=[...el('fixedRows').querySelectorAll('[data-rate-input]')].find(x=>x.dataset.rateInput===tripId);
+  if(!input)return;
+  const raw=input.value.trim(),amount=Number(raw);
+  if(!raw||!Number.isFinite(amount)||amount<0){status('Enter a valid Fixed Kharcha amount (₹0 or more).',true);input.focus();return;}
+  if(!db()){status('Supabase connection unavailable.',true);return;}
+  const pair=(a,b)=>[norm(a),norm(b)].sort().join('||');
+  const target=pair(r.from,r.to);
+  saving=true;input.disabled=true;
+  try{
+   // Fresh read avoids accidental duplicates or overwrites when another staff member saved a rate.
+   const rates=await readAll('fixed_kharcha_rates');
+   const matches=rates.filter(x=>pair(x.from_location,x.to_location)===target);
+   if(matches.length){
+    const current=[...new Set(matches.map(x=>Number(x.amount)))];
+    if(current.length===1&&current[0]===amount){status(`${r.route}: ${rupee(amount)} already exists in Route Master. Refreshing…`);await load(true);return;}
+    const old=current.map(rupee).join(', ');
+    if(!window.confirm(`Route ${r.from} ↔ ${r.to} already exists in Trip Accounts Master at ${old}.\n\nChange the rate to ${rupee(amount)} for BOTH directions?`)){status('Existing master rate was not changed.');return;}
+    for(const x of matches){const {error}=await db().from('fixed_kharcha_rates').update({amount}).eq('id',x.id);if(error)throw Error(error.message);}
+   }else{
+    const [from_location,to_location]=[clean(r.from).toUpperCase(),clean(r.to).toUpperCase()].sort();
+    const {error}=await db().from('fixed_kharcha_rates').insert({from_location,to_location,amount});if(error)throw Error(error.message);
+   }
+   // Keep the status visible after the refresh. The route master is the only source of truth.
+   await load(true);
+   status(`Saved ${r.from} ↔ ${r.to}: ${rupee(amount)} in Trip Accounts Route-wise Fixed Kharcha Master. Both directions updated.`);
+  }catch(e){status('Fixed Kharcha was not saved: '+e.message,true);console.error('[Driver Khata rate save]',e)}
+  finally{saving=false;if(input.isConnected)input.disabled=false;}
+ }
+ el('fixedRows').addEventListener('click',e=>{const btn=e.target.closest('[data-rate-save]');if(btn)void saveRate(btn.dataset.rateSave)});
+ el('fixedRows').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-rate-input]')){e.preventDefault();void saveRate(e.target.dataset.rateInput)}});
+
+ async function load(force=false){if(loading)return loading;if(loaded&&!force){render();return}if(!db()){status('Supabase connection unavailable. Check db.js.',true);return}status('Loading all trucks, trips and fixed route rates…');loading=(async()=>{try{
+ const names=['trips','fixed_kharcha_rates','trucks','drivers','truck_driver_assignments'];const result=await Promise.allSettled(names.map(readAll));if(result[0].status!=='fulfilled')throw result[0].reason;if(result[1].status!=='fulfilled')throw result[1].reason;
+ const trips=result[0].value,rates=result[1].value,trucks=result[2].status==='fulfilled'?result[2].value:[],drivers=result[3].status==='fulfilled'?result[3].value:[],assignments=result[4].status==='fulfilled'?result[4].value:[];
+ const tm=new Map(trucks.map(t=>[clean(t.id),t])),dm=new Map(drivers.map(d=>[clean(d.id),d]));const truckByNo=new Map(trucks.map(t=>[norm(truckNo(t)),t]));
+ const routeKey=(a,b)=>norm(a)+'|'+norm(b);
+ const rateMap=new Map();for(const r of rates){const from=field(r,['from_location','from_city','from','origin','source','loading_point','from_place']),to=field(r,['to_location','to_city','to','destination','dest','unloading_point','to_place']);const amount=Number(field(r,['fixed_kharcha','fixed_expense','fixed_amount','amount','rate','kharcha']));if(!from||!to||!Number.isFinite(amount)||amount<0)continue;for(const key of [routeKey(from,to),routeKey(to,from)]){const arr=rateMap.get(key)||[];arr.push({amount,rate:r});rateMap.set(key,arr)}}
+ masterCount=rates.length;
+ all=trips.filter(t=>{const loading=clean(t.loading_date);const state=clean(t.trip_status).toLowerCase();return !!loading && state!=='cancelled';}).map(t=>{const truck=tm.get(clean(field(t,['truck_id','vehicle_id'])))||truckByNo.get(norm(field(t,['truck_number','vehicle_number','vehicle_no','truck_no'])))||{};const truckText=clean(truckNo(truck)||field(t,['truck_number','vehicle_number','vehicle_no','truck_no']))||'—';const from=clean(field(t,['from_location','from_city','from','origin','source','loading_point','from_place'])),to=clean(field(t,['to_location','to_city','to','destination','dest','unloading_point','to_place']));const tripDate=clean(t.loading_date).slice(0,10); let d=dm.get(clean(field(t,['driver_id','assigned_driver_id'])))||null;
+ if(!d){const relevant=assignments.filter(a=>clean(a.truck_id)===clean(truck.id)&&clean(field(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at'])).slice(0,10)<=tripDate&&(!field(a,['unassigned_at','end_date','to_date','left_at','released_at'])||clean(field(a,['unassigned_at','end_date','to_date','left_at','released_at'])).slice(0,10)>=tripDate));relevant.sort((a,b)=>clean(field(b,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at'])).localeCompare(clean(field(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at']))));if(relevant.length)d=dm.get(clean(relevant[0].driver_id))||null}
+ const options=rateMap.get(routeKey(from,to))||[];const amounts=[...new Set(options.map(o=>o.amount))];const matched=!!from&&!!to&&amounts.length===1;const status=!from||!to?'Route missing':!options.length?'Missing rate':amounts.length>1?'Conflicting rates':'Matched';return {id:clean(t.id),truck:truckText,driver:clean(driverName(d)||field(t,['driver_name']))||'—',driverId:d?.id??null,route:(from||'—')+' → '+(to||'—'),from,to,date:tripDate,matched,amount:matched?amounts[0]:0,status};});
+ // Browser-only comparison: warns on changes seen between refreshes, without database writes.
+ let previous={};try{previous=JSON.parse(localStorage.getItem(routeSnapshotKey)||'{}')||{}}catch{}
+ const current={};changedRoutes=new Map();
+ for(const r of all){if(!r.id)continue;current[r.id]=r.route;if(previous[r.id]&&previous[r.id]!==r.route){r.changed=true;changedRoutes.set(r.id,{old:previous[r.id],next:r.route,truck:r.truck});}}
+ try{localStorage.setItem(routeSnapshotKey,JSON.stringify(current))}catch{}
+ all.sort((a,b)=>b.date.localeCompare(a.date)||a.truck.localeCompare(b.truck));loaded=true;render();void loadFixedDriverPhotos(drivers);status(`${all.length} loaded trips · ${masterCount} route master rows · ${all.filter(r=>r.matched).length} matched · ${all.filter(r=>!r.matched).length} missing/review. ${changedRoutes.size?changedRoutes.size+' tracking route change(s) detected on this browser. ':''}Read-only. Cancelled trips excluded.`);
+ }catch(e){status('Could not load Trip Fixed Kharcha: '+e.message,true);console.error('[Driver Khata Fixed Kharcha]',e)}})();try{await loading}finally{loading=null}}
+ ['fixedTruckSearch','fixedFromDate','fixedToDate'].forEach(id=>el(id).addEventListener('input',render));el('fixedRefresh').addEventListener('click',()=>load(true));window.ektaLoadFixedTrips=()=>load();window.ektaFixedHisabRows=()=>loaded?all.map(r=>({...r})):null;window.ektaRefreshFixedTrips=()=>load(true);
+})();
+
+
+/* Card 3 — date-wise diesel taken; read-only across existing Fuel Management sources. */
+(()=>{'use strict';
+ const el=id=>document.getElementById(id), str=v=>String(v??'').trim(), norm=v=>str(v).toUpperCase().replace(/[^A-Z0-9]/g,''), esc=v=>str(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const db=()=>[window.supabaseClient,window.ektaSupabaseClient,window.dbClient].find(c=>c&&typeof c.from==='function');
+ const money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const fmt=n=>Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:3});
+ let records=[], loaded=false, loading=null;
+ const dieselPhotoUrls=new Map();
+ const dieselInitials=name=>str(name).split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'?';
+ function dieselDriverCell(r){
+  const url=r.driverId?dieselPhotoUrls.get(String(r.driverId)):null;
+  const avatar=url?`<img class="driver-avatar" src="${esc(url)}" alt="" loading="lazy">`:`<span class="driver-avatar" aria-hidden="true">${esc(dieselInitials(r.driver))}</span>`;
+  return `<span class="driver-cell">${avatar}<span>${esc(r.driver)}</span></span>`;
+ }
+ async function loadDieselPhotos(driverIds){
+  if(!driverIds.size)return;
+  try{
+   const docs=await readAll('driver_documents',q=>q.eq('document_type','photo').order('created_at',{ascending:false}));
+   const latest=new Map();
+   for(const d of docs){const id=String(d.driver_id??'');if(driverIds.has(id)&&d.storage_path&&!latest.has(id))latest.set(id,d.storage_path)}
+   const entries=[...latest.entries()];
+   for(let i=0;i<entries.length;i+=8){
+    await Promise.all(entries.slice(i,i+8).map(async([id,path])=>{
+     try{const {data,error}=await db().storage.from('driver-documents').createSignedUrl(path,3600);if(!error&&data?.signedUrl)dieselPhotoUrls.set(id,data.signedUrl)}catch(e){console.warn('[Driver Khata Diesel photo]',e)}
+    }));
+   }
+   render();
+  }catch(e){console.warn('[Driver Khata Diesel] Photos unavailable:',e)}
+ }
+
+ function dateKey(raw){const s=str(raw);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);if(m){const a=+m[1],b=+m[2];if(a>=1&&a<=31&&b>=1&&b<=12)return m[3]+'-'+String(b).padStart(2,'0')+'-'+String(a).padStart(2,'0');return '';}return ''}
+ function note(s,bad=false){el('dieselStatus').textContent=s;el('dieselStatus').classList.toggle('error',bad)}
+ async function readAll(table,setup){const out=[];for(let off=0;off<100000;off+=500){let q=db().from(table).select('*');if(setup)q=setup(q);const {data,error}=await q.range(off,off+499);if(error)throw Error(table+': '+error.message);out.push(...(data||[]));if((data||[]).length<500)break}return out}
+ function render(){const f=el('dieselFrom').value,t=el('dieselTo').value,q=norm(el('dieselSearch').value);const rows=records.filter(r=>(!f||r.date>=f)&&(!t||r.date<=t)&&(!q||norm([r.truck,r.driver,r.pump,r.source,r.ref].join(' ')).includes(q)));
+ el('dieselLitres').textContent=fmt(rows.reduce((n,r)=>n+r.litres,0))+' L';el('dieselAmount').textContent=money(rows.reduce((n,r)=>n+r.amount,0));el('dieselTrucks').textContent=new Set(rows.filter(r=>r.truck!=='Unmatched').map(r=>norm(r.truck))).size;el('dieselCount').textContent=rows.length;
+ el('dieselRows').innerHTML=rows.map(r=>`<tr><td>${esc(r.date||'Date review')}</td><td>${esc(r.truck)}</td><td>${dieselDriverCell(r)}</td><td>${esc(r.pump)}</td><td>${esc(r.source)}</td><td>${fmt(r.litres)} L</td><td>${money(r.amount)}</td><td>${esc(r.ref)}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No matching diesel transactions.</td></tr>';
+ }
+ async function load(force=false){if(loading)return loading;if(loaded&&!force){render();return}if(!db()){note('Supabase unavailable. Check db.js.',true);return}note('Loading diesel from Fuel Management…');loading=(async()=>{try{
+ const names=['hpcl_fuel_transactions','ekta_pump_ledger','ekta_pump_master','diesel_cash_entries','account_transactions','trucks','drivers','truck_driver_assignments'];
+ const results=await Promise.allSettled(names.map((n,i)=>readAll(n,i===4?q=>q.eq('posting_status','CONFIRMED').eq('category','DIESEL'):null)));
+ const warnings=[];const data={};names.forEach((n,i)=>{data[n]=results[i].status==='fulfilled'?results[i].value:[];if(results[i].status!=='fulfilled')warnings.push(n+': '+results[i].reason.message)});
+ if(warnings.length===names.length)throw Error(warnings.join('; '));
+ const tm=new Map(data.trucks.map(t=>[String(t.id),t])), truckNames=new Map(data.trucks.map(t=>[norm(t.truck_number||t.vehicle_number||t.registration_number),t]));
+ const dm=new Map(data.drivers.map(d=>[String(d.id),d]));const pumpNames=new Map(data.ekta_pump_master.map(p=>[String(p.id),str(p.name)]));
+ const getTruck=(vehicle,id)=>{const t=tm.get(String(id));return str(vehicle||t?.truck_number||t?.vehicle_number||'')||'Unmatched'};
+ const validVehicle=v=>str(v)&&!['PAID','PUMP NOT IN LIST','UNMATCHED','VEHICLE PENDING'].includes(str(v).toUpperCase());
+ const all=[];const add=(r)=>{if(!Number.isFinite(r.litres)||r.litres<=0)return;all.push(r)};
+ const hpclIds=new Set();
+ for(const x of data.hpcl_fuel_transactions){const litres=Number(x.litres),vehicle=str(x.actual_vehicle),type=str(x.txn_type).toUpperCase();if(str(x.review_status).toUpperCase()!=='APPROVED'||!validVehicle(vehicle)||!type.includes('SALE')||str(x.direction).toUpperCase()==='CREDIT')continue;
+ if(litres>0){hpclIds.add(str(x.txn_id));add({date:dateKey(x.txn_datetime_raw),time:str(x.txn_datetime_raw),truck:vehicle,pump:str(x.pump_name)||'—',source:'HPCL OTP',litres,amount:Number(x.amount)||0,ref:str(x.txn_id)})}}
+ for(const x of data.ekta_pump_ledger){if(str(x.kind).toUpperCase()!=='DIESEL'||Number(x.litres)<=0)continue;const linked=str(x.source_txn_id);if(linked&&hpclIds.has(linked))continue;add({date:dateKey(x.entry_date),time:str(x.entry_time),truck:getTruck(x.vehicle),pump:pumpNames.get(String(x.pump_id))||'—',source:'Pump Ledger',litres:Number(x.litres),amount:Number(x.amount)||0,ref:str(x.reference||x.id)})}
+ for(const x of data.diesel_cash_entries)add({date:dateKey(x.entry_date),time:str(x.entry_time),truck:getTruck(x.vehicle_number),pump:str(x.pump_name)||'—',source:'Cash Diesel',litres:Number(x.litres),amount:Number(x.amount)||0,ref:str(x.reference_number||x.id)});
+ for(const x of data.account_transactions)add({date:dateKey(x.transaction_date),time:str(x.transaction_time),truck:getTruck(x.vehicle_number,x.truck_id),pump:str(x.bank_narration||x.bank_name)||'—',source:'Bank Statement',litres:Number(x.quantity_litres),amount:Number(x.debit)||0,ref:str(x.reference_number||x.id)});
+ const assignments=data.truck_driver_assignments;
+ for(const r of all){const truck=truckNames.get(norm(r.truck));let relevant=assignments.filter(a=>truck&&String(a.truck_id)===String(truck.id)&&str(a.assigned_at||a.start_date||a.from_date||a.joined_at||a.assignment_date||a.created_at).slice(0,10)<=r.date&&(!str(a.unassigned_at||a.end_date||a.to_date||a.left_at||a.released_at)||str(a.unassigned_at||a.end_date||a.to_date||a.left_at||a.released_at).slice(0,10)>=r.date));relevant.sort((a,b)=>str(b.assigned_at||b.start_date||b.from_date||b.joined_at||b.assignment_date||b.created_at).localeCompare(str(a.assigned_at||a.start_date||a.from_date||a.joined_at||a.assignment_date||a.created_at)));const d=dm.get(String(relevant[0]?.driver_id));r.driver=str(d?.name||d?.driver_name||d?.full_name)||'Not mapped';r.driverId=d?.id??null}
+ all.sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)||a.truck.localeCompare(b.truck));records=all;loaded=true;render();void loadDieselPhotos(new Set(all.map(r=>String(r.driverId||'')).filter(Boolean)));note(`${all.length} diesel entries loaded · ${new Set(all.map(r=>norm(r.truck))).size} vehicle labels · Read-only.${warnings.length?' Sources unavailable: '+warnings.join('; '):''}`,!!warnings.length);
+ }catch(e){note('Diesel loading failed: '+e.message,true);console.error('[Driver Khata Diesel]',e)}})();try{await loading}finally{loading=null}}
+ ['dieselFrom','dieselTo','dieselSearch'].forEach(id=>el(id).addEventListener('input',render));el('dieselRefresh').addEventListener('click',()=>load(true));window.ektaLoadDieselTaken=()=>load();window.ektaDieselHisabRows=()=>loaded?records.map(r=>({...r})):null;
+})();
+
+
+/* Card 4 — confirmed Driver Advances, same account_transactions ledger as Accounts & Finance. */
+(()=>{'use strict';
+ const el=id=>document.getElementById(id), str=v=>String(v??'').trim(), esc=v=>str(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const norm=v=>str(v).toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const pick=(r,keys)=>{for(const k of keys)if(r?.[k]!==null&&r?.[k]!==undefined&&r[k]!=='')return r[k];return ''};
+ const db=()=>[window.supabaseClient,window.ektaSupabaseClient,window.dbClient].find(c=>c&&typeof c.from==='function');
+ const rupee=v=>'₹'+Number(v||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const date=v=>{const s=str(v);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const m=s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:''};
+ let records=[],loaded=false,loading=null;const photos=new Map();
+ async function readAll(table){const out=[];for(let off=0;off<100000;off+=500){const {data,error}=await db().from(table).select('*').range(off,off+499);if(error)throw Error(table+': '+error.message);out.push(...(data||[]));if((data||[]).length<500)break}return out}
+ function status(msg,bad=false){el('advanceStatus').textContent=msg;el('advanceStatus').classList.toggle('error',bad)}
+ function driverCell(r){const name=r.driver||'Not mapped',url=r.driverId?photos.get(String(r.driverId)):null;const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();const avatar=url?`<img class="driver-avatar" src="${esc(url)}" alt="" loading="lazy">`:`<span class="driver-avatar" aria-hidden="true">${esc(initials||'?')}</span>`;return `<span class="driver-cell">${avatar}<span>${esc(name)}</span></span>`}
+ function render(){const from=el('advanceFrom').value,to=el('advanceTo').value,q=norm(el('advanceSearch').value);const rows=records.filter(r=>(!from||r.date>=from)&&(!to||r.date<=to)&&(!q||norm([r.truck,r.driver,r.ref,r.source].join(' ')).includes(q)));
+ el('advanceAmount').textContent=rupee(rows.reduce((s,r)=>s+r.amount,0));el('advanceDrivers').textContent=new Set(rows.filter(r=>r.driverId).map(r=>String(r.driverId))).size;el('advanceCount').textContent=rows.length;
+ el('advanceRows').innerHTML=rows.map(r=>`<tr><td>${esc(r.date||'Review')}</td><td>${esc(r.truck)}</td><td>${driverCell(r)}</td><td>${esc(r.source)}</td><td>${rupee(r.amount)}</td><td>${esc(r.ref)}</td><td><span class="tag">Confirmed</span></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No matching confirmed driver advances.</td></tr>';
+ }
+ async function loadPhotos(drivers){try{const ids=new Set(drivers.map(d=>String(d.id)));const docs=(await readAll('driver_documents')).filter(d=>d.document_type==='photo'&&d.storage_path&&ids.has(String(d.driver_id))).sort((a,b)=>str(b.created_at).localeCompare(str(a.created_at)));const latest=new Map();for(const d of docs)if(!latest.has(String(d.driver_id)))latest.set(String(d.driver_id),d.storage_path);const entries=[...latest];for(let i=0;i<entries.length;i+=8)await Promise.all(entries.slice(i,i+8).map(async([id,path])=>{try{const {data,error}=await db().storage.from('driver-documents').createSignedUrl(path,3600);if(!error&&data?.signedUrl)photos.set(id,data.signedUrl)}catch{}}));render()}catch(e){console.warn('[Driver Advance photos]',e)}}
+ async function load(force=false){if(loading)return loading;if(loaded&&!force){render();return}if(!db()){status('Supabase connection unavailable. Check db.js.',true);return}status('Loading confirmed driver advances from Accounts…');loading=(async()=>{try{
+ const tables=['account_transactions','drivers','trucks'];const results=await Promise.allSettled(tables.map(readAll));if(results[0].status!=='fulfilled')throw results[0].reason;
+ const transactions=results[0].value,drivers=results[1].status==='fulfilled'?results[1].value:[],trucks=results[2].status==='fulfilled'?results[2].value:[];
+ const driverMap=new Map(drivers.map(d=>[String(d.id),d])),truckMap=new Map(trucks.map(t=>[String(t.id),t]));
+ // Accounts records reversals as CREDIT with category DRIVER_ADVANCE. Never add them as new advances.
+ const advances=transactions.filter(t=>str(t.category).toUpperCase()==='DRIVER_ADVANCE'&&str(t.posting_status).toUpperCase()==='CONFIRMED'&&Number(t.debit)>0&&!Number(t.credit)&&!str(t.user_remark).startsWith('ADVANCE_REVERSAL_OF:'));
+ // A reversal links by original reference; avoid overstating outstanding advance.
+ const reversed=new Set(transactions.filter(t=>str(t.category).toUpperCase()==='DRIVER_ADVANCE'&&str(t.posting_status).toUpperCase()==='CONFIRMED'&&Number(t.credit)>0&&str(t.user_remark).startsWith('ADVANCE_REVERSAL_OF:')).map(t=>str(t.user_remark).split(':')[1]?.split(';')[0]?.trim().toUpperCase()).filter(Boolean));
+ records=advances.map(t=>{const d=driverMap.get(String(t.driver_id)),truck=truckMap.get(String(t.truck_id));const reference=str(t.reference_number);return {date:date(t.transaction_date),truck:str(pick(truck,['truck_number','vehicle_number','registration_number']))||str(t.vehicle_number)||'Not mapped',driver:str(pick(d,['name','driver_name','full_name']))||'Not mapped',driverId:d?.id||null,amount:Number(t.debit),source:str(t.bank_account_name||t.bank_name)||'Bank',ref:reference||str(t.bank_narration||t.user_remark)||'—',reversed:reversed.has(reference.toUpperCase())}}).filter(r=>!r.reversed).sort((a,b)=>b.date.localeCompare(a.date));
+ loaded=true;render();status(`${records.length} confirmed driver advance entries loaded from Accounts & Finance · Read-only. Reversed advances excluded.`);void loadPhotos(drivers);
+ if(results[1].status!=='fulfilled'||results[2].status!=='fulfilled')status('Advances loaded, but Driver/Truck Master lookup was unavailable. Check mapping.',true);
+ }catch(e){status('Could not load Driver Advances: '+e.message,true);console.error('[Driver Khata Advance]',e)}})();try{await loading}finally{loading=null}}
+ ['advanceFrom','advanceTo','advanceSearch'].forEach(id=>el(id).addEventListener('input',render));window.ektaLoadDriverAdvances=load;window.ektaAdvanceHisabRows=()=>loaded?records.map(r=>({...r})):null;
+})();
+
+
+/* Card 5 — Trip Accounts saved trip_expenses; read-only. */
+(()=>{'use strict';
+ const $=id=>document.getElementById(id), str=v=>String(v??'').trim(),norm=v=>str(v).toUpperCase().replace(/[^A-Z0-9]/g,''),esc=v=>str(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const pick=(o,ks)=>{for(const k of ks)if(o?.[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k];return ''};
+ const db=()=>[window.supabaseClient,window.ektaSupabaseClient,window.dbClient].find(x=>x&&typeof x.from==='function');
+ const cash=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const date=v=>{const s=str(v);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const m=s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:''};
+ let rows=[],loaded=false,pending=null;const photos=new Map();
+ async function readAll(table){const out=[];for(let n=0;n<100000;n+=500){const {data,error}=await db().from(table).select('*').range(n,n+499);if(error)throw Error(table+': '+error.message);out.push(...(data||[]));if((data||[]).length<500)break;}return out}
+ function status(s,bad=false){$('expenseStatus').textContent=s;$('expenseStatus').classList.toggle('error',bad)}
+ function driverCell(r){const name=r.driver||'Not mapped',photo=r.driverId?photos.get(String(r.driverId)):null;const init=name.split(/\s+/).slice(0,2).map(s=>s[0]||'').join('').toUpperCase();return `<span class="driver-cell">${photo?`<img class="driver-avatar" src="${esc(photo)}" alt="" loading="lazy">`:`<span class="driver-avatar" aria-hidden="true">${esc(init||'?')}</span>`}<span>${esc(name)}</span></span>`}
+ function render(){const from=$('expenseFrom').value,to=$('expenseTo').value,q=norm($('expenseSearch').value);const filtered=rows.filter(r=>(!from||r.date>=from)&&(!to||r.date<=to)&&(!q||norm([r.truck,r.driver,r.type,r.route,r.description,r.bill].join(' ')).includes(q)));
+ $('expenseAmount').textContent=cash(filtered.reduce((a,r)=>a+r.amount,0));$('expenseTrips').textContent=new Set(filtered.filter(r=>r.tripId).map(r=>r.tripId)).size;$('expenseCount').textContent=filtered.length;
+ $('expenseRows').innerHTML=filtered.map(r=>`<tr><td>${esc(r.date||'Review')}</td><td>${esc(r.truck)}</td><td>${driverCell(r)}</td><td>${esc(r.route)}</td><td>${esc(r.type)}</td><td>${cash(r.amount)}</td><td>${esc(r.payment)}</td><td>${esc([r.description,r.vendor,r.bill&&'Bill: '+r.bill].filter(Boolean).join(' · ')||'—')}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No matching Trip Expenses.</td></tr>';
+ }
+ async function loadPhotos(drivers){try{const ids=new Set(rows.filter(r=>r.driverId).map(r=>String(r.driverId)));if(!ids.size)return;const docs=(await readAll('driver_documents')).filter(d=>d.document_type==='photo'&&d.storage_path&&ids.has(String(d.driver_id))).sort((a,b)=>str(b.created_at).localeCompare(str(a.created_at)));const latest=new Map();for(const d of docs)if(!latest.has(String(d.driver_id)))latest.set(String(d.driver_id),d.storage_path);const entries=[...latest];for(let i=0;i<entries.length;i+=8)await Promise.all(entries.slice(i,i+8).map(async([id,path])=>{try{const {data,error}=await db().storage.from('driver-documents').createSignedUrl(path,3600);if(!error&&data?.signedUrl)photos.set(id,data.signedUrl)}catch{}}));render()}catch(e){console.warn('[Trip Expenses photos]',e)}}
+ async function load(force=false){if(pending)return pending;if(loaded&&!force){render();return}if(!db()){status('Supabase connection unavailable. Check db.js.',true);return}status('Loading saved Trip Expenses…');pending=(async()=>{try{
+ const names=['trip_expenses','trips','trucks','drivers','truck_driver_assignments'];const res=await Promise.allSettled(names.map(readAll));if(res[0].status!=='fulfilled')throw res[0].reason;
+ const data=names.map((_,i)=>res[i].status==='fulfilled'?res[i].value:[]);const [expenses,trips,trucks,drivers,assignments]=data;
+ const tripMap=new Map(trips.map(t=>[String(t.id),t])),truckMap=new Map(trucks.map(t=>[String(t.id),t])),driverMap=new Map(drivers.map(d=>[String(d.id),d]));
+ rows=expenses.map(e=>{const trip=tripMap.get(String(e.trip_id))||{};const truckId=pick(e,['truck_id'])||pick(trip,['truck_id','vehicle_id']);const truck=truckMap.get(String(truckId))||{};const when=date(pick(e,['expense_date','created_at']));
+ let d=driverMap.get(String(pick(e,['driver_id'])||pick(trip,['driver_id','assigned_driver_id'])))||null;
+ if(!d&&truckId){const matches=assignments.filter(a=>String(a.truck_id)===String(truckId)&&date(pick(a,['assigned_at','assigned_from','start_date','from_date','joined_at','created_at']))<=when&&(!pick(a,['unassigned_at','end_date','to_date','left_at','released_at'])||date(pick(a,['unassigned_at','end_date','to_date','left_at','released_at']))>=when));matches.sort((a,b)=>str(pick(b,['assigned_at','assigned_from','start_date','created_at'])).localeCompare(str(pick(a,['assigned_at','assigned_from','start_date','created_at']))));d=driverMap.get(String(matches[0]?.driver_id))||null}
+ return {date:when,tripId:str(e.trip_id),truck:str(pick(truck,['truck_number','vehicle_number','registration_number'])||pick(trip,['truck_number','vehicle_number']))||'Not mapped',driver:str(pick(d,['name','driver_name','full_name']))||'Not mapped',driverId:d?.id||null,route:[pick(trip,['from_location','from_city','from']),pick(trip,['to_location','to_city','to'])].filter(Boolean).join(' → ')||str(e.trip_id||'—'),type:str(e.expense_type)||'Other',amount:Number(e.amount)||0,payment:str(e.payment_mode)||'—',description:str(e.description),vendor:str(e.vendor_name),bill:str(e.bill_number),created:str(e.created_at)};
+ }).sort((a,b)=>b.date.localeCompare(a.date)||b.created.localeCompare(a.created));loaded=true;render();status(`${rows.length} saved Trip Expenses loaded from Trip Accounts · Read-only.${res.slice(1).some(r=>r.status==='rejected')?' Some master lookups unavailable.':''}`,res.slice(1).some(r=>r.status==='rejected'));void loadPhotos(drivers);
+ }catch(e){status('Trip Expenses could not load: '+e.message,true);console.error('[Driver Khata Trip Expenses]',e)}})();try{await pending}finally{pending=null}}
+ ['expenseFrom','expenseTo','expenseSearch'].forEach(id=>$(id).addEventListener('input',render));window.ektaLoadTripExpenses=load;window.ektaExpenseHisabRows=()=>loaded?rows.map(r=>({...r})):null;
+})();
+
+/* Card 6 — drill-down driver-wise review; settlement is deliberately not posted. */
+(()=>{'use strict';
+ const $=id=>document.getElementById(id),db=()=>[window.supabaseClient,window.ektaSupabaseClient,window.dbClient].find(x=>x&&typeof x.from==='function');
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const norm=v=>String(v??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const qty=n=>Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+ let fixed=[],diesel=[],advances=[],expenses=[],loaded=false,pending=null,selected=null,issues=[],saving=false;
+ const match=(r,g)=>norm(r.truck)===norm(g.truck)&&String(r.driverId||'UNMAPPED')===String(g.driverId||'UNMAPPED');
+ const period=r=>(!$('finalFrom').value||r.date>=$('finalFrom').value)&&(!$('finalTo').value||r.date<=$('finalTo').value);
+ const detailRows=(arr,g)=>arr.filter(r=>period(r)&&match(r,g));
+ function groups(){const q=norm($('finalSearch').value),map=new Map();for(const [arr,kind] of [[fixed,'fixed'],[diesel,'diesel'],[advances,'advance'],[expenses,'expense']])for(const r of arr){if(!period(r)||q&&!norm(r.truck+' '+r.driver).includes(q))continue;const key=norm(r.truck)+'|'+String(r.driverId||'UNMAPPED');const g=map.get(key)||{key,truck:r.truck,driver:r.driver,driverId:r.driverId,fix:0,missing:0,litres:0,diesel:0,advance:0,expense:0,trips:0,hasDiesel:false,hasExpenses:false};if(kind==='fixed'){g.trips++;if(r.matched)g.fix+=r.amount;else g.missing++}if(kind==='diesel'){g.litres+=r.litres;g.diesel+=r.amount;g.hasDiesel=true}if(kind==='advance')g.advance+=r.amount;if(kind==='expense'){g.expense+=r.amount;g.hasExpenses=true}if((g.driver==='Not mapped'||g.driver==='—')&&r.driver)g.driver=r.driver;map.set(key,g)}return [...map.values()].sort((a,b)=>a.truck.localeCompare(b.truck)||a.driver.localeCompare(b.driver))}
+ function render(){const gs=groups(),allF=gs.reduce((s,g)=>s+g.fix,0),allL=gs.reduce((s,g)=>s+g.litres,0),allD=gs.reduce((s,g)=>s+g.diesel,0),missing=gs.reduce((s,g)=>s+g.missing,0);$('finalFixed').textContent=money(allF)+(missing?' · '+missing+' rates pending':'');$('finalDieselLitres').textContent=qty(allL)+' L';$('finalDieselAmount').textContent=money(allD);$('finalDieselRate').textContent=allL?money(allD/allL)+'/L':'—';$('finalAdvance').textContent=money(gs.reduce((s,g)=>s+g.advance,0));$('finalExpenses').textContent=money(gs.reduce((s,g)=>s+g.expense,0));$('finalBalance').textContent='Pending verification';
+ $('finalRows').innerHTML=gs.map(g=>`<tr><td><button type="button" class="dk-truck-link" data-dk-detail="${esc(g.key)}">${esc(g.truck)}</button></td><td>${esc(g.driver)}</td><td>${money(g.fix)}${g.missing?' ('+g.missing+' pending)':''}</td><td>${qty(g.litres)} L</td><td>${money(g.diesel)}</td><td>${g.litres?money(g.diesel/g.litres)+'/L':'—'}</td><td>${money(g.advance)}</td><td>${money(g.expense)}</td><td>Pending</td><td><span class="tag old">Review</span></td></tr>`).join('')||'<tr><td colspan="10" class="empty">No matching records.</td></tr>';
+ $('finalStatus').textContent=`${gs.reduce((s,g)=>s+g.trips,0)} trips (${missing} fixed rates pending) · ${gs.length} driver/vehicle accounts. Click a truck number for full details. Settlement not posted.${issues.length?' Source warning: '+issues.join('; '):''}`;
+ if(selected){const g=gs.find(g=>g.key===selected.key);if(g)showDetail(g);else closeDetail()}}
+ function closeDetail(){$('dkDetail').hidden=true;selected=null}
+ function table(id,rows,columns){$(id).innerHTML=rows.length?rows.map(r=>'<tr>'+columns.map(f=>'<td>'+f(r)+'</td>').join('')+'</tr>').join(''):`<tr><td colspan="${columns.length}" class="empty">No records for this driver/vehicle and date range.</td></tr>`}
+ function showDetail(g){selected=g;$('dkDetail').hidden=false;$('dkDetailTitle').textContent=g.driver+' · '+g.truck;$('dkDetailMeta').textContent=g.trips+' loaded trips · '+g.missing+' missing fixed rates · '+qty(g.litres)+' L diesel · '+money(g.advance)+' advance';
+ const fs=detailRows(fixed,g).sort((a,b)=>b.date.localeCompare(a.date)),ds=detailRows(diesel,g).sort((a,b)=>b.date.localeCompare(a.date)),as=detailRows(advances,g).sort((a,b)=>b.date.localeCompare(a.date)),es=detailRows(expenses,g).sort((a,b)=>b.date.localeCompare(a.date));
+ $('dkSumTrips').textContent=String(fs.length);$('dkSumFixed').textContent=money(g.fix)+(g.missing?' · '+g.missing+' pending':'');$('dkSumDiesel').textContent=qty(g.litres)+' L';$('dkSumAdvance').textContent=money(g.advance);$('dkSumRunning').textContent=money(g.expense);
+ $('dkTripCount').textContent=fs.length+' trips';$('dkAdvanceCount').textContent=as.length+' entries';$('dkDieselCount').textContent=ds.length+' entries';$('dkExpenseCount').textContent=es.length+' entries';
+ $('dkSetFixed').textContent=money(g.fix);$('dkSetAdvance').textContent=money(g.advance);$('dkSetExpenses').textContent=money(g.expense);
+ void loadDetailProfile(g);
+
+ table('dkTrips',fs,[r=>esc(r.date),r=>esc(r.id),r=>esc(r.route),r=>r.matched?money(r.amount):r.status==='Missing rate'&&r.from&&r.to?`<span class="dk-rate"><input type="number" min="0" step="0.01" data-dk-amount="${esc(r.id)}" placeholder="₹ Rate"><button type="button" data-dk-save="${esc(r.id)}">Save Rate</button></span>`:'—',r=>esc(r.status)]);
+ table('dkDiesel',ds,[r=>esc(r.date),r=>esc(r.pump),r=>esc(r.source),r=>qty(r.litres)+' L',r=>money(r.amount),r=>esc(r.ref)]);
+ table('dkAdvances',as,[r=>esc(r.date),r=>esc(r.source),r=>money(r.amount),r=>esc(r.ref)]);
+ table('dkExpenses',es,[r=>esc(r.date),r=>esc(r.type),r=>money(r.amount),r=>esc(r.payment||'—'),r=>esc(r.description||r.route)]);
+ $('dkDetailStatus').textContent='Diesel amount is informational, not an automatic deduction. Opening/Closing KM and approved average are required for extra diesel calculation. Driver settlement remains pending.';
+ const kmKey='ekta-dk-final-km:'+g.key;try{const saved=JSON.parse(localStorage.getItem(kmKey)||'{}');$('dkOpeningKm').value=saved.open??'';$('dkClosingKm').value=saved.close??'';$('dkAverage').value=saved.average??'5.25';$('dkExtraKm').value=saved.extraKm??''}catch{}calcDiesel();void loadOpeningKmFromCard1(g);}
+ async function loadOpeningKmFromCard1(g){
+  // Card 1 uses the assignment-specific ekta-dk-v2-km key. Never use another driver's KM.
+  if(!g.driverId||!db())return;
+  const stamp=g.key;
+  try{
+   const [assignRes,truckRes]=await Promise.all([db().from('truck_driver_assignments').select('*').eq('driver_id',g.driverId),db().from('trucks').select('*')]);
+   if(assignRes.error||truckRes.error)return;
+   const trucks=(truckRes.data||[]).filter(t=>norm(t.truck_number||t.vehicle_number||t.registration_number||t.number)===norm(g.truck));
+   const ids=new Set(trucks.map(t=>String(t.id)));
+   const matching=(assignRes.data||[]).filter(a=>ids.has(String(a.truck_id)));
+   const active=matching.filter(a=>!['unassigned_at','end_date','to_date','left_at','released_at'].some(k=>a[k]));
+   const candidates=active.length?active:matching;
+   candidates.sort((a,b)=>String(b.assigned_at||b.start_date||b.from_date||b.joined_at||b.assignment_date||b.created_at||'').localeCompare(String(a.assigned_at||a.start_date||a.from_date||a.joined_at||a.assignment_date||a.created_at||'')));
+   if(!selected||selected.key!==stamp||!candidates.length)return;
+   const a=candidates[0],joined=a.assigned_at||a.start_date||a.from_date||a.joined_at||a.assignment_date||a.created_at;
+   const key='ekta-dk-v2-km:'+String(a.id??(a.truck_id+'-'+a.driver_id+'-'+joined));
+   const km=localStorage.getItem(key);
+   // A manually saved final-account Opening KM has precedence over Card 1 draft.
+   const saved=JSON.parse(localStorage.getItem('ekta-dk-final-km:'+g.key)||'{}');
+   if((saved.open===undefined||saved.open==='')&&km!==null&&km!==''&&Number.isFinite(Number(km))&&Number(km)>=0){$('dkOpeningKm').value=km;calcDiesel();}
+  }catch(e){console.warn('[Driver Khata] Opening KM auto-fill unavailable:',e)}
+ }
+ async function loadDetailProfile(g){
+  const stamp=g.key;const photo=$('dkPhoto');photo.textContent=String(g.driver||'?').charAt(0).toUpperCase();$('dkPhone').textContent='Phone: —';
+  if(!g.driverId||!db())return;
+  try{const {data:d,error}=await db().from('drivers').select('*').eq('id',g.driverId).maybeSingle();if(error)throw error;if(!selected||selected.key!==stamp)return;
+   const phone=['phone','phone_number','mobile','mobile_number','contact_number','contact_no','driver_phone'].map(k=>d?.[k]).find(Boolean);
+   $('dkPhone').textContent='Phone: '+(phone||'Not recorded');
+   const direct=['photo_url','profile_photo_url','driver_photo_url','avatar_url'].map(k=>d?.[k]).find(v=>typeof v==='string'&&/^https:\/\//.test(v));
+   let url=direct||'';
+   if(!url){const {data:docs,error:de}=await db().from('driver_documents').select('storage_path').eq('driver_id',g.driverId).eq('document_type','photo').order('created_at',{ascending:false}).limit(1);if(!de&&docs?.[0]?.storage_path){const signed=await db().storage.from('driver-documents').createSignedUrl(docs[0].storage_path,3600);url=signed.data?.signedUrl||'';}}
+   if(url&&selected?.key===stamp){const img=document.createElement('img');img.src=url;img.alt='Driver photo';img.onerror=()=>{photo.textContent=String(g.driver||'?').charAt(0).toUpperCase()};photo.replaceChildren(img)}
+  }catch(e){console.warn('[Driver Khata] Profile unavailable:',e.message)}
+ }
+ function calcDiesel(){
+  if(!selected)return;
+  const o=$('dkOpeningKm').value,c=$('dkClosingKm').value,a=$('dkAverage').value;
+  const valid=o!==''&&c!==''&&a!==''&&Number.isFinite(Number(o))&&Number.isFinite(Number(c))&&Number.isFinite(Number(a))&&Number(o)>=0&&Number(c)>=Number(o)&&Number(a)>0;
+  const extra=$('dkExtraKm').value;
+  const extraOk=extra===''||(Number.isFinite(Number(extra))&&Number(extra)>=0);
+  const set=$('dkSetDieselAdjust'),balance=$('dkSetProvisional');
+  if(!extraOk){$('dkDieselCalc').innerHTML='<div class="dk-calc-placeholder">Extra KM must be zero or a positive number.</div>';set.textContent='Pending';balance.textContent='Pending verification';return;}
+  if(!valid){$('dkDieselCalc').innerHTML='<div class="dk-calc-placeholder">Enter Opening KM, Closing KM and approved KM/L average to calculate diesel automatically. Extra KM is separate.</div>';set.textContent='Pending';balance.textContent='Pending verification';return;}
+  const running=Number(c)-Number(o),required=running/Number(a),taken=selected.litres,diff=taken-required;
+  const rate=taken>0?selected.diesel/taken:0;
+  const estimatedExtraCost=diff>0&&rate>0?diff*rate:0;
+  const calcBox=(label,value,kind='')=>`<div class="dk-calc-result ${kind}"><span>${label}</span><strong>${value}</strong></div>`;
+  $('dkDieselCalc').innerHTML=[
+   calcBox('Total Running',`${qty(running)} KM`),
+   calcBox('Required Diesel',`${qty(required)} L`),
+   calcBox('Diesel Taken',`${qty(taken)} L`),
+   calcBox(diff>=0?'Extra Diesel':'Short Diesel',`${qty(Math.abs(diff))} L`,diff>0?'dk-calc-alert':'dk-calc-good'),
+   calcBox('Average Diesel Rate',rate?`${money(rate)}/L`:'Not available'),
+   calcBox('Estimated Extra Diesel Cost',rate?money(estimatedExtraCost):'Not available',estimatedExtraCost>0?'dk-calc-alert':''),
+   calcBox('Extra KM (Separate)',`${Number(extra||0).toLocaleString('en-IN')} KM`)
+  ].join('');
+  set.textContent=rate?money(estimatedExtraCost)+' (estimate)':'Rate pending';
+  // Not a payable balance: opening balance, driver-paid expenses, approval and pending rates remain unverified.
+  balance.textContent='Pending verification';
+ }
+
+ async function saveRate(id){if(saving||!selected||!db())return;const r=detailRows(fixed,selected).find(x=>String(x.id)===String(id));if(!r||r.matched||r.status!=='Missing rate'||!r.from||!r.to)return;const input=[...$('dkTrips').querySelectorAll('[data-dk-amount]')].find(x=>x.dataset.dkAmount===id);if(!input)return;const raw=input.value.trim(),amount=Number(raw);if(!raw||!Number.isFinite(amount)||amount<0){$('dkDetailStatus').textContent='Please enter a valid Fixed Kharcha amount.';return}saving=true;input.disabled=true;
+ try{const pair=(a,b)=>[norm(a),norm(b)].sort().join('|');const target=pair(r.from,r.to);let existing=[];for(let off=0;off<50000;off+=500){const {data,error}=await db().from('fixed_kharcha_rates').select('*').range(off,off+499);if(error)throw error;existing.push(...(data||[]));if((data||[]).length<500)break}const matches=existing.filter(x=>pair(x.from_location,x.to_location)===target);if(matches.length){const amounts=[...new Set(matches.map(x=>Number(x.amount)))];if(amounts.length!==1||amounts[0]!==amount){if(!window.confirm(`Route ${r.from} ↔ ${r.to} already has ${amounts.map(money).join(', ')} in the shared Route Master. Update BOTH directions to ${money(amount)}?`))return;for(const x of matches){const {error}=await db().from('fixed_kharcha_rates').update({amount}).eq('id',x.id);if(error)throw error}}}else{const [from_location,to_location]=[r.from.toUpperCase(),r.to.toUpperCase()].sort();const {error}=await db().from('fixed_kharcha_rates').insert({from_location,to_location,amount});if(error)throw error}await window.ektaRefreshFixedTrips();fixed=window.ektaFixedHisabRows?.()||[];render();$('dkDetailStatus').textContent=`Saved ${money(amount)} in shared Fixed Kharcha Route Master. Card 2 and Final Hisab refreshed.`;
+ }catch(e){$('dkDetailStatus').textContent='Save failed: '+e.message}finally{saving=false;if(input.isConnected)input.disabled=false}}
+ async function load(force=false){if(pending)return pending;if(loaded&&!force){render();return}if(!db()){$('finalStatus').textContent='Supabase unavailable.';return}pending=(async()=>{try{$('finalStatus').textContent='Loading trips, diesel, advances and expenses…';await Promise.all([window.ektaLoadFixedTrips?.(),window.ektaLoadDieselTaken?.(),window.ektaLoadDriverAdvances?.(),window.ektaLoadTripExpenses?.()]);issues=[];fixed=window.ektaFixedHisabRows?.()||[];diesel=window.ektaDieselHisabRows?.()||[];advances=window.ektaAdvanceHisabRows?.()||[];expenses=window.ektaExpenseHisabRows?.()||[];if(!window.ektaFixedHisabRows?.())issues.push('Trip Fixed data unavailable');if(!window.ektaDieselHisabRows?.())issues.push('Diesel data unavailable');if(!window.ektaAdvanceHisabRows?.())issues.push('Advance data unavailable');if(!window.ektaExpenseHisabRows?.())issues.push('Expense data unavailable');loaded=true;render()}catch(e){$('finalStatus').textContent='Final Hisab load failed: '+e.message;console.error('[Final Hisab]',e)}})();try{await pending}finally{pending=null}}
+ $('finalRows').addEventListener('click',e=>{const b=e.target.closest('[data-dk-detail]');if(!b)return;
+  // Open the full driver account in its own browser tab, not below the summary table.
+  const url=new URL(window.location.href);url.searchParams.set('dk_account',b.dataset.dkDetail);
+  url.searchParams.set('dk_from',$('finalFrom').value);url.searchParams.set('dk_to',$('finalTo').value);
+  const tab=window.open(url.toString(),'_blank');if(!tab){$('finalStatus').textContent='Please allow pop-ups for this site to open the driver account in a new tab.';}
+ });
+ const accountKey=new URLSearchParams(window.location.search).get('dk_account');
+ if(accountKey){
+  document.body.classList.add('dk-account-tab');
+  $('finalFrom').value=new URLSearchParams(window.location.search).get('dk_from')||'';
+  $('finalTo').value=new URLSearchParams(window.location.search).get('dk_to')||'';
+  const detail=$('dkDetail');
+  const page=document.createElement('main');page.id='dkAccountPage';
+  const top=document.createElement('div');top.className='dk-account-top';
+  top.innerHTML='<strong>EKTA TRANSPORT <span> / DRIVER KHATA / FINAL HISAB</span></strong><button type="button" id="dkTabBack">← Back</button>';
+  page.append(top,detail);document.body.appendChild(page);
+  $('dkTabBack').addEventListener('click',()=>{if(window.opener){window.close()}else{window.location.href=window.location.pathname}});
+  $('dkClose').textContent='← Back';$('dkClose').addEventListener('click',()=>{if(window.opener)window.close();else window.location.href=window.location.pathname});
+  void load().then(()=>{const g=groups().find(x=>x.key===accountKey);if(g){showDetail(g);document.title=g.driver+' · '+g.truck+' | Driver Khata'}else{detail.hidden=false;$('dkDetailStatus').textContent='No matching driver account found. Check the date range or return to Final Hisab.'}});
+ }
+ $('dkClose').addEventListener('click',closeDetail);$('dkTrips').addEventListener('click',e=>{const b=e.target.closest('[data-dk-save]');if(b)void saveRate(b.dataset.dkSave)});
+ for(const id of ['dkOpeningKm','dkClosingKm','dkAverage','dkExtraKm'])$(id).addEventListener('input',calcDiesel);
+ $('dkSaveKm').addEventListener('click',()=>{if(!selected)return;const open=$('dkOpeningKm').value,close=$('dkClosingKm').value,average=$('dkAverage').value,extraKm=$('dkExtraKm').value;if((open||close||average)&&(!open||!close||!average||Number(close)<Number(open)||Number(average)<=0||!Number.isFinite(Number(open))||!Number.isFinite(Number(close))||!Number.isFinite(Number(average)))){$('dkDetailStatus').textContent='Check Opening KM, Closing KM and average before saving draft.';return}if(extraKm!==''&&(!Number.isFinite(Number(extraKm))||Number(extraKm)<0)){$('dkDetailStatus').textContent='Extra KM must be zero or positive.';return}try{localStorage.setItem('ekta-dk-final-km:'+selected.key,JSON.stringify({open,close,average,extraKm}));$('dkDetailStatus').textContent='Opening/Closing KM, Average and Extra KM saved as browser draft ONLY. Automatic diesel estimate updated; no deduction or settlement posted.'}catch(e){$('dkDetailStatus').textContent='Browser draft save failed: '+e.message}});
+ ['finalFrom','finalTo','finalSearch'].forEach(id=>$(id).addEventListener('input',render));$('finalRefresh').addEventListener('click',()=>load(true));window.ektaLoadFinalHisab=load;
 })();
