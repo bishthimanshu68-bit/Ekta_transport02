@@ -344,7 +344,7 @@ const driverCats=new Set(['DRIVER_ADVANCE','DRIVER_SETTLEMENT']);
 const truckCats=new Set(['DRIVER_ADVANCE','DRIVER_SETTLEMENT','DIESEL','UREA_DEF','REPAIR_MAINTENANCE','UNLOADING','EMI_LOAN','VEHICLE_LOAN_EMI','CHASSIS_LOAN_EMI','BODY_LOAN_EMI','VEHICLE_SALE','FASTAG_TOLL']);
 const categories=[['SUSPENSE','Needs Review / Suspense'],['DRIVER_ADVANCE','Driver Advance'],['DRIVER_SETTLEMENT','Driver Hissab / Settlement'],['DIESEL','Diesel'],['UREA_DEF','Urea / DEF'],['REPAIR_MAINTENANCE','Truck Work / Repair'],['UNLOADING','Unloading'],['VEHICLE_LOAN_EMI','Vehicle Loan EMI'],['CHASSIS_LOAN_EMI','Chassis Loan EMI'],['BODY_LOAN_EMI','Body Loan EMI'],['PERSONAL_EXPENSE','Personal Expense'],['HOME_LOAN_EMI','Home Loan EMI'],['EMI_LOAN','EMI / Loan (Old / Unclassified)'],['FASTAG_TOLL','FASTag / Toll'],['VEHICLE_SALE','Vehicle Sale'],['BANK_TRANSFER','Internal Bank Transfer'],['REVERSAL_REVIEW','Reversal — Review'],['DRIVER_ADVANCE_REVERSAL','Driver Advance Reversal'],['OFFICE_EXPENSE','Office Expense'],['PARTY_BALANCE','Party Balance Received'],['PARTY_ADVANCE','Party Advance Received'],['SALARY','Staff Salary'],['STAFF_ADVANCE','Staff Advance'],['VEHICLE_PAPER','Vehicle Paper'],['SALES','Sales Ledger'],['OTHER_EXPENSE','Other Expense'],['VENDOR_PAYMENT','Vendor Payment / Repair']];
 function renderRows(){
- const b=$('acRows');if(!b)return;
+ const b=$('acRows');updateStatementExportButton();if(!b)return;
  if(!state.rows.length){b.innerHTML='<tr><td colspan="7">No statement read yet.</td></tr>';return;}
  b.innerHTML=state.rows.map((r,i)=>{
   const {d,category}=getSuggestion(i),saved=r.status==='CONFIRMED'||r.status==='SUSPENSE';
@@ -645,6 +645,24 @@ async function analyzeAI(){
  setBusy(true);try{state.rows=await ai(state.file);state.selectedBank=bank;renderRows()}catch(e){alert('Gemini reading failed: '+e.message)}finally{setBusy(false)}
 }
 function chooseFile(file){if(!file)return;state.file=file;state.rows=[];state.reviewSelections={};state.selectedBank="";renderRows();$("acFileStatus").textContent=file.name;$("acFileMeta").classList.remove("hidden");$("acFileMeta").innerHTML=`<b>${esc(file.name)}</b> • ${(file.size/1024/1024).toFixed(2)} MB`;$("acAnalyzeBtn").disabled=false}
+// Export only the current locally extracted statement; no database writes.
+function exportStatementExcel(){
+ if(!state.rows.length){alert('First import and Read & Validate a bank statement.');return;}
+ const headers=['Date','Narration','Debit','Credit','Reference','Detected Category','Review Status','Bank Account','Bank Transaction ID','Closing Balance'];
+ const safe=v=>{const s=String(v??'');return /^[\s]*[=+@-]/.test(s)?"'"+s:s;};
+ const cell=v=>'"'+safe(v).replace(/"/g,'""')+'"';
+ const records=state.rows.map((r,i)=>{
+  const suggestion=getSuggestion(i);
+  return [r.date,r.narration,r.debit||0,r.credit||0,r.reference,suggestion?.category||r.suggestion||'SUSPENSE',r.status||'PENDING',r.bank_account||state.selectedBank||'',r.bank_transaction_id||'',r.closing_balance??''];
+ });
+ const csvText='\uFEFF'+[headers,...records].map(row=>row.map(cell).join(',')).join('\r\n');
+ const blob=new Blob([csvText],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob),link=document.createElement('a');
+ const bank=(state.selectedBank||'BANK').replace(/[^A-Za-z0-9_-]/g,'_');
+ link.href=url;link.download='Ekta_Bank_Statement_'+bank+'_Export.csv';
+ document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function updateStatementExportButton(){const b=$('acExportExcelBtn');if(b)b.disabled=!state.rows.length;}
 function bankSelectionChanged(){state.rows=[];state.reviewSelections={};state.selectedBank="";renderRows();if($("acSummary"))$("acSummary").textContent="Bank selection changed. Read & Validate again; previous review cleared. No saving enabled."}
 function resetStatement(){state.file=null;state.rows=[];state.reviewSelections={};if($("acFile"))$("acFile").value="";$("acFileStatus").textContent="No file selected";$("acFileMeta").classList.add("hidden");renderRows();setBusy(false)}
 async function persistMaster(i,forceSuspense=false){
@@ -714,6 +732,6 @@ function bind(){let f=$("acFile"),d=$("acDrop");if(!f||!d)return;f.addEventListe
 async function refresh(){await loadMasters();renderRows()}
 function scrollWorking(dir){const e=$("workingScroll");if(e)e.scrollBy({left:dir*430,behavior:"smooth"})}
 function scrollBottom(dir){const e=$("bottomScroll");if(e)e.scrollBy({left:dir*430,behavior:"smooth"})}
-window.EktaAccounts={getVickyTrucks:()=>state.trucks.map(t=>t.truck_number).filter(Boolean),getReviewSnapshot:()=>({bank:state.selectedBank,rows:state.rows.map(r=>({date:r.date,narration:r.narration,reference:r.reference,debit:r.debit,credit:r.credit,bank_transaction_id:r.bank_transaction_id}))}),showTab,analyze,analyzeAI,resetStatement,bankSelectionChanged,confirmRow,suspenseRow,setRemark,setLitres,setOriginalRef,setChoice,setDriverText,setVendorCode,toggleReview,refreshReview,setPartyCode,setTruckText,searchCategory,filterTruck,renderGeneric,editLedgerRow,cancelLedgerEdit,saveLedgerEdit,tripSuggest,linkTrip,refresh,scrollWorking,scrollBottom};
+window.EktaAccounts={getVickyTrucks:()=>state.trucks.map(t=>t.truck_number).filter(Boolean),exportStatementExcel,getReviewSnapshot:()=>({bank:state.selectedBank,rows:state.rows.map(r=>({date:r.date,narration:r.narration,reference:r.reference,debit:r.debit,credit:r.credit,bank_transaction_id:r.bank_transaction_id}))}),showTab,analyze,analyzeAI,resetStatement,bankSelectionChanged,confirmRow,suspenseRow,setRemark,setLitres,setOriginalRef,setChoice,setDriverText,setVendorCode,toggleReview,refreshReview,setPartyCode,setTruckText,searchCategory,filterTruck,renderGeneric,editLedgerRow,cancelLedgerEdit,saveLedgerEdit,tripSuggest,linkTrip,refresh,scrollWorking,scrollBottom};
 initSuggestions();bind();loadMasters();renderRows();renderDashboard();
 })();
