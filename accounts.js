@@ -22,6 +22,13 @@ function statementDateISO(value){
 }
 
 
+async function loadAccountHistory(){
+ const rows=[]; const size=500;
+ for(let offset=0;;offset+=size){
+  const {data,error}=await S.from("account_transactions").select("id,transaction_date,bank_narration,reference_number,debit,credit,user_remark,category,posting_status,party_id,truck_id,driver_id,trip_id,quantity_litres,bank_name,bank_account_name,confirmed_at").order("transaction_date",{ascending:false}).order("id",{ascending:true}).range(offset,offset+size-1);
+  if(error)return {error}; rows.push(...(data||[])); if((data||[]).length<size)break;
+ } return {data:rows};
+}
 async function loadMasters(){
  if(!S?.from){state.accountLoadError="Supabase client not available";renderDashboard();return;}
  const qs=await Promise.allSettled([
@@ -31,7 +38,7 @@ async function loadMasters(){
   S.from("parties").select("*"),
   S.from("maintenance_vendors").select("id,name,vendor_code"),
   S.from("trips").select("*").order("created_at",{ascending:false}),
-  S.from("account_transactions").select("id,transaction_date,bank_narration,reference_number,debit,credit,user_remark,category,posting_status,party_id,truck_id,driver_id,trip_id,quantity_litres").order("transaction_date",{ascending:false}).limit(1000)
+  loadAccountHistory()
  ]);
  state.trucks=qs[0].status==="fulfilled"?(qs[0].value.data||[]):[];
  state.drivers=qs[1].status==="fulfilled"?(qs[1].value.data||[]):[];
@@ -66,7 +73,7 @@ const ledgerDefinitions=[
  ["partyadvance","Transporter Advance Received",["PARTY_ADVANCE"]],
  ["partybalance","Transporter Balance Received",["PARTY_BALANCE"]],
  ["suspense","Suspense",["SUSPENSE"]],
- ["bank","All Bank Entries",[]]
+ ["bankhistory","All Bank Entries",[]]
 ];
 function partyKind(p){
  const raw=clean(p?.party_type||p?.type||p?.category||p?.party_category||p?.customer_type).toLowerCase().replace(/[^a-z]/g,'');
@@ -78,7 +85,7 @@ function receiptTypeForRow(r){return partyKind(state.parties.find(p=>String(p.id
 function ledgerRows(tab){
  const definition=ledgerDefinitions.find(x=>x[0]===tab);
  if(!definition)return [];
- return state.accountTransactions.filter(r=>{if(tab==="bank")return true;if(tab==="suspense")return r.posting_status==="SUSPENSE";if(r.posting_status==="SUSPENSE"||(definition[2].length&&!definition[2].includes(r.category)))return false;if(tab==="party")return receiptTypeForRow(r)==="BILLING";if(tab==="partyadvance"||tab==="partybalance")return receiptTypeForRow(r)==="TRANSPORTER";return true;});
+ return state.accountTransactions.filter(r=>{if(tab==="bankhistory")return true;if(tab==="suspense")return r.posting_status==="SUSPENSE";if(r.posting_status==="SUSPENSE"||(definition[2].length&&!definition[2].includes(r.category)))return false;if(tab==="party")return receiptTypeForRow(r)==="BILLING";if(tab==="partyadvance"||tab==="partybalance")return receiptTypeForRow(r)==="TRANSPORTER";return true;});
 }
 function renderLedgerCards(){
  const host=$("acLedgerCards");if(!host)return;
@@ -492,7 +499,7 @@ function renderMonthlyFlow(){
  }
  const max=Math.max(1,...months.flatMap(m=>[m.income,m.out]));
  host.innerHTML=`<div style="display:grid;grid-template-columns:repeat(6,minmax(90px,1fr));gap:16px;min-width:630px;align-items:end">${months.map(m=>`<div style="text-align:center"><div style="height:155px;display:flex;align-items:flex-end;justify-content:center;gap:7px;border-bottom:1px solid #dce5ef;padding:0 8px"><div title="Money In: ${money(m.income)}" style="width:29px;min-height:${m.income?3:0}px;height:${m.income/max*145}px;background:#24527a;border-radius:4px 4px 0 0"></div><div title="Money Out: ${money(m.out)}" style="width:29px;min-height:${m.out?3:0}px;height:${m.out/max*145}px;background:#8a9aac;border-radius:4px 4px 0 0"></div></div><div style="font-size:11px;font-weight:700;color:#334155;margin-top:8px">${m.label}</div><div style="font-size:10px;color:#64748b">${money(m.income)} in</div><div style="font-size:10px;color:#64748b">${money(m.out)} out</div></div>`).join("")}</div>`;
- note.textContent=state.accountLoadError?`Bank data unavailable: ${state.accountLoadError}`:"Shows last 6 months from loaded confirmed bank records (up to 1,000 recent entries). Not a full profit/loss statement.";
+ note.textContent=state.accountLoadError?`Bank data unavailable: ${state.accountLoadError}`:"Shows last 6 months from loaded confirmed bank records (all loaded entries). Not a full profit/loss statement.";
 }
 function showTab(tab){
  state.tab=tab;if($("acBackRow"))$("acBackRow").classList.toggle("hidden",tab==="dashboard");document.querySelectorAll("#accountsFinance .tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));
@@ -586,7 +593,33 @@ async function saveLedgerEdit(id){
   ledgerEditId=null;await loadMasters();renderGeneric();alert('Ledger correction saved.');
  }catch(e){alert('Correction not saved: '+(e.message||e))}finally{state.busy=false}
 }
+const bankHistory={bank:"",mode:"saved",from:"",to:"",group:"",page:0};
+function savedDay(r){if(!r.confirmed_at)return "";const d=new Date(r.confirmed_at);if(Number.isNaN(+d))return "";const p=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`;}
+function bankKey(r){return r.bank_account_name||r.bank_name||"Unknown bank";}
+function historyDay(r){return bankHistory.mode==="saved"?savedDay(r):r.transaction_date||"";}
+function historyRows(){const q=clean($("genericSearch")?.value).toLowerCase();return state.accountTransactions.filter(r=>{const d=historyDay(r);return (!bankHistory.bank||bankKey(r)===bankHistory.bank)&&(!bankHistory.from||(d&&d>=bankHistory.from))&&(!bankHistory.to||(d&&d<=bankHistory.to))&&(!q||[r.bank_narration,r.user_remark,r.reference_number,r.category,bankKey(r)].some(v=>clean(v).toLowerCase().includes(q)));});}
+function historyChange(k,v){bankHistory[k]=v;bankHistory.group="";bankHistory.page=0;renderGeneric();}
+function historyPreset(n){const d=new Date(Date.now()-n*86400000);const day=savedDay({confirmed_at:d.toISOString()});bankHistory.from=bankHistory.to=day;bankHistory.group="";bankHistory.page=0;renderGeneric();}
+function historyGroup(i){bankHistory.group=String(i);bankHistory.page=0;renderGeneric();}
+function historyPage(n){bankHistory.page=Math.max(0,bankHistory.page+n);renderGeneric();}
+function renderBankHistory(){
+ const h=bankHistory, host=$("bankHistoryControls"), rows=historyRows(), banks=[...new Set(state.accountTransactions.map(bankKey))].sort();
+ $("genericTitle").textContent="All Bank Entries — History";$("genericSub").textContent="Saved transactions grouped by bank and date (IST).";
+ host.innerHTML=`<div class="flex flex-wrap items-end gap-3"><label>Bank Account<select class="border rounded p-2 block" onchange="EktaAccounts.historyChange('bank',this.value)"><option value="">All Banks</option>${banks.map(b=>`<option ${b===h.bank?'selected':''} value="${esc(b)}">${esc(b)}</option>`).join('')}</select></label><label>Date Type<select class="border rounded p-2 block" onchange="EktaAccounts.historyChange('mode',this.value)"><option value="saved" ${h.mode==='saved'?'selected':''}>Entry Save Date</option><option value="transaction" ${h.mode==='transaction'?'selected':''}>Transaction Date</option></select></label>${['from','to'].map(k=>`<label>${k==='from'?'From Date':'To Date'}<input class="border rounded p-2 block" type="date" value="${esc(h[k])}" onchange="EktaAccounts.historyChange('${k}',this.value)"></label>`).join('')}<button class="btn" onclick="EktaAccounts.historyPreset(0)">Today</button><button class="btn" onclick="EktaAccounts.historyPreset(1)">Yesterday</button><button class="btn" onclick="EktaAccounts.historyClear()">All History</button><button class="btn green" onclick="EktaAccounts.exportHistory()">Export Excel (CSV)</button></div>`;
+ const groups=new Map();for(const r of rows){const k=JSON.stringify([historyDay(r),bankKey(r)]);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
+ const list=[...groups.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
+ const selected=h.group!==""?list[Number(h.group)]:null;const visible=selected?selected[1]:rows;
+ $("acLedgerSummary").textContent=state.accountLoadError?state.accountLoadError:`${visible.length} entries • Debit ${money(visible.reduce((s,r)=>s+num(r.debit),0))} • Credit ${money(visible.reduce((s,r)=>s+num(r.credit),0))}`;
+ if(!selected){$("genericHead").innerHTML='<tr><th>Date</th><th>Bank Account</th><th>Entries</th><th>Debit</th><th>Credit</th><th>Action</th></tr>';$("genericBody").innerHTML=list.map(([k,rs],i)=>{const [d,b]=JSON.parse(k);return `<tr><td>${esc(d||'Unknown date')}</td><td>${esc(b)}</td><td>${rs.length}</td><td>${money(rs.reduce((s,r)=>s+num(r.debit),0))}</td><td>${money(rs.reduce((s,r)=>s+num(r.credit),0))}</td><td><button class="btn primary" onclick="EktaAccounts.historyGroup(${i})">View Entries</button></td></tr>`}).join('')||'<tr><td colspan="6">No matching saved entries.</td></tr>';return;}
+ host.insertAdjacentHTML('beforeend',`<div class="mt-3 flex gap-2 items-center"><button class="btn" onclick="EktaAccounts.historyGroup('')">← History</button><button class="btn" onclick="EktaAccounts.historyPage(-1)" ${h.page===0?'disabled':''}>Previous</button><span>Page ${h.page+1}</span><button class="btn" onclick="EktaAccounts.historyPage(1)" ${(h.page+1)*100>=visible.length?'disabled':''}>Next</button></div>`);
+ $("genericHead").innerHTML='<tr><th>Transaction Date</th><th>Saved Date</th><th>Bank</th><th>Narration / Remark</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Category</th><th>Status</th></tr>';
+ $("genericBody").innerHTML=visible.slice(h.page*100,(h.page+1)*100).map(r=>`<tr><td>${esc(r.transaction_date)}</td><td>${esc(savedDay(r)||'Unknown')}</td><td>${esc(bankKey(r))}</td><td style="white-space:normal">${esc(r.bank_narration)}<div>${esc(r.user_remark)}</div></td><td>${esc(r.reference_number)}</td><td>${money(r.debit)}</td><td>${money(r.credit)}</td><td>${esc(r.category)}</td><td>${esc(r.posting_status)}</td></tr>`).join('');
+}
+function historyClear(){Object.assign(bankHistory,{from:"",to:"",group:"",page:0});renderGeneric();}
+function exportHistory(){const rows=historyRows();if(!rows.length)return alert('No matching entries');const cell=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,"'$&").replace(/"/g,'""')+'"';const records=[['Transaction Date','Saved Date','Bank Account','Narration','Remark','Reference','Debit','Credit','Category','Status'],...rows.map(r=>[r.transaction_date,savedDay(r),bankKey(r),r.bank_narration,r.user_remark,r.reference_number,num(r.debit),num(r.credit),r.category,r.posting_status])];const url=URL.createObjectURL(new Blob(['\uFEFF'+records.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Bank_History.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function renderGeneric(){
+  $("bankHistoryControls")?.classList.toggle("hidden",state.tab!=="bankhistory");
+  if(state.tab==="bankhistory")return renderBankHistory();
   let [title,sub]=meta[state.tab]||[ledgerDefinitions.find(x=>x[0]===state.tab)?.[1]||"Accounts","Saved accounting transactions"];
   $("genericTitle").textContent=title;$("genericSub").textContent=sub;
   $("genericHead").innerHTML="<tr><th>Date</th><th>Particulars / Remark</th><th>Reference</th><th>Trip ID</th><th>Truck / Driver / Party</th><th class='money'>Debit</th><th class='money'>Credit</th><th>Status</th><th>Action</th></tr>";
@@ -732,6 +765,6 @@ function bind(){let f=$("acFile"),d=$("acDrop");if(!f||!d)return;f.addEventListe
 async function refresh(){await loadMasters();renderRows()}
 function scrollWorking(dir){const e=$("workingScroll");if(e)e.scrollBy({left:dir*430,behavior:"smooth"})}
 function scrollBottom(dir){const e=$("bottomScroll");if(e)e.scrollBy({left:dir*430,behavior:"smooth"})}
-window.EktaAccounts={getVickyTrucks:()=>state.trucks.map(t=>t.truck_number).filter(Boolean),exportStatementExcel,getReviewSnapshot:()=>({bank:state.selectedBank,rows:state.rows.map(r=>({date:r.date,narration:r.narration,reference:r.reference,debit:r.debit,credit:r.credit,bank_transaction_id:r.bank_transaction_id}))}),showTab,analyze,analyzeAI,resetStatement,bankSelectionChanged,confirmRow,suspenseRow,setRemark,setLitres,setOriginalRef,setChoice,setDriverText,setVendorCode,toggleReview,refreshReview,setPartyCode,setTruckText,searchCategory,filterTruck,renderGeneric,editLedgerRow,cancelLedgerEdit,saveLedgerEdit,tripSuggest,linkTrip,refresh,scrollWorking,scrollBottom};
+window.EktaAccounts={historyChange,historyPreset,historyGroup,historyPage,historyClear,exportHistory,getVickyTrucks:()=>state.trucks.map(t=>t.truck_number).filter(Boolean),exportStatementExcel,getReviewSnapshot:()=>({bank:state.selectedBank,rows:state.rows.map(r=>({date:r.date,narration:r.narration,reference:r.reference,debit:r.debit,credit:r.credit,bank_transaction_id:r.bank_transaction_id}))}),showTab,analyze,analyzeAI,resetStatement,bankSelectionChanged,confirmRow,suspenseRow,setRemark,setLitres,setOriginalRef,setChoice,setDriverText,setVendorCode,toggleReview,refreshReview,setPartyCode,setTruckText,searchCategory,filterTruck,renderGeneric,editLedgerRow,cancelLedgerEdit,saveLedgerEdit,tripSuggest,linkTrip,refresh,scrollWorking,scrollBottom};
 initSuggestions();bind();loadMasters();renderRows();renderDashboard();
 })();
