@@ -226,7 +226,7 @@ function setType(t){type=t;selected=null;selectedTrips.clear();statusFilter='all
    const party=matching.find(p=>String(p.id)===String(t.party_id));
    if(party)groups.get(type==='Transporter'?'TRANSPORTER:'+String(party.id):summaryCompanyKey(party))?.trips.push(t);
   }
-  const groupsList=[...groups.values()].filter(g=>g.trips.length).sort((a,b)=>a.name.localeCompare(b.name));
+  const groupsList=[...groups.values()].filter(g=>g.trips.length||matching.some(p=>g.partyIds.has(String(p.id))&&(Number(p.opening_debit)||Number(p.opening_credit)))).sort((a,b)=>a.name.localeCompare(b.name));
   const labels=type==='Transporter'?{all:'All Trips',ready:'All Trips',pending:'All Trips',billed:'All Trips'}:{all:'All Trips',ready:'Ready for Billing',pending:'Pending for Billing',billed:'Billed'};
   const total=groupsList.reduce((sum,g)=>sum+g.trips.length,0);
   const btn=(g,route,label,count)=>`<button type="button" onclick="window.EktaPartyLedger.selectSummary('${safe(g.key)}','${route}')" class="border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 bg-white hover:bg-slate-50 hover:border-blue-300 text-left">${safe(label)} <span class="font-bold ml-2">${count}</span> →</button>`;
@@ -261,6 +261,11 @@ function render(){
 const p=all.find(x=>String(x.id)===String(selected));
  const activeGroup=summarySelection?[...all].filter(x=>summaryCompanyKey(x)===summarySelection.companyKey):[];
  $('ledgerPartyHeading').textContent=summarySelection?`${summaryCompanyName(activeGroup[0]||{})} · ${summarySelection.route==='haier'?'Haier to Haier':summarySelection.route==='other'?'Haier to Other':summarySelection.route==='review'?'Needs POD Verification':'All Trips'}`:p?`${partyLabel(p)} · Credit ${p.credit_days??0} days`:'All Billing Parties · Select a party to create an invoice';
+ let openingPanel=$('ledgerOpeningPanel');
+ if(!openingPanel){openingPanel=document.createElement('div');openingPanel.id='ledgerOpeningPanel';openingPanel.className='rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs';$('ledgerPartyHeading').parentElement.after(openingPanel);}
+ const openingParties=summarySelection?activeGroup:p?[p]:[];
+ openingPanel.hidden=!openingParties.length;
+ openingPanel.innerHTML='<b>Opening Balance — party / branch (not trip or route specific)</b>'+openingParties.map(x=>`<div class="mt-2">${safe(partyLabel(x))} · Date: ${safe(x.opening_balance_date||'Not set')} · Debit: ${money(x.opening_debit)} · Credit: ${money(x.opening_credit)} · Net: ${money(Math.abs(Number(x.opening_debit||0)-Number(x.opening_credit||0)))} ${Number(x.opening_debit||0)>Number(x.opening_credit||0)?'Dr':Number(x.opening_credit||0)>Number(x.opening_debit||0)?'Cr':''}</div>`).join('');
  // The company/category is locked by the opening tab. Billing party is resolved
  // from each selected trip; no additional GST/location dropdown is needed.
  if(window.EKTA_BILLING_STANDALONE && summarySelection){

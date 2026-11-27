@@ -357,6 +357,9 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
             $("partyState").value = party.state || "";
             $("partyCreditDays").value = party.credit_days ?? 0;
             $("partyCreditLimit").value = party.credit_limit ?? 0;
+            $("partyOpeningDebit").value = party.opening_debit ?? 0;
+            $("partyOpeningCredit").value = party.opening_credit ?? 0;
+            $("partyOpeningDate").value = party.opening_balance_date || "";
             $("partyPaymentTerms").value = party.payment_terms || "";
             $("partyStatus").value = party.status || "Active";
             $("partyAddress").value = party.address || "";
@@ -546,7 +549,17 @@ if ($("partyType")) $("partyType").value = activePartySection || "Billing Client
             }
         }
 
+        const openingDebit = Number($("partyOpeningDebit").value || 0);
+        const openingCredit = Number($("partyOpeningCredit").value || 0);
+        const openingDate = $("partyOpeningDate").value || null;
+        if (![openingDebit, openingCredit].every(v => Number.isFinite(v) && v >= 0 && v <= 999999999999.99) || (openingDebit > 0 && openingCredit > 0)) {
+            alert("Enter a valid opening balance on either Debit or Credit, not both."); return false;
+        }
+        if ((openingDebit || openingCredit) && !openingDate) { alert("Opening Balance Date is required."); return false; }
         const payload = {
+            opening_debit: openingDebit,
+            opening_credit: openingCredit,
+            opening_balance_date: openingDate,
             name,
             party_type: partyType,
             gst_number: $("partyGst")?.value.trim().toUpperCase() || null,
