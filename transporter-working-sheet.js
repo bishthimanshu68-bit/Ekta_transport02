@@ -1,4 +1,4 @@
-/* EKTA TRANSPORT — Transporter Working Sheet: tracking-linked, READ ONLY.
+/* EKTA TRANSPORT — Transporter Working Sheet: tracking-linked working register.
    Never infer advances, payments, TDS or balances from unverified sources.
    A trip is included only if trips.party_id points to a saved Transporter party.
    Pending/no party IDs are excluded, not displayed as pending assignments. */
@@ -11,15 +11,44 @@
  const note=(s,k)=>String(s||'').match(new RegExp('\\[TRACKING:'+k+'=([^\\]]+)\\]','i'))?.[1]||'';
  const date=v=>String(v||'').slice(0,10)||'—';
  const amount=v=>v==null||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
- let parties=[],trips=[],trucks=[],receipts=[],q='';
+ const drafts=new Map(), timers=new Map(), busy=new Set(), states=new Map(), unlocked=new Set(), invalid=new Set();
+ const rowKey=(id)=>id+":"+receiptCategory;
+ const hasSaved=(t)=>{const w=t.transporter_working||{};const keys=receiptCategory==='PARTY_ADVANCE'?['advance_payable','commission','tripal_extra','driver_advance','advance_tds','advance_other_deduction','advance_remarks']:['loading_detention','unloading_detention','unloading_charge','balance_tds','late_charge','damage','enam','balance_other_deduction','balance_remarks'];const filled=v=>v!=null&&String(v).trim()!=='';return keys.some(k=>filled(w[k]))||(receiptCategory==='PARTY_ADVANCE'&&!Object.prototype.hasOwnProperty.call(w,'advance_payable')&&filled(w.balance));};
+ let parties=[],trips=[],trucks=[],receipts=[],q='',ledgerParty='',loaded=false,receiptCategory='PARTY_ADVANCE';
  const selectedPartyId=()=>new URLSearchParams(location.search).get('party_id')||'';
+ async function readAll(make){
+  const out=[];for(let offset=0;;offset+=500){const {data,error}=await make().order('id',{ascending:true}).range(offset,offset+499);if(error)throw error;out.push(...(data||[]));if((data||[]).length<500)return out;}
+ }
+ let historyCategory='PARTY_ADVANCE', workFilter='all';
+ function pendingFor(t){return calculations(t,{...t.transporter_working,...drafts.get(String(t.id))})[receiptCategory==='PARTY_ADVANCE'?'pendingAdvance':'pendingBalance'];}
+ function matchesWork(t){return workFilter==='all'||(workFilter==='received'?received(t,receiptCategory)>0:pendingFor(t)>0);}
+ function searchTrips(){return trips.filter(t=>{const p=parties.find(p=>String(p.id)===String(t.party_id)),truck=trucks.find(x=>String(x.id)===String(t.truck_id));return p&&String(t.party_id)===ledgerParty&&(!q||text([p.party_code,p.name,p.city,truck?.truck_number,t.trip_number,t.lr_number,t.program_date,t.loading_point,t.destination].join(' ')).includes(text(q)));});}
+ function renderLedger(){
+  if(!loaded)return;
+  const byParty=new Map(parties.map(p=>[String(p.id),p]));
+  const byTrip=new Map(trips.map(t=>[String(t.id),t]));
+  const rows=receipts.filter(r=>String(r.party_id)===ledgerParty).sort((a,b)=>String(a.transaction_date||'').localeCompare(String(b.transaction_date||''))||String(a.id).localeCompare(String(b.id)));
+  const validTrip=r=>{const t=byTrip.get(String(r.trip_id));return t&&String(t.party_id)===String(r.party_id)?t:null;};
+  const sum=rs=>rs.reduce((s,r)=>s+Number(r.credit||0),0);
+  $('ledgerAdvance').textContent=money(sum(rows.filter(r=>r.category==='PARTY_ADVANCE')));
+  $('ledgerBalance').textContent=money(sum(rows.filter(r=>r.category==='PARTY_BALANCE')));
+  $('ledgerTotal').textContent=money(sum(rows));
+  $('ledgerUnlinked').textContent=money(rows.reduce((s,r)=>s+Number(r.credit)-allocated(r),0));
+  const visible=rows.filter(r=>r.category===historyCategory);
+  $('tabAdvance').setAttribute('aria-pressed',String(historyCategory==='PARTY_ADVANCE'));
+  $('tabBalance').setAttribute('aria-pressed',String(historyCategory==='PARTY_BALANCE'));
+  $('ledgerStatus').textContent=(historyCategory==='PARTY_ADVANCE'?'Advance':'Balance')+' Payment History · '+visible.length+' entries';
+  $('ledgerRows').innerHTML=visible.map(r=>{const details=['Reference: '+(r.reference_number||'—'),'Remark: '+(r.user_remark||'—'),'Trips: '+allocations(r).length].join(' | ');return `<tr title="${esc(details)}">`+[date(r.transaction_date),r.bank_account_name||r.bank_name||'—',money(r.credit),money(allocated(r)),money(Number(r.credit)-allocated(r))].map(v=>'<td>'+esc(v)+'</td>').join('')+`<td><button class="allocate" data-receipt="${esc(r.id)}">Allocate / Edit</button></td></tr>`;}).join('')||'<tr><td colspan="6">No receipts found for this category.</td></tr>';
+ }
  function render(){
+  if(!loaded)return;
+  renderLedger();
+  $('workAdvance').setAttribute('aria-pressed',String(receiptCategory==='PARTY_ADVANCE'));
+  $('workBalance').setAttribute('aria-pressed',String(receiptCategory==='PARTY_BALANCE'));
   const partyById=new Map(parties.map(p=>[String(p.id),p]));
   const truckById=new Map(trucks.map(t=>[String(t.id),t]));
-  const filtered=trips.filter(t=>{
-   const p=partyById.get(String(t.party_id)),truck=truckById.get(String(t.truck_id));
-   return p&&(!q||text([p.party_code,p.name,p.city,truck?.truck_number,t.trip_number,t.lr_number,t.program_date,t.loading_point,t.destination].join(' ')).includes(text(q)));
-  });
+  const scope=searchTrips(), filtered=scope.filter(matchesWork);
+  for(const key of ['all','received','pending']) $('filter-'+key).setAttribute('aria-pressed',String(workFilter===key));
   // Display trips by Program Date: oldest first, newest last.
   // Missing program dates go last; stable tie-breakers keep the order predictable.
   filtered.sort((a,b)=>{
@@ -28,43 +57,119 @@
    if(da&&!db)return -1;
    return da.localeCompare(db)||String(a.trip_number||'').localeCompare(String(b.trip_number||''));
   });
+  const advance=receiptCategory==='PARTY_ADVANCE';
+  const base=['SN','Party Code','Transporter','City','Vehicle','Trip','Program Date','Loading Date','From','To','Freight'];
+  const extra=advance?['Advance Payable','Commission','Tripal Extra','Driver Advance','TDS','Other Deduction','Payment Received','Payment Mode','Received Date','Total Advance Adjusted','Pending Advance','Remarks']:['Balance','Reporting Date','Unloading Date','Detention Days','Loading Detention','Unloading Detention','Unloading Charge','TDS','Late Charge','Damage','Enam','Other Deduction','Total Balance','Payment Received','Payment Mode','Received Date','Pending Balance','Reminder','Remarks'];
+  $('workingTitle').textContent=advance?'Advance Working Page':'Balance Working Page';
+  $('workHeaders').innerHTML=[...base,...extra,'Action'].map(h=>'<th>'+esc(h)+'</th>').join('');
+  const sum=rs=>rs.reduce((v,r)=>v+Number(r.credit||0),0);
+  const input=(key,value)=>`<input class="work-input" type="number" min="0" step="0.01" data-field="${key}" value="${esc(value??'')}" aria-label="${key}">`;
+  const remarks=(key,value)=>`<input class="work-input" type="text" data-field="${key}" value="${esc(value??'')}" aria-label="Remarks">`;
+  const balanceKeys=['loading_detention','unloading_detention','unloading_charge','balance_tds','late_charge','damage','enam','balance_other_deduction'];
   $('rows').innerHTML=filtered.map((t,i)=>{
-   const p=partyById.get(String(t.party_id)),truck=truckById.get(String(t.truck_id));
-   const entered=note(t.notes,'FREIGHT_ENTERED_AT_PROGRAM');
-   const freight=entered==='NO'?null:amount(t.freight_amount??t.revenue);
-   const freightKnown=freight!==null&&(freight>0||entered==='YES');
-   const pod=note(t.notes,'POD_STATUS')||'Not confirmed';
-   const linked=receipts.filter(r=>String(r.trip_id)===String(t.id));
-    const adv=linked.filter(r=>r.category==='PARTY_ADVANCE');
-    const bal=linked.filter(r=>r.category==='PARTY_BALANCE');
-    const total=list=>list.reduce((sum,r)=>sum+Number(r.credit||0),0);
-    const advSum=total(adv),balSum=total(bal),received=advSum+balSum;
-    const dates=adv.map(r=>r.transaction_date).filter(Boolean).sort();
-    const banks=[...new Set(linked.map(r=>r.bank_account_name||r.bank_name||'Bank receipt').filter(Boolean))];
-    const state=!freightKnown?'Rate Pending':!linked.length?'Awaiting Receipt':freight-received<=0?'Received':'Partially Received';
-   const cells=[i+1,p.party_code||'—',p.name||'—',p.city||'—',truck?.truck_number||'—',t.trip_number||'—',date(t.program_date),date(t.loading_date),t.loading_point||t.from_location||'—',t.destination||t.to_location||'—',freightKnown?money(freight):'Rate pending',adv.length?money(advSum):'Not linked',dates.length?dates.join(', '):'—',linked.length?`${money(received)} · ${banks.join(' / ')}`:'—',freightKnown?money(freight-received):'Not calculated','Optional · not posted',pod,state,t.trip_status||'—'];
-   return '<tr>'+cells.map((c,j)=>'<td'+([10,11,14].includes(j)?' class="num"':'')+'>'+esc(c)+'</td>').join('')+'</tr>';
-  }).join('')||'<tr><td colspan="19" style="text-align:center;padding:24px">No confirmed-party transporter trips found.</td></tr>';
-  $('freightTotal').textContent=money(filtered.reduce((s,t)=>note(t.notes,'FREIGHT_ENTERED_AT_PROGRAM')==='NO'?s:s+(amount(t.freight_amount??t.revenue)||0),0));
-   const advanceTotal=filtered.reduce((sum,t)=>sum+receipts.filter(r=>String(r.trip_id)===String(t.id)&&r.category==='PARTY_ADVANCE').reduce((v,r)=>v+Number(r.credit||0),0),0);
-   const balanceTotal=filtered.reduce((sum,t)=>{const entered=note(t.notes,'FREIGHT_ENTERED_AT_PROGRAM');const freight=entered==='NO'?null:amount(t.freight_amount??t.revenue);if(freight===null||freight<=0)return sum;const paid=receipts.filter(r=>String(r.trip_id)===String(t.id)).reduce((v,r)=>v+Number(r.credit||0),0);return sum+Math.max(0,freight-paid)},0);
-   if($('pendingAdvanceTotal'))$('pendingAdvanceTotal').textContent=money(advanceTotal);
-   if($('pendingBalanceTotal'))$('pendingBalanceTotal').textContent=money(balanceTotal);
-  $('notice').textContent=''; $('notice').style.display='none';
+   const p=partyById.get(String(t.party_id)),truck=truckById.get(String(t.truck_id)),w={...t.transporter_working,...drafts.get(String(t.id))};
+   const freight=tripFreight(t), linked=tripReceipts(t,receiptCategory), c=calculations(t,w);
+   const cells=[i+1,p.party_code,p.name,p.city,truck?.truck_number,t.trip_number,date(t.program_date),date(t.loading_date),t.loading_point||t.from_location,t.destination||t.to_location,freight===null?'Rate pending':money(freight)].map(v=>'<td>'+esc(v??'—')+'</td>');
+   cells[4]=`<td><button type="button" class="quick-vehicle">${esc(truck?.truck_number??'—')}</button></td>`;
+   const add=v=>cells.push('<td>'+v+'</td>');
+   const calc=(key)=>add(`<b data-calc="${key}" data-state="${calcState(key,c[key])}">${esc(displayCalc(key,c[key]))}</b>`);
+   const payment=()=>{add(linked.length?money(sum(linked)):'Not linked');add(esc([...new Set(linked.map(r=>r.bank_account_name||r.bank_name).filter(Boolean))].join(', ')||'—'));add(esc([...new Set(linked.map(r=>date(r.transaction_date)))].join(', ')||'—'));};
+   if(advance){add(input('advance_payable',c.payable));['commission','tripal_extra','driver_advance','advance_tds','advance_other_deduction'].forEach(k=>add(input(k,w[k])));payment();calc('adjusted');calc('pendingAdvance');add(remarks('advance_remarks',w.advance_remarks));}
+   else {calc('balance');add(esc(date(reportDate(t))));add(esc(date(unloadDate(t))));add(detentionBadge(detentionDays(t)));balanceKeys.forEach(k=>add(input(k,w[k])));calc('totalBalance');payment();calc('pendingBalance');calc('reminder');add(remarks('balance_remarks',w.balance_remarks));}
+   add('<button type="button" class="save-work">Edit</button><small class="save-status"></small>');
+   return `<tr data-trip="${esc(t.id)}">${cells.join('')}</tr>`;
+  }).join('')||'<tr><td colspan="32">No trips found.</td></tr>';
+  for(const row of $('rows').querySelectorAll('tr[data-trip]')) paint(row);
+  $('freightTotal').textContent=money(scope.reduce((s,t)=>note(t.notes,'FREIGHT_ENTERED_AT_PROGRAM')==='NO'?s:s+(amount(t.freight_amount??t.revenue)||0),0));
+  $('pendingAdvanceTotal').textContent=money(scope.reduce((s,t)=>s+received(t,receiptCategory),0));
+  $('pendingBalanceTotal').textContent=money(scope.reduce((s,t)=>s+Math.max(0,pendingFor(t)??0),0)); $('pendingLabel').textContent=advance?'Live Pending Advance':'Live Pending Balance';
+  $('linkedLabel').textContent=advance?'Linked Advance Received':'Linked Balance Received';
+  $('notice').style.display='none';
  }
+ function tripFreight(t){return note(t.notes,'FREIGHT_ENTERED_AT_PROGRAM')==='NO'?null:amount(t.freight_amount??t.revenue);}
+ function allocations(r){return Array.isArray(r.transporter_allocations)?r.transporter_allocations:r.trip_id?[{trip_id:String(r.trip_id),amount:Number(r.credit)}]:[];}
+ function allocated(r){return allocations(r).reduce((s,a)=>s+Math.round(Number(a.amount)*100),0)/100;}
+ function tripReceipts(t,category){return receipts.filter(r=>String(r.party_id)===String(t.party_id)&&r.category===category).flatMap(r=>allocations(r).filter(a=>String(a.trip_id)===String(t.id)).map(a=>({...r,credit:Number(a.amount)})));}
+ function received(t,category){return tripReceipts(t,category).reduce((s,r)=>s+Number(r.credit||0),0);}
+ function reportDate(t){return t.reporting_date||t.reported_date||t.reporting_at||t.reported_at||null;}
+ function unloadDate(t){return t.unloading_date||t.unloaded_date||t.unloading_at||t.unloaded_at||null;}
+ function detentionBadge(days){if(days===null)return '—';const level=Math.min(days,3);return `<span class="detention-badge detention-${level}">${days} ${days===1?'Day':'Days'}</span>`;}
+ function detentionDays(t){const a=Date.parse(date(reportDate(t))+'T00:00:00Z'),b=Date.parse(date(unloadDate(t))+'T00:00:00Z');return Number.isFinite(a)&&Number.isFinite(b)&&b>=a?Math.max(0,Math.round((b-a)/86400000)-1):null;}
+ function calculations(t,w){const n=k=>Number(w[k]||0), round=v=>Math.round(v*100)/100,f=tripFreight(t),adjusted=round(n('commission')+n('tripal_extra')+n('driver_advance')+n('advance_tds')+n('advance_other_deduction')+received(t,'PARTY_ADVANCE')),payable=Object.prototype.hasOwnProperty.call(w,'advance_payable')?amount(w.advance_payable):f===null||w.balance==null?null:round(f-n('balance')),balance=f===null||payable===null?null:round(f-payable),pendingAdvance=payable===null?null:round(payable-adjusted),totalBalance=balance===null?null:round(balance+n('loading_detention')+n('unloading_detention')+n('unloading_charge')-n('balance_tds')-n('late_charge')-n('damage')+n('enam')-n('balance_other_deduction')),pendingBalance=totalBalance===null?null:round(totalBalance-received(t,'PARTY_BALANCE'));return {payable,balance,adjusted,pendingAdvance,totalBalance,pendingBalance,reminder:pendingAdvance===null||pendingBalance===null?'Incomplete':pendingAdvance>0?'Collect Advance':pendingBalance>0?'Collect BALANCE':pendingAdvance<0||pendingBalance<0?'Review excess':'NIL'};}
+ function calcState(k,v){return !['pendingAdvance','pendingBalance'].includes(k)||v==null?'':v>0?'due':v===0?'clear':'excess';}
+ function displayCalc(k,v){return v==null?'Not calculated':k==='reminder'?v:money(v);}
+ function rowValues(row){const out={};for(const el of row.querySelectorAll('[data-field]')){if(!el.checkValidity())throw Error('Enter a valid non-negative amount');out[el.dataset.field]=el.type==='text'?el.value:el.value===''?null:Number(el.value);}return out;}
+ function updateRow(row,t,w){if(w.advance_payable!=null&&(tripFreight(t)==null||w.advance_payable>tripFreight(t)))throw Error("Invalid Advance Payable");const c=calculations(t,w);for(const el of row.querySelectorAll('[data-calc]')){el.textContent=displayCalc(el.dataset.calc,c[el.dataset.calc]);el.dataset.state=calcState(el.dataset.calc,c[el.dataset.calc]);}}
+ function liveSummary(){ $('pendingBalanceTotal').textContent=money(searchTrips().reduce((s,t)=>s+Math.max(0,pendingFor(t)??0),0)); }
+ function paint(row){const id=row.dataset.trip,t=trips.find(x=>String(x.id)===id);if(!t)return;const locked=hasSaved(t)&&!unlocked.has(rowKey(id));for(const el of row.querySelectorAll('[data-field]'))el.readOnly=locked;const btn=row.querySelector('.save-work');btn.textContent=states.get(id)?.startsWith('Not saved')?'Retry':unlocked.has(rowKey(id))?'Done':'Edit';btn.disabled=busy.has(id);row.querySelector('.save-status').textContent=states.get(id)|| (locked?'Saved':'');}
+ function paintId(id){const row=[...$('rows').querySelectorAll('tr[data-trip]')].find(r=>r.dataset.trip===id);if(row)paint(row);if(quickRow?.dataset.trip===id&&$('quickDialog').open)quickSync();}
+ function schedule(id,delay=800){clearTimeout(timers.get(id));timers.set(id,setTimeout(()=>{timers.delete(id);persist(id);},delay));}
+ async function persist(id){if(busy.has(id)||invalid.has(id)||!drafts.has(id))return;const t=trips.find(x=>String(x.id)===id);if(!t)return;const values={...drafts.get(id)},old=t.transporter_working;busy.add(id);states.set(id,'Saving…');paintId(id);try{const next={...(old||{}),...values};if(values.advance_payable!=null&&(tripFreight(t)==null||values.advance_payable>tripFreight(t)))throw Error('Invalid Advance Payable');if(!Object.prototype.hasOwnProperty.call(values,'_fixed_auto')){next._fixed_auto={...old?._fixed_auto};next._fixed_manual={...old?._fixed_manual};for(const k of ['advance_payable','commission','advance_tds'])if(Object.prototype.hasOwnProperty.call(values,k)){delete next._fixed_auto[k];next._fixed_manual[k]=true;}}if(Object.prototype.hasOwnProperty.call(values,'advance_payable'))next.balance=calculations(t,next).balance;let query=db().from('trips').update({transporter_working:next}).eq('id',t.id).eq('party_id',t.party_id);query=old==null?query.is('transporter_working',null):query.eq('transporter_working',JSON.stringify(old));const {data,error}=await query.select('id,transporter_working').single();if(error||!data)throw error||Error('Save not confirmed');t.transporter_working=data.transporter_working;const remaining={...drafts.get(id)};for(const k of Object.keys(values))if(remaining[k]===values[k])delete remaining[k];if(Object.keys(remaining).length)drafts.set(id,remaining);else drafts.delete(id);states.set(id,drafts.has(id)?'Unsaved changes':'Saved');}catch(err){states.set(id,'Not saved: '+err.message);}finally{busy.delete(id);paintId(id);if(drafts.has(id)&&!states.get(id).startsWith('Not saved'))schedule(id);}}
+ $('rows').addEventListener('input',e=>{const row=e.target.closest('tr[data-trip]');if(!row||!e.target.dataset.field)return;const id=row.dataset.trip,t=trips.find(x=>String(x.id)===id);if(!t)return;try{rowValues(row);const el=e.target,w={...drafts.get(id),[el.dataset.field]:el.type==='text'?el.value:el.value===''?null:Number(el.value)};updateRow(row,t,{...t.transporter_working,...w});invalid.delete(id);drafts.set(id,w);unlocked.add(rowKey(id));states.set(id,'Unsaved changes');liveSummary();paint(row);schedule(id);}catch(err){invalid.add(id);clearTimeout(timers.get(id));states.set(id,'Invalid amount');paint(row);}});
+ $('rows').addEventListener('focusout',e=>{const row=e.target.closest('tr[data-trip]');if(row&&drafts.has(row.dataset.trip))schedule(row.dataset.trip,0);});
+ $('rows').addEventListener('click',e=>{const btn=e.target.closest('.save-work');if(!btn)return;const row=btn.closest('tr'),id=row.dataset.trip;if(states.get(id)?.startsWith('Not saved')){persist(id);return;}if(unlocked.has(rowKey(id))){if(drafts.has(id))schedule(id,0);unlocked.delete(rowKey(id));}else unlocked.add(rowKey(id));paint(row);if(unlocked.has(rowKey(id)))row.querySelector('[data-field]')?.focus();});
+
+ let quickRow=null, quickEditing=false;
+ const quickLabels={advance_payable:'Advance Payable',commission:'Commission',tripal_extra:'Tripal Extra',driver_advance:'Driver Advance',advance_tds:'TDS',advance_other_deduction:'Other Deduction',advance_remarks:'Remarks',loading_detention:'Loading Detention',unloading_detention:'Unloading Detention',unloading_charge:'Unloading Charge',balance_tds:'TDS',late_charge:'Late Charge',damage:'Damage',enam:'Enam',balance_other_deduction:'Other Deduction',balance_remarks:'Remarks'};
+ function quickSync(){if(!quickRow)return;const id=quickRow.dataset.trip,t=trips.find(x=>String(x.id)===id);if(!t)return;const c=calculations(t,{...t.transporter_working,...drafts.get(id)}),adv=receiptCategory==='PARTY_ADVANCE';$('quickCalc').textContent=(adv?'Balance: '+displayCalc('balance',c.balance)+' · Pending Advance: '+displayCalc('pendingAdvance',c.pendingAdvance):'Balance: '+displayCalc('balance',c.balance)+' · Total Balance: '+displayCalc('totalBalance',c.totalBalance)+' · Pending Balance: '+displayCalc('pendingBalance',c.pendingBalance))+' · Received: '+money(received(t,receiptCategory));$('quickStatus').textContent=states.get(id)||'';$('quickSave').disabled=busy.has(id)||invalid.has(id);for(const el of $('quickFields').querySelectorAll('input'))el.readOnly=!quickEditing;}
+ $('rows').addEventListener('click',e=>{if(!e.target.closest('.quick-vehicle'))return;quickRow=e.target.closest('tr');const t=trips.find(x=>String(x.id)===quickRow.dataset.trip);if(!t)return;quickEditing=!hasSaved(t)||unlocked.has(rowKey(String(t.id)));$('quickTitle').textContent=quickRow.cells[4].textContent+' · '+(receiptCategory==='PARTY_ADVANCE'?'Advance':'Balance');$('quickInfo').textContent=[t.trip_number,date(t.loading_date),t.loading_point||t.from_location,t.destination||t.to_location,'Freight: '+money(tripFreight(t)),...(receiptCategory==='PARTY_BALANCE'?['Reporting: '+date(reportDate(t)),'Unloading: '+date(unloadDate(t)),'Detention: '+(detentionDays(t)??'—')+' days']:[])].join(' · ');$('quickFields').innerHTML=[...quickRow.querySelectorAll('[data-field]')].map(el=>`<label>${esc(quickLabels[el.dataset.field])}<input data-quick="${esc(el.dataset.field)}" type="${el.type}" ${el.type==='number'?'min="0" step="0.01"':''} value="${esc(el.value)}"></label>`).join('');quickSync();$('quickDialog').showModal();$('quickFields').querySelector('input:not([readonly])')?.focus();});
+ $('quickEdit').onclick=()=>{quickEditing=true;unlocked.add(rowKey(quickRow.dataset.trip));paint(quickRow);quickSync();$('quickFields').querySelector('input')?.focus();};
+ $('quickFields').addEventListener('input',e=>{const el=e.target;if(!el.dataset.quick||!quickEditing)return;const target=[...quickRow.querySelectorAll('[data-field]')].find(x=>x.dataset.field===el.dataset.quick);target.value=el.value;target.dispatchEvent(new Event('input',{bubbles:true}));quickSync();});
+ $('quickSave').onclick=async()=>{const id=quickRow.dataset.trip;clearTimeout(timers.get(id));await persist(id);if(!drafts.has(id)&&!invalid.has(id)&&!busy.has(id)){quickEditing=false;unlocked.delete(rowKey(id));paint(quickRow);}quickSync();};
+ $('quickClose').onclick=()=>{$('quickDialog').close();};
+ $('quickDialog').addEventListener('close',()=>{if(quickRow&&drafts.has(quickRow.dataset.trip))schedule(quickRow.dataset.trip,0);quickRow=null;});
+ $('quickDialog').addEventListener('keydown',e=>{if(e.key!=='Tab'&&e.key!=='Enter')return;const dialog=$('quickDialog');if(!dialog.open)return;const fields=[...$('quickFields').querySelectorAll('input:not([readonly]):not(:disabled)')];const buttons=[$('quickSave'),$('quickEdit'),$('quickClose')].filter(el=>!el.disabled);const order=[...fields,...buttons];if(!order.length)return;if(e.key==='Enter'&&e.target.tagName==='BUTTON')return;e.preventDefault();const i=order.indexOf(document.activeElement);const step=e.shiftKey?-1:1;const next=i<0?(step<0?order.length-1:0):(i+step+order.length)%order.length;order[next].focus();});
+ $('rows').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.dataset.field)return;e.preventDefault();const fields=[...$('rows').querySelectorAll('input[data-field]:not([readonly])')],i=fields.indexOf(e.target);fields[i+1]?.focus();});
+ window.addEventListener('beforeunload',e=>{if(drafts.size||busy.size||invalid.size){e.preventDefault();e.returnValue='';}});
+ let activeReceipt=null, allocationDraft=new Map(), savingAllocation=false;
+ const cents=v=>Math.round(Number(v)*100);
+ function allocationSummary(){const total=[...allocationDraft.values()].reduce((s,v)=>s+cents(v||0),0), cap=cents(activeReceipt.credit);$('allocUsed').textContent=money(total/100);$('allocLeft').textContent=money((cap-total)/100);$('allocSave').disabled=savingAllocation||total>cap||[...allocationDraft.values()].some(v=>!Number.isFinite(Number(v))||Number(v)<0||Math.abs(Number(v)*100-cents(v))>0.00001);}
+ function allocationRows(){const r=activeReceipt, query=text($('allocSearch').value);const ts=trips.filter(t=>String(t.party_id)===String(r.party_id));$('allocRows').innerHTML=ts.filter(t=>!query||text([t.trip_number,trucks.find(x=>String(x.id)===String(t.truck_id))?.truck_number,t.loading_date].join(' ')).includes(query)).map(t=>{const id=String(t.id),truck=trucks.find(x=>String(x.id)===String(t.truck_id)),c=calculations(t,{...t.transporter_working,...drafts.get(id)}),adv=r.category==='PARTY_ADVANCE',prior=received(t,r.category),pending=adv?c.pendingAdvance:c.pendingBalance;return '<tr>'+[t.trip_number,truck?.truck_number,date(t.loading_date),money(tripFreight(t)),displayCalc('payable',adv?c.payable:c.totalBalance),money(prior),displayCalc('pending',pending)].map(v=>'<td>'+esc(v??'—')+'</td>').join('')+`<td><input class="work-input" type="number" min="0" step="0.01" data-alloc="${esc(id)}" value="${esc(allocationDraft.get(id)??'')}"></td></tr>`;}).join('');allocationSummary();}
+ $('ledgerRows').addEventListener('click',e=>{const b=e.target.closest('[data-receipt]');if(!b)return;activeReceipt=receipts.find(r=>String(r.id)===b.dataset.receipt);if(!activeReceipt)return;allocationDraft=new Map(allocations(activeReceipt).map(a=>[String(a.trip_id),a.amount]));$('allocTitle').textContent=activeReceipt.category==='PARTY_ADVANCE'?'Allocate Advance Payment':'Allocate Balance Payment';$('allocInfo').textContent=[parties.find(p=>String(p.id)===String(activeReceipt.party_id))?.name,date(activeReceipt.transaction_date),activeReceipt.bank_account_name||activeReceipt.bank_name,activeReceipt.reference_number].filter(Boolean).join(' · ');$('allocCredit').textContent=money(activeReceipt.credit);$('allocSearch').value='';$('allocStatus').textContent='';allocationRows();$('allocDialog').showModal();});
+ $('allocSearch').addEventListener('input',allocationRows);
+ $('allocRows').addEventListener('input',e=>{if(!e.target.dataset.alloc)return;allocationDraft.set(e.target.dataset.alloc,e.target.value);allocationSummary();});
+ $('allocClose').addEventListener('click',()=>{if(!savingAllocation)$('allocDialog').close();});
+ $('allocDialog').addEventListener('cancel',e=>{if(savingAllocation)e.preventDefault();});
+ $('allocSave').addEventListener('click',async()=>{if(savingAllocation||$('allocSave').disabled)return;const r=activeReceipt; savingAllocation=true;allocationSummary();$('allocStatus').textContent='Saving…';try{const next=[...allocationDraft].filter(([id,v])=>Number(v)>0).map(([id,v])=>({trip_id:id,amount:cents(v)/100}));if(next.some(a=>!trips.some(t=>String(t.id)===a.trip_id&&String(t.party_id)===String(r.party_id))))throw Error('Allocation contains an unavailable trip. Review before saving.');let query=db().from('account_transactions').update({transporter_allocations:next}).eq('id',r.id).eq('party_id',r.party_id).eq('category',r.category).eq('posting_status','CONFIRMED').eq('credit',r.credit);query=r.transporter_allocations==null?query.is('transporter_allocations',null):query.eq('transporter_allocations',JSON.stringify(r.transporter_allocations));query=r.trip_id==null?query.is('trip_id',null):query.eq('trip_id',r.trip_id);const {data,error}=await query.select('id,transporter_allocations').single();if(error||!data)throw error||Error('Save not confirmed');r.transporter_allocations=data.transporter_allocations;$('allocDialog').close();render();}catch(e){$('allocStatus').textContent='Not saved: '+e.message+' — refresh before retrying if data changed.';}finally{savingAllocation=false;allocationSummary();}});
+ let fixedBusy=false;
+ const fixedKeys=['balance','commission','tds'];
+ const fixedCards=[...document.querySelectorAll('[data-fixed]')];let fixedIndex=0;
+  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const fieldFor={balance:'advance_payable',commission:'commission',tds:'advance_tds'};
+  function history(w,k){return Array.isArray(w?.history?.[k])?w.history[k]:[];}
+  function applicable(w,k,d){return history(w,k).filter(x=>x.from<=d).sort((a,b)=>b.from.localeCompare(a.from))[0];}
+  function showFixed(p){const w=p.transporter_working_defaults||{};fixedCards.forEach((el,i)=>{const k=fixedKeys[i],r=applicable(w,k,today()),v=r?r.value:w[k];$('fixedValue'+i).textContent=v==null?'Not set':i===2?v+'%':'₹'+Number(v).toLocaleString('en-IN');el.title=r?'Effective '+r.from:'No dated setting';el.disabled=false;});$('fixedStatus').textContent='Loading date based · click for history';}
+  function fixedHistoryUI(){const k=fixedKeys[fixedIndex],w=parties[0].transporter_working_defaults||{},rs=history(w,k).slice().sort((a,b)=>b.from.localeCompare(a.from));$('fixedHistory').innerHTML=rs.map(r=>`<option value="${esc(r.from)}">${esc(r.from)} · ${esc(r.value==null?'Disabled':r.value)} · saved ${esc(r.saved_at||'')}</option>`).join('')||'<option value="">No dated history</option>';$('fixedHistory').disabled=$('fixedMode').value!=='correct';$('fixedDate').readOnly=$('fixedMode').value==='correct';if($('fixedMode').value==='correct')loadCorrection();}
+  function loadCorrection(){const r=history(parties[0].transporter_working_defaults,fixedKeys[fixedIndex]).find(x=>x.from===$('fixedHistory').value);$('fixedDate').value=r?.from||'';$('fixedEntry').value=r?.value??'';}
+  $('fixedMode').onchange=()=>{fixedHistoryUI();if($('fixedMode').value==='change')$('fixedDate').value=today();};$('fixedHistory').onchange=loadCorrection;
+  fixedCards.forEach((el,i)=>el.onclick=()=>{if(!loaded||fixedBusy)return;fixedIndex=i;$('fixedTitle').textContent=['Fixed Balance','Fixed Commission','Fixed TDS'][i];$('fixedLabel').textContent=i===2?'Percentage (%)':'Amount (₹)';const input=$('fixedEntry'),w=parties[0].transporter_working_defaults||{},r=applicable(w,fixedKeys[i],today());input.value=(r?r.value:w[fixedKeys[i]])??'';if(i===2)input.max='100';else input.removeAttribute('max');$('fixedMode').value='change';$('fixedDate').value=today();fixedHistoryUI();$('fixedDialogStatus').textContent='';$('fixedDialog').showModal();input.focus();});
+  $('fixedCancel').onclick=()=>{if(!fixedBusy)$('fixedDialog').close();};$('fixedDialog').addEventListener('cancel',e=>{if(fixedBusy)e.preventDefault();});
+  async function applyFixed(p){let count=0,failed=0;const settings=p.transporter_working_defaults||{};for(const t of trips){const d=date(t.loading_date),f=tripFreight(t),w=t.transporter_working||{},patch={},meta={...w._fixed_auto};if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||f==null||f<0||received(t,'PARTY_ADVANCE')||received(t,'PARTY_BALANCE'))continue;for(const k of fixedKeys){const r=applicable(settings,k,d),field=fieldFor[k],m=meta[field];if(!r)continue;const owned=m&&w[field]===m.value&&(k!=='balance'||w.balance===m.balance);const empty=w[field]==null||w[field]==='';if(!owned&&(!empty||(k==='balance'&&w.balance!=null)||(k==='tds'&&w.balance_tds!=null)||w._fixed_manual?.[field]))continue;const v=r.value==null?null:k==='balance'?(r.value<=f?Math.round((f-r.value)*100)/100:null):k==='tds'?Math.round(f*r.value)/100:r.value;if(k==='balance'&&r.value!=null&&r.value>f)continue;if(v===null&&!owned)continue;if(v===w[field]&&m?.from===r.from)continue;patch[field]=v;if(v===null)delete meta[field];else meta[field]={from:r.from,value:v,...(k==='balance'?{balance:Math.round((f-v)*100)/100}:{})};}if(!Object.keys(patch).length)continue;patch._fixed_auto=meta;const id=String(t.id);drafts.set(id,patch);await persist(id);if(drafts.has(id))failed++;else count++;}return {count,failed};}
+  $('fixedSave').onclick=async()=>{if(!loaded||fixedBusy)return;if(drafts.size||busy.size||invalid.size||savingAllocation){$('fixedDialogStatus').textContent='Finish pending saves first.';return;}const p=parties[0],old=p.transporter_working_defaults,k=fixedKeys[fixedIndex],input=$('fixedEntry'),from=$('fixedDate').value,correct=$('fixedMode').value==='correct';if(!input.checkValidity()||!from){$('fixedDialogStatus').textContent='Enter a valid amount and date.';return;}const value=input.value===''?null:Number(input.value),rs=history(old,k),prior=rs.find(r=>r.from===from);if(correct?!prior:!!prior||from<today()||rs.some(r=>r.from>from)){$('fixedDialogStatus').textContent=correct?'Select an existing dated setting.':'Use a new date, today or later, after the latest setting. For an existing date use Correct.';return;}if(correct&&!confirm('Correct this dated setting? Only identifiable automatic values without linked payments will change.'))return;const record={from,value,saved_at:new Date().toISOString(),...(prior?{previous:[...(prior.previous||[]),{value:prior.value,saved_at:prior.saved_at}]}:{})};const next={...(old||{}),history:{...old?.history,[k]:[...rs.filter(r=>r.from!==from),record]}};next[k]=applicable(next,k,today())?.value??null;fixedBusy=true;$('fixedSave').disabled=true;fixedCards.forEach(el=>el.disabled=true);try{let query=db().from('parties').update({transporter_working_defaults:next}).eq('id',p.id);query=old==null?query.is('transporter_working_defaults',null):query.eq('transporter_working_defaults',JSON.stringify(old));const {data,error}=await query.select('id,transporter_working_defaults').single();if(error||!data)throw error||Error('Settings save not confirmed');p.transporter_working_defaults=data.transporter_working_defaults;const {count,failed}=await applyFixed(p);render();showFixed(p);$('fixedDialog').close();$('fixedStatus').textContent=`Settings saved · ${count} trips updated · ${failed} failed`; }catch(e){$('fixedDialogStatus').textContent='Not saved: '+e.message;}finally{fixedBusy=false;$('fixedSave').disabled=false;fixedCards.forEach(el=>el.disabled=false);}};
  async function refresh(){
-  const client=db();if(!client?.from){$('notice').style.display='block';$('notice').textContent='Supabase client unavailable. Open from the Ekta Transport dashboard and keep the dashboard tab open.';return;}
+  if(fixedBusy||drafts.size||busy.size||invalid.size){alert('Unsaved changes remain. Resolve or retry before refreshing.');return;}
+  fixedCards.forEach(el=>el.disabled=true);loaded=false; ledgerParty=''; $('ledgerParty').textContent='Loading transporter…'; $('ledgerStatus').textContent='Loading receipts…'; $('ledgerRows').innerHTML=''; $('rows').innerHTML=''; for(const id of ['ledgerAdvance','ledgerBalance','ledgerTotal','ledgerUnlinked','freightTotal','pendingAdvanceTotal','pendingBalanceTotal'])$(id).textContent='—';
+  const client=db();if(!client?.from){$('notice').style.display='block';$('ledgerParty').textContent='Transporter unavailable';$('ledgerStatus').textContent='Data unavailable';$('notice').textContent='Supabase client unavailable. Open from the Ekta Transport dashboard and keep the dashboard tab open.';return;}
   $('notice').style.display='none';$('notice').textContent='';
   try{
-   const [a,b,c]=await Promise.all([client.from('parties').select('id,party_code,name,city,party_type'),client.from('trips').select('*').order('created_at',{ascending:false}),client.from('trucks').select('id,truck_number')]);
-   for(const r of [a,b,c])if(r.error)throw r.error;
    const requested=selectedPartyId();
-   parties=(a.data||[]).filter(p=>String(p.party_type||'').trim().toLowerCase()==='transporter'&&(!requested||String(p.id)===requested));
+   if(!requested)throw Error('Open a transporter from Party Ledger. Party ID is required.');
+   const [a,b,c,d]=await Promise.all([readAll(()=>client.from('parties').select('id,party_code,name,city,party_type,transporter_working_defaults')),readAll(()=>client.from('trips').select('*')),readAll(()=>client.from('trucks').select('id,truck_number')),readAll(()=>client.from('account_transactions').select('id,transaction_date,reference_number,credit,category,posting_status,party_id,trip_id,bank_name,bank_account_name,user_remark,transporter_allocations').eq('posting_status','CONFIRMED').in('category',['PARTY_ADVANCE','PARTY_BALANCE']).gt('credit',0))]);
+   parties=a.filter(p=>['transporter','transporters'].includes(String(p.party_type||'').toLowerCase().replace(/[^a-z]/g,''))&&String(p.id)===requested);
    const ids=new Set(parties.map(p=>String(p.id)));
-   trips=(b.data||[]).filter(t=>t.party_id!=null&&ids.has(String(t.party_id))&&String(t.trip_status||'').trim().toLowerCase()!=='cancelled');
-   trucks=c.data||[];
-   render();
-  }catch(e){$('notice').style.display='block';$('notice').textContent='Unable to load live data: '+e.message;console.error('[EKTA Transporter Working Sheet]',e);}
+   trips=b.filter(t=>t.party_id!=null&&ids.has(String(t.party_id))&&String(t.trip_status||'').trim().toLowerCase()!=='cancelled');
+   trucks=c;
+   receipts=[...new Map(d.filter(r=>ids.has(String(r.party_id))).map(r=>[String(r.id),r])).values()];
+   if(!ids.has(requested))throw Error('Transporter not found. Open the correct party from Party Ledger.');
+   ledgerParty=requested;
+   const p=parties[0], code=String(p.party_code??''), name=String(p.name??'').trim();
+   $('ledgerParty').textContent=[code&&name.startsWith(code+' ')?name.slice(code.length+1):name,code].filter(Boolean).join(' · ');
+   fixedBusy=true;try{const result=await applyFixed(p);loaded=true;showFixed(p);render();if(result.failed)$('fixedStatus').textContent=result.failed+' automatic saves failed; retry rows.';}finally{fixedBusy=false;}
+  }catch(e){$('ledgerParty').textContent='Transporter unavailable';$('ledgerStatus').textContent='Data unavailable — refresh required';$('notice').style.display='block';$('notice').textContent='Unable to load live data: '+e.message;console.error('[EKTA Transporter Working Sheet]',e);}
  }
- window.EktaTransporterSheet={refresh,search(v){q=v;render();},open(){const tab=window.open(new URL('transporter-working-sheet.html',location.href).href,'_blank');if(!tab)alert('Please allow pop-ups to open the Transporter Working Sheet.');},close(){window.close();}};
+ window.EktaTransporterSheet={refresh,historyTab(v){if(!['PARTY_ADVANCE','PARTY_BALANCE'].includes(v))return;historyCategory=v;renderLedger();},receiptTab(v){if(!['PARTY_ADVANCE','PARTY_BALANCE'].includes(v))return;receiptCategory=v;workFilter='all';render();},filter(v){if(!['all','received','pending'].includes(v))return;workFilter=v;render();},search(v){q=v;render();},open(){const tab=window.open(new URL('transporter-working-sheet.html',location.href).href,'_blank');if(!tab)alert('Please allow pop-ups to open the Transporter Working Sheet.');},close(){window.close();}};
 })();
+
+// Prevent accidental changes to numeric fields while retaining typing and Tab/Enter.
+document.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement&&e.target.type==='number'&&(e.key==='ArrowUp'||e.key==='ArrowDown'))e.preventDefault();},true);
+document.addEventListener('wheel',e=>{if(e.target instanceof HTMLInputElement&&e.target.type==='number'&&document.activeElement===e.target)e.preventDefault();},{capture:true,passive:false});

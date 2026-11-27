@@ -188,7 +188,7 @@ function setType(t){type=t;selected=null;selectedTrips.clear();statusFilter='all
   finally{haierSaving.delete(String(id));}
  }
  function selectSummary(companyKey,route){
-   if(type==='Transporter'&&!window.EKTA_BILLING_STANDALONE){
+   if(type==='Transporter'){
     const id=String(companyKey).startsWith('TRANSPORTER:')?String(companyKey).slice(12):'';
     if(!id || !parties.some(p=>String(p.id)===id&&norm(p.party_type)==='transporter')){alert('Select a valid Transporter party.');return;}
     const url=new URL('transporter-working-sheet.html',window.location.href);
@@ -406,7 +406,18 @@ function filter(s){statusFilter=s;summarySelection=null;selected=null;selectedTr
  function searchInput(on){dropdownOpen=on;dropdownIndex=0;render();}
  function searchKey(e){const options=visible().filter(p=>matches($('ledgerSearch').value,[p.party_code,p.name,p.city,p.zone,p.mobile,p.gst_number]));if(e.key==='Escape'){dropdownOpen=false;render();}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();dropdownOpen=true;dropdownIndex=Math.max(0,Math.min(options.length-1,dropdownIndex+(e.key==='ArrowDown'?1:-1)));render();}else if(e.key==='Enter'&&dropdownOpen&&options.length){e.preventDefault();select(options[dropdownIndex]?.id);}}
  function backToSummary(){if(window.EKTA_BILLING_STANDALONE){if(window.opener&&!window.opener.closed)window.opener.focus();return;}summarySelection=null;selected=null;selectedTrips.clear();statementSearch='';if($('ledgerStatementSearch'))$('ledgerStatementSearch').value='';if($('ledgerSearch'))$('ledgerSearch').value='';dropdownOpen=false;render();}
- function select(id){summarySelection=null;selected=id;selectedTrips.clear();dropdownOpen=false;const p=parties.find(x=>String(x.id)===String(id));if(p)$('ledgerSearch').value=partyLabel(p);render();}
+ function select(id){
+ const p=parties.find(x=>String(x.id)===String(id));
+ if(!p||norm(p.party_type)!==norm(type))return;
+ if(norm(p.party_type)==='transporter'){
+  summarySelection=null;selected=null;selectedTrips.clear();dropdownOpen=false;
+  $('ledgerSearch').value=partyLabel(p);render();
+  selectSummary('TRANSPORTER:'+String(p.id),'all');
+  return;
+ }
+ summarySelection=null;selected=id;selectedTrips.clear();dropdownOpen=false;
+ $('ledgerSearch').value=partyLabel(p);render();
+}
  function podAction(id,action){
  const t=trips.find(x=>String(x.id)===String(id));if(!t)return;
  if(!note(t.notes,'POD_DOC_PATH')&&!note(t.notes,'POD_DOC_PATH_2')&&!note(t.notes,'POD_DOC_PATH_3')){
