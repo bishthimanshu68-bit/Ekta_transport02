@@ -445,7 +445,7 @@
 .et-fleet-tabs{display:flex;gap:5px;overflow-x:auto;padding:9px 0 1px}.et-fleet-tab{border:1px solid #dce6f0;background:#f8fafc;color:#173653;border-radius:7px;padding:6px 8px;font-size:9px;font-weight:900;white-space:nowrap;cursor:pointer}.et-fleet-tab.active{background:#173653;color:#fff;border-color:#173653}
 .et-fleet-search{margin-top:8px;width:100%;border:1px solid #d7e2ef;border-radius:8px;padding:8px 10px;outline:none;font-size:11px}
 .et-fleet-cols{display:grid;grid-template-columns:1.05fr .9fr 1.25fr 1.25fr;gap:7px;padding:7px 11px;background:#f7f9fc;border-bottom:1px solid #e7edf4;color:#5d6d82;font-size:9px;font-weight:900}
-.et-fleet-list{overflow:auto;flex:1}.et-fleet-row{display:grid;grid-template-columns:1.05fr .9fr 1.25fr 1.25fr;gap:7px;padding:9px 11px;border-bottom:1px solid #edf1f6;cursor:pointer;align-items:start}.et-fleet-row:hover,.et-fleet-row.selected{background:#eef7ff}.et-fleet-veh{font-weight:900;color:#173653;font-size:10px}.et-fleet-cell{font-size:9px;line-height:1.35;color:#31445d;overflow-wrap:anywhere}.et-fleet-time{display:block;color:#718096;margin-top:2px;font-size:8px}.et-fleet-pill{display:inline-flex;padding:4px 6px;border-radius:6px;font-size:8px;font-weight:900}.et-fleet-pill.RUNNING{background:#dff8eb;color:#087a4b}.et-fleet-pill.LOADING{background:#fff0d5;color:#c97900}.et-fleet-pill.REPORTING{background:#efe3ff;color:#7131c7}.et-fleet-pill.EMPTY{background:#edf2f8;color:#52647a}.et-fleet-pill.PROGRAM{background:#e3efff;color:#1264da}.et-fleet-pill.NO_DRIVER{background:#fee2e2;color:#b91c1c}.et-fleet-tab.active[onclick*="NO_DRIVER"]{background:#dc2626;border-color:#dc2626;color:#fff}
+.et-fleet-list{overflow:auto;flex:1}.et-fleet-row{display:grid;grid-template-columns:1.05fr .9fr 1.25fr 1.25fr;gap:7px;padding:9px 11px;border-bottom:1px solid #edf1f6;cursor:pointer;align-items:start}.et-fleet-row:hover,.et-fleet-row.selected{background:#eef7ff}.et-fleet-veh{font-weight:900;color:#173653;font-size:10px}.et-fleet-cell{font-size:9px;line-height:1.35;color:#31445d;overflow-wrap:anywhere}.et-fleet-time{display:block;color:#718096;margin-top:2px;font-size:8px}.et-fleet-pill{display:inline-flex;padding:4px 6px;border-radius:6px;font-size:8px;font-weight:900}.et-fleet-pill.RUNNING{background:#dff8eb;color:#087a4b}.et-fleet-pill.LOADING{background:#fff0d5;color:#c97900}.et-fleet-pill.REPORTING{background:#efe3ff;color:#7131c7}.et-fleet-pill.EMPTY{background:#edf2f8;color:#52647a}.et-fleet-pill.PROGRAM{background:#e3efff;color:#1264da}.et-fleet-pill.NO_DRIVER{background:#e9ddd4;color:#65432d}.et-fleet-tab.active[onclick*="NO_DRIVER"]{background:#65432d;border-color:#65432d;color:#fff}
 .et-fleet-map-card{position:absolute;z-index:6;left:50%;top:18px;transform:translateX(-50%);width:min(420px,calc(100% - 30px));background:#fff;border:1px solid #dce5ef;border-radius:12px;box-shadow:0 12px 30px #1736532a;padding:11px 13px;display:none}.et-fleet-map-card.show{display:block}.et-fleet-card-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.et-fleet-card-top b{font-size:14px;color:#173653}.et-fleet-card-x{border:0;background:transparent;font-size:18px;cursor:pointer;color:#52647a}.et-fleet-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin-top:8px;font-size:9px;color:#52647a}.et-fleet-card-grid b{display:block;color:#173653;font-size:10px;margin-top:2px}.et-fleet-card-actions{display:flex;gap:7px;margin-top:9px}.et-fleet-card-actions button{border:1px solid #d6e0ec;background:#fff;border-radius:7px;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}.et-fleet-card-actions .primary{background:#1768b4;color:#fff;border-color:#1768b4}
 .et-fleet-legend{left:12px;bottom:14px}.et-fleet-empty{padding:25px 12px;text-align:center;color:#7b8797;font-size:10px}
 @media(max-width:900px){.et-fleet-shell{grid-template-columns:1fr}.et-fleet-map-wrap{min-height:58vh;border-right:0;border-bottom:1px solid #dbe5ef}.et-fleet-side{min-height:42vh}.et-fleet-cols,.et-fleet-row{grid-template-columns:1fr .8fr 1.15fr 1.15fr}}
@@ -462,9 +462,9 @@
 #trackingModule .cards .c-running{background:#d9f6e8;border-color:#88d7ad;color:#087246}
 #trackingModule .cards .c-reporting{background:#e9dfff;border-color:#baa1f1;color:#5b2caa}
 #trackingModule .cards .c-empty{background:#e8edf4;border-color:#b6c4d4;color:#3d536c}
-#trackingModule .cards .c-nodriver{background:#ffe1e1;border-color:#f3a1a1;color:#a32323}
-#trackingModule .cards .c-delay{background:#fff0ca;border-color:#eec269;color:#8a5800}
-#trackingModule .cards .c-alert{background:#ffe1ed;border-color:#f4a5c6;color:#a9235c}
+#trackingModule .cards .c-nodriver{background:#e9ddd4;border-color:#94735b;color:#65432d}
+#trackingModule .cards .c-delay{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+#trackingModule .cards .c-alert{background:#cffafe;border-color:#0891b2;color:#155e75}
 #trackingModule .cards .card small,#trackingModule .cards .card strong{color:inherit}
 #trackingModule .et-eway-cell{min-width:150px;font-size:11px;line-height:1.4}
 #trackingModule .et-eway-btn{font-size:10px;padding:4px 7px;margin-top:4px;cursor:pointer;border:1px solid #c6d7ec;border-radius:6px;background:#fff;color:#173653}
@@ -621,7 +621,7 @@
 #etFastagTabs{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
 #etFastagTabs button{border:1px solid #d9e4f1;border-radius:8px;background:#f8fafc;color:#173653;padding:6px 8px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
 #etFastagTabs button.active{background:#173653;color:white;border-color:#173653}
-#etFastagTabs button.active[onclick*="NO_DRIVER"]{background:#dc2626;border-color:#dc2626;color:#fff}
+#etFastagTabs button.active[onclick*="NO_DRIVER"]{background:#65432d;border-color:#65432d;color:#fff}
 #etFastagTabs button:focus-visible{outline:2px solid #3677b6;outline-offset:2px}
 
 /* Empty-list quick programming entry: visual addition only. */
@@ -917,11 +917,25 @@
  border:1px solid #c8e2f9;background:#eff7ff;color:#246ca8;
 }
 #trackingModule .et-timer-running{background:#eaf8f0;border-color:#bde9d1;color:#168052}
+#trackingModule .et-timer-delayed{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
 #trackingModule .et-timer-reporting{background:#f2edff;border-color:#ded1ff;color:#7045b7}
-#trackingModule .et-timer-empty{background:#eaf7fa;border-color:#bce7ec;color:#207f91}
+#trackingModule .et-timer-empty{background:#e8edf4;border-color:#b6c4d4;color:#3d536c}
 #trackingModule .et-timer-unknown{background:#f5f7fa;border-color:#e0e6ed;color:#8290a0}
-#trackingModule .et-status-timer.et-timer-over{background:#fff0f1!important;border-color:#ffb7c0!important;color:#cb263e!important}
+#trackingModule .et-timer-no_driver{background:#e9ddd4;border-color:#94735b;color:#65432d}
+.et-badge.b-no-driver{background:#e9ddd4;color:#65432d}
+#trackingModule .et-timer-program{background:#dceaff;border-color:#9bc3ff;color:#154c9a}
 
+
+/* Fixed tracking status lanes — consistent across all rows. */
+#trackingModule .et-stage-actions{display:inline-grid;grid-template-columns:33px 33px 190px  max-content;column-gap:6px;align-items:center;justify-content:start;}
+#trackingModule .et-stage-actions .et-stage-cancel{grid-column:1;grid-row:1}
+#trackingModule .et-stage-actions .et-breakdown-btn{grid-column:2;grid-row:1}
+#trackingModule .et-stage-actions .et-status-stack{grid-column:3;grid-row:1;width:190px;min-width:190px;max-width:190px;gap:5px}
+#trackingModule .et-stage-actions .et-status-stack .et-badge,
+#trackingModule .et-stage-actions .et-status-stack .et-status-timer{box-sizing:border-box;width:190px;min-width:190px;height:32px;min-height:32px;max-height:32px;margin:0!important;justify-content:center;white-space:nowrap;}
+#trackingModule .et-stage-actions .et-status-stack .et-badge.b-reporting{background:#eee5ff;color:#7140bf}
+#trackingModule .et-stage-actions .et-stage-next,#trackingModule .et-stage-actions .et-add-program,#trackingModule .et-stage-actions .et-assign-driver-btn{grid-column:4;grid-row:1}
+#trackingModule .et-stage-actions .et-program-pending-pill{grid-column:5;grid-row:1}
 
 /* Map truck quick stage controls: existing trip workflows only. */
 .et-map-stage-actions{display:flex;flex-wrap:wrap;gap:7px;padding:9px 0;border-top:1px solid #e4ebf4;margin-top:8px}
@@ -1033,6 +1047,15 @@
 @media(max-width:650px){#etEwayPage .et-eway-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 <style>
+#etTrackingReportPreview{z-index:105000!important;padding:12px;}
+#etTrackingReportPreview .et-report-preview{width:min(98vw,1800px);height:90vh;background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;color:#172b45;box-shadow:0 16px 60px #10233b55;}
+#etTrackingReportPreview header{background:#123e70;color:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+#etTrackingReportPreview header strong{font-size:20px;}#etTrackingReportPreview header small{display:block;margin-top:4px;color:#dbeafe;}
+#etTrackingReportPreview button{cursor:pointer;border:0;border-radius:8px;padding:10px 16px;font-weight:700;}#etTrackingReportPreview header button{background:#ffffff22;color:white;}
+#etTrackingReportPreview .et-report-tools{display:flex;gap:12px;align-items:center;padding:12px;flex-wrap:wrap;}#etTrackingReportPreview input{flex:1;min-width:160px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;}#etTrackingReportPreview [data-export]{background:#07864d;color:white;}#etTrackingReportPreview [data-export]:disabled{opacity:.5;}
+#etTrackingReportPreview .et-report-scroll{flex:1;min-height:0;overflow:auto;}#etTrackingReportPreview table{width:100%;border-collapse:separate;border-spacing:0;white-space:nowrap;font-size:13px;}#etTrackingReportPreview th,#etTrackingReportPreview td{padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:left;}#etTrackingReportPreview th{position:sticky;top:0;background:#eaf1fa;z-index:2;}#etTrackingReportPreview tbody tr:nth-child(even){background:#f8fafc;}#etTrackingReportPreview footer{padding:10px 14px;color:#64748b;font-size:12px;}
+</style>
+<style>
 /* Operator-selected status: vivid, stable highlight; does not alter card layout. */
 #trackingModule .cards .card[data-tracking-filter]{position:relative;transition:box-shadow .16s ease,border-color .16s ease,transform .16s ease}
 #trackingModule .cards .card.et-status-selected{border:3px solid var(--et-selected-color,#2563eb)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--et-selected-color,#2563eb) 22%,transparent),0 0 19px color-mix(in srgb,var(--et-selected-color,#2563eb) 40%,transparent),0 8px 17px #17365324!important;transform:translateY(-2px);z-index:2;padding:7px 9px}
@@ -1041,9 +1064,9 @@
 #trackingModule .cards .c-program{--et-selected-color:#2563eb}
 #trackingModule .cards .c-running{--et-selected-color:#059669}
 #trackingModule .cards .c-reporting{--et-selected-color:#7c3aed}
-#trackingModule .cards .c-nodriver{--et-selected-color:#dc2626}
-#trackingModule .cards .c-delay{--et-selected-color:#d97706}
-#trackingModule .cards .c-alert{--et-selected-color:#db2777}
+#trackingModule .cards .c-nodriver{--et-selected-color:#65432d}
+#trackingModule .cards .c-delay{--et-selected-color:#dc2626}
+#trackingModule .cards .c-alert{--et-selected-color:#0891b2}
 @media(prefers-reduced-motion:reduce){#trackingModule .cards .card[data-tracking-filter]{transition:none}}
 </style>
 
@@ -1369,7 +1392,7 @@
                 <input id="etExcelDate" type="date" aria-label="Excel report from date" title="From date (inclusive)" style="height:36px;width:142px;border:1px solid #cbd5e1;border-radius:8px;padding:0 7px;background:#fff;color:#172033">
                 <label for="etExcelToDate" style="font-size:11px;font-weight:700">To</label>
                 <input id="etExcelToDate" type="date" aria-label="Excel report to date" title="To date (inclusive); leave blank for a single date" style="height:36px;width:142px;border:1px solid #cbd5e1;border-radius:8px;padding:0 7px;background:#fff;color:#172033">
-                <button class="btn" onclick="window.EktaTracking.exportTracking()">Export Excel</button>
+                <button class="btn" onclick="window.EktaTracking.exportTracking()">View Report</button>
             </div>
 
 
@@ -1443,6 +1466,8 @@
                 onclick="window.EktaTracking.shiftDate(1)">
             Next ›
         </button>
+
+        <button class="btn" style="background:#6741b5;color:white" onclick="window.EktaTracking.openTripTrackingHistory()">Tracking Report</button>
 
         <button class="btn green"
                 onclick="window.EktaTracking.refresh()">
@@ -2902,7 +2927,7 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
-<div class="modal" id="etSingleTruckLocationModal" onclick="if(event.target===this)window.EktaTracking.closeSingleTruckLocation()"><div class="box"><div class="mh"><b id="etSingleTruckLocationTitle">Truck Location</b><button class="x" type="button" aria-label="Close map" onclick="window.EktaTracking.closeSingleTruckLocation()">×</button></div><div class="mb"><div id="etSingleTruckLocationCanvas"></div><div id="etSingleTruckLocationDetail"></div></div></div></div>
+<div class="modal" id="etSingleTruckLocationModal" onclick="if(event.target===this)window.EktaTracking.closeSingleTruckLocation()"><div class="box"><div class="mh"><b id="etSingleTruckLocationTitle">Truck Location</b><button class="x" type="button" aria-label="Close map" onclick="window.EktaTracking.closeSingleTruckLocation()">×</button></div><div class="mb"><div id="etSingleTruckLocationCanvas"></div><div id="etSingleTruckLocationDetail"></div><div id="etSingleTruckLocationActions" hidden style="margin-top:12px"><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" style="flex:1;min-width:145px;background:#128c4e;color:white;border:1px solid #128c4e;border-radius:9px;padding:11px;font-weight:700;cursor:pointer" onclick="window.EktaTracking.shareSingleTruckLocation()">Share on WhatsApp</button><button type="button" style="flex:1;min-width:145px;background:#f1f6fc;color:#173653;border:1px solid #c6d7eb;border-radius:9px;padding:11px;font-weight:700;cursor:pointer" onclick="window.EktaTracking.copySingleTruckLocation()">Copy Location Link</button></div></div></div></div></div>
 
 <!-- Fleet document expiry reminder: independent of tracking map and trip actions -->
 <div id="etFleetExpiryReminder" role="dialog" aria-modal="true" aria-labelledby="etFerTitle">
@@ -2932,4 +2957,14 @@
 #etFinalPage .et-market-final-box strong{color:#1264da;font-size:11px}
 #etFinalPage .et-market-final-tag{display:inline-block;background:#e0d3fa;color:#6846a0;font-size:8px;font-weight:700;border-radius:3px;padding:1px 3px}
 #etFinalPage .et-market-final-owner{display:block;font-size:9px;color:#675784;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;max-width:155px}
+</style>
+
+<style>
+#etTripTrackingHistory .et-trip-history-panel input{border:1px solid #b9cce1!important;border-radius:9px;padding:12px!important;background:#f8fbff!important;color:#173653;min-width:185px;box-sizing:border-box;outline:none;}
+#etTripTrackingHistory .et-trip-history-panel input:focus{border-color:#2563eb!important;box-shadow:0 0 0 3px #dbeafe;}
+#etTripTrackingHistory .et-th-heading{background:#123e70;color:white;font-weight:800;padding:15px;border-radius:9px;text-align:center;font-size:18px;}
+#etTripTrackingHistory .et-th-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin:12px 0;}
+#etTripTrackingHistory .et-th-details>div{background:#f0f5fb;border:1px solid #dbe5f0;border-radius:8px;padding:10px;overflow-wrap:anywhere;}
+#etTripTrackingHistory .et-th-details small{display:block;color:#526781;font-weight:700;margin-bottom:5px;}
+#etTripTrackingHistory .et-th-details b{color:#173653;}
 </style>

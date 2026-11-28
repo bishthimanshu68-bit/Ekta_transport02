@@ -220,7 +220,7 @@ async function saveManualLocation(e){
 function truck(id){return trucks.find(x=>String(x.id)===String(id))||null}
 function driver(id){return drivers.find(x=>String(x.id)===String(id))||null}
 function party(id){return parties.find(x=>String(x.id)===String(id))||null}
-function activeAssignment(truckId){return assignments.filter(a=>String(a.truck_id)===String(truckId)).filter(a=>clean(a.status).toLowerCase()==="active").filter(a=>{const d=driver(a.driver_id);return d&&clean(d.status||"Active").toLowerCase()!=="inactive"}).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null}
+function activeAssignment(truckId){return assignments.filter(a=>String(a.truck_id)===String(truckId)).filter(a=>clean(a.status).toLowerCase()==="active"&&!a.unassigned_at).filter(a=>{const d=driver(a.driver_id);return d&&clean(d.status||"Active").toLowerCase()!=="inactive"}).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null}
 function activeDriver(truckId){const a=activeAssignment(truckId);return a?driver(a.driver_id):null}
 function activeTrip(truckId){return trips.filter(t=>String(t.truck_id)===String(truckId)).filter(t=>!['completed','cancelled'].includes(clean(t.trip_status).toLowerCase())).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null}
 // Last completed unloading destination per truck; read-only from loaded trip history.
@@ -255,12 +255,24 @@ async function saveEmptyFrom(id,value){
   alertUser("EMPTY From was NOT saved in Supabase: "+(e.message||"Database error"));
  }finally{if(input)input.disabled=false;}
 }
+// Live GPS must belong to the currently assigned driver and assignment period.
+function liveGpsPhone(v){return clean(v).replace(/\D/g,"").slice(-10)}
+function liveGpsAssignment(id){
+ const a=activeAssignment(id),d=a&&driver(a.driver_id),phone=liveGpsPhone(d?.phone);
+ if(!a||a.unassigned_at||phone.length!==10)return null;
+ const start=Date.parse(a.assigned_at||(a.assigned_from?a.assigned_from+"T00:00:00+05:30":a.created_at));
+ return {phone,start:Number.isFinite(start)?start:null};
+}
+function validLiveGps(id,x){
+ const a=liveGpsAssignment(id),time=Date.parse(x.recorded_at||x.created_at||"");
+ return !!a&&a.start!==null&&liveGpsPhone(x.driver_mobile)===a.phone&&Number.isFinite(time)&&time>=a.start;
+}
 function latestLocation(truckId){
  const tr=truck(truckId),vehicle=clean(tr?.truck_number).toUpperCase();
- const gps=(gpsLocations||[]).filter(x=>clean(x.vehicle_number).toUpperCase()===vehicle)
+ const gps=(gpsLocations||[]).filter(x=>clean(x.vehicle_number).toUpperCase()===vehicle&&validLiveGps(truckId,x))
   .sort((a,b)=>new Date(b.recorded_at||b.created_at||0)-new Date(a.recorded_at||a.created_at||0))[0]||null;
  if(gps)return {...gps,truck_id:truckId,location:clean(gps.location)||clean(gps.address)||"",timestamp:gps.recorded_at||gps.created_at,source:"GPS"};
- return locations.filter(x=>String(x.truck_id)===String(truckId))
+ return locations.filter(x=>String(x.truck_id)===String(truckId)&&(!/gps/i.test(clean(x.source))||validLiveGps(truckId,x)))
   .sort((a,b)=>new Date(b.timestamp||b.recorded_at||0)-new Date(a.timestamp||a.recorded_at||0))[0]||null;
 }
 // Zone reflects the last known physical location, never the trip destination.
@@ -455,21 +467,41 @@ function etStatusTimer(r){
  const stage=r.actualStage;
  if(!ET_TIMER_STAGES.has(stage))return "";
  const start=etTimerStart(r);
- if(!start)return `<div class="et-status-timer et-timer-unknown" title="No reliable stage start date available">◷ —</div>`;
- const elapsed=Date.now()-Date.parse(start.time);
- const red=elapsed>=25*3600000;
- return `<div class="et-status-timer et-timer-${stage.toLowerCase()}${red?" et-timer-over":""}" data-et-timer-start="${esc(start.time)}" title="${start.approx?"Estimated from existing date (exact start time not stored)":"Exact stage entry time"}">◷ <span>${start.approx?"~":""}${etTimerText(start.time)}</span></div>`;
+ if(!start)return `<div class="et-status-timer et-timer-${r.status==="NO_DRIVER"?"no_driver":stage.toLowerCase()}" title="No reliable stage start date available">◷ —</div>`;
+ const timerColor=stage==="RUNNING"&&r.delay?"delayed":r.status==="NO_DRIVER"?"no_driver":stage.toLowerCase();
+ return `<div class="et-status-timer et-timer-${timerColor}" data-et-timer-start="${esc(start.time)}" title="${start.approx?"Estimated from existing date (exact start time not stored)":"Exact stage entry time"}">◷ <span>${start.approx?"~":""}${etTimerText(start.time)}</span></div>`;
 }
+let etLastDelaySignature="";
 function updateStatusTimers(){
+ if($("etRows")&&$("trackingModule")?.style.display!=="none"&&selectedTrackingDate()===today()){const signature=trips.filter(delayed).map(t=>String(t.id)).sort().join("|");if(signature!==etLastDelaySignature){etLastDelaySignature=signature;render();}}
  document.querySelectorAll("[data-et-timer-start]").forEach(el=>{
-  const stamp=el.getAttribute("data-et-timer-start"),ms=Date.now()-Date.parse(stamp);
+  const stamp=el.getAttribute("data-et-timer-start");
   const text=el.querySelector("span");if(text)text.textContent=(el.title.startsWith("Estimated")?"~":"")+etTimerText(stamp);
-  el.classList.toggle("et-timer-over",Number.isFinite(ms)&&ms>=25*3600000);
+  el.classList.remove("et-timer-over");
  });
 }
 if(typeof window!=="undefined")window.setInterval(updateStatusTimers,30000);
 
-function delayed(trip){return !!trip&&statusOf(trip)==="RUNNING"&&trip.expected_arrival_date&&dateOnly(trip.expected_arrival_date)<today()}
+let etFixedDays=new Map();
+const etRouteNorm=v=>clean(v).toUpperCase().replace(/[^A-Z0-9]/g,"");
+function etRouteKey(a,b){a=etRouteNorm(a);b=etRouteNorm(b);return a&&b?[a,b].sort().join("|"):""}
+function etBuildFixedDays(rows){
+ const groups=new Map();
+ for(const r of rows){const k=etRouteKey(r.from_location,r.to_location);if(!k)continue;const values=groups.get(k)||new Set();values.add(r.fixed_days==null?null:Number(r.fixed_days));groups.set(k,values);}
+ return new Map([...groups].filter(([,v])=>v.size===1&&Number.isFinite([...v][0])&&[...v][0]>0).map(([k,v])=>[k,[...v][0]]));
+}
+async function etReadFixedDays(){
+ try{const rows=[];for(let offset=0;offset<100000;offset+=500){const r=await S.from("fixed_kharcha_rates").select("id,from_location,to_location,fixed_days").order("id").range(offset,offset+499);if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<500)return etBuildFixedDays(rows);}throw Error("Route master pagination limit");}
+ catch(e){console.warn("[EKTA TRACKING] Fixed Days unavailable:",e);return new Map();}
+}
+function delayed(trip){
+ if(!trip||statusOf(trip)!=="RUNNING")return false;
+ const from=trip.from_location||trip.from_city||trip.from||trip.origin||trip.source||trip.loading_point||trip.from_place;
+ const to=trip.to_location||trip.to_city||trip.to||trip.destination||trip.dest||trip.unloading_point||trip.to_place;
+ const days=etFixedDays.get(etRouteKey(from,to));
+ const start=etStageStamp(trip.notes,"RUNNING"),ms=Date.parse(start);
+ return Number.isFinite(days)&&Number.isFinite(ms)&&Date.now()-ms>days*86400000;
+}
 function hasAlert(trip){const notes=clean(trip?.notes).replace(/\[TRACKING:BREAKDOWN_EVENTS=[^\]]*\]/gi,"");const s=[notes,trip?.remark,trip?.current_location].join(" ").toLowerCase();return !!activeBreakdown(trip)||/breakdown|accident|emergency/.test(s)}
 
 /* Breakdown is an independent trip alert, not a tracking stage. Stored in existing trips.notes. */
@@ -544,9 +576,9 @@ async function loadAll(){
   ]);
   if(loadSequence!==etLoadSequence)return;
   for(const r of core)if(r.error)throw r.error;
-  const [emptyFromRead,opt]=await Promise.all([
+  const [emptyFromRead,opt,fixedDays]=await Promise.all([
    S.from(T.trucks).select("id,empty_from_location"),
-   Promise.all([optionalTable(T.locations),optionalTable(T.gps),optionalTable(T.eway),loadPendingDriverRequests(),loadActiveProgramRequests()])
+   Promise.all([optionalTable(T.locations),optionalTable(T.gps),optionalTable(T.eway),loadPendingDriverRequests(),loadActiveProgramRequests()]),etReadFixedDays()
   ]);
   if(loadSequence!==etLoadSequence)return;
   const nextTrucks=core[0].data||[];
@@ -557,7 +589,7 @@ async function loadAll(){
   }
   // Commit a consistent snapshot only after all required reads have succeeded.
   trucks=nextTrucks;drivers=core[1].data||[];assignments=core[2].data||[];
-  parties=core[3].data||[];trips=allTrips;
+  parties=core[3].data||[];trips=allTrips;etFixedDays=fixedDays;
   locations=opt[0];gpsLocations=opt[1];ewayBills=opt[2];driverRequests=opt[3];programRequests=opt[4];
   await mergeTrueLatestGpsRows(loadSequence);
   if(loadSequence!==etLoadSequence)return;
@@ -579,11 +611,14 @@ async function loadAll(){
 async function mergeTrueLatestGpsRows(loadSequence=etLoadSequence){
  const jobs=(trucks||[]).map(async tr=>{
   const vehicle=clean(tr?.truck_number).toUpperCase();
-  if(!vehicle)return null;
+  const a=liveGpsAssignment(tr.id);
+  if(!vehicle||!a||a.start===null)return null;
   try{
    const r=await S.from(T.gps)
-    .select("vehicle_number,latitude,longitude,recorded_at")
+    .select("vehicle_number,driver_mobile,latitude,longitude,recorded_at")
     .eq("vehicle_number",vehicle)
+    .in("driver_mobile",[a.phone,"+91"+a.phone,"91"+a.phone])
+    .gte("recorded_at",new Date(a.start).toISOString())
     .order("recorded_at",{ascending:false})
     .limit(1);
    if(r.error)throw r.error;
@@ -1472,7 +1507,7 @@ function ewayCell(r){
  return `<div class="et-eway-cell"><button type="button" class="et-eway-toggle" aria-expanded="${expanded}" onclick="event.stopPropagation();window.EktaTracking.toggleEwayBills('${id}')"><span>${esc(summary)}</span><span class="et-eway-state et-eway-${cls}">${overall==='PENDING'?'Pending':overall==='EXPIRED'?'Expired':overall==='WARNING'?'Expiry ≤ 8h':'Valid'}</span><span aria-hidden="true">${expanded?'▴':'▾'}</span></button>${details}</div>`;
 }
 
-function badge(s,a,isBreakdown=false){const c={PROGRAM:"b-program",LOADING:"b-loading",RUNNING:"b-running",REPORTING:"b-reporting",EMPTY:"b-empty",NO_DRIVER:"b-exception",CANCELLED:"b-cancel"}[s]||"b-cancel";return `<span class="et-badge ${c}${isBreakdown?" et-badge-breakdown":""}">${esc(s==="EMPTY"?"EMPTY (Available)":(s==="NO_DRIVER"?"NO DRIVER":s))}${a?" ⚠":""}</span>`}
+function badge(s,a,isBreakdown=false){const c={PROGRAM:"b-program",LOADING:"b-loading",RUNNING:"b-running",REPORTING:"b-reporting",EMPTY:"b-empty",NO_DRIVER:"b-no-driver",CANCELLED:"b-cancel"}[s]||"b-cancel";return `<span class="et-badge ${c}${isBreakdown?" et-badge-breakdown":""}">${esc(s==="EMPTY"?"EMPTY (Available)":(s==="NO_DRIVER"?"NO DRIVER":s))}${a?" ⚠":""}</span>`}
 function action(r){if(r.status==="NO_DRIVER")return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openTruck('${esc(r.t.id)}')">View</button>`;if(r.status==="PROGRAM")return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openTripAction('${esc(r.trip.id)}')">Open Program</button>`;if(r.status==="LOADING")return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openTripAction('${esc(r.trip.id)}')">Enter LR</button>`;if(r.status==="RUNNING")return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openTripAction('${esc(r.trip.id)}')">Mark Reporting</button>`;if(r.status==="REPORTING")return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openTripAction('${esc(r.trip.id)}')">Complete</button>`;if(r.status==="EMPTY")return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openProgramForTruck('${esc(r.t.id)}')">New Program</button>`;return `<button class="action" onclick="event.stopPropagation();window.EktaTracking.openTruck('${esc(r.t.id)}')">View</button>`}
 function updateSelectedStatusCard(){
  document.querySelectorAll('#trackingModule .cards .card[data-tracking-filter]').forEach(card=>{
@@ -1511,7 +1546,7 @@ function alerts(){
   }
   if(r.trip){billsForTrip(r.trip.id).filter(b=>['WARNING','EXPIRED'].includes(ewayBillStatus(b))).forEach(b=>{a.push(`<div class="et-alert">⏰ <b>${esc(r.t.truck_number)}</b> • E-Way ${esc(b.eway_bill_number||'')}<br>${ewayBillStatus(b)==='EXPIRED'?'EXPIRED':'Expires within 8 hours'} — ${esc(fmtDT(b.valid_until))} • ${esc(ewayRemaining(b.valid_until))}</div>`);});}
   if(!r.d)a.push(`<div class="et-alert">⚠ <b>${esc(r.t.truck_number)}</b><br>No active driver assigned. Open Program Pending to assign.</div>`);
-  if(r.delay)a.push(`<div class="et-alert">🔴 <b>${esc(r.trip?.trip_number||"Trip")}</b><br>System ETA appears delayed.</div>`);
+  if(r.delay)a.push(`<div class="et-alert">🔴 <b>${esc(r.trip?.trip_number||"Trip")}</b><br>Fixed route time exceeded.</div>`);
   if(r.alert&&!activeBreakdown(r.trip))a.push(`<div class="et-alert">⚠ <b>${esc(r.t.truck_number)}</b><br>Accident / emergency alert.</div>`);
  });
  trips.forEach(t=>{
@@ -2245,7 +2280,7 @@ function fastagProgramRoute(trip){
 }
 /* FASTag map presentation only: compact status-coloured trucks + clustering. */
 function fastagTruckMarkerIcon(status,vehicleNo="",programRoute=""){
- const colors={RUNNING:"#16a34a",LOADING:"#f59e0b",REPORTING:"#2563eb",EMPTY:"#64748b",PROGRAM:"#7c3aed",NO_DRIVER:"#dc2626"};
+ const colors={RUNNING:"#16a34a",LOADING:"#f59e0b",REPORTING:"#2563eb",EMPTY:"#64748b",PROGRAM:"#7c3aed",NO_DRIVER:"#ea580c"};
  const c=colors[clean(status).toUpperCase()]||"#2563eb";
  const no=clean(vehicleNo).toUpperCase();
  const route=clean(programRoute);
@@ -2293,7 +2328,7 @@ function loadMarkerClusterer(){
 function buildFastagClusters(){
  if(etFastagClusterer){etFastagClusterer.clearMarkers();etFastagClusterer=null}
  if(!etFastagMap||!etFastagMarkers.length||!window.markerClusterer?.MarkerClusterer)return;
- const renderer={render:({count,position})=>new google.maps.Marker({position,icon:{path:google.maps.SymbolPath.CIRCLE,scale:20,fillColor:etFastagListFilter==="NO_DRIVER"?"#dc2626":"#173653",fillOpacity:.94,strokeColor:"#fff",strokeWeight:3},label:{text:String(count),color:"#fff",fontSize:"12px",fontWeight:"800"},zIndex:Number(google.maps.Marker.MAX_ZINDEX)+count})};
+ const renderer={render:({count,position})=>new google.maps.Marker({position,icon:{path:google.maps.SymbolPath.CIRCLE,scale:20,fillColor:etFastagListFilter==="NO_DRIVER"?"#ea580c":"#173653",fillOpacity:.94,strokeColor:"#fff",strokeWeight:3},label:{text:String(count),color:"#fff",fontSize:"12px",fontWeight:"800"},zIndex:Number(google.maps.Marker.MAX_ZINDEX)+count})};
  etFastagClusterer=new window.markerClusterer.MarkerClusterer({
   map:etFastagMap,markers:etFastagMarkers.filter(m=>m.getMap()===etFastagMap),renderer,
   algorithmOptions:{maxZoom:7,radius:70}
@@ -2395,23 +2430,27 @@ async function fetchGpsTrailForTruck(t,range=etFleetHistoryRange){
 }
 async function fetchLatestGpsPointForTruck(t){
  const vehicle=clean(t?.truck_number).toUpperCase();
- if(!vehicle)return null;
+ const a=liveGpsAssignment(t.id);
+ if(!vehicle||!a||a.start===null)return null;
  if(dbOK()){
   try{
    const r=await S.from(T.gps)
-    .select("vehicle_number,latitude,longitude,recorded_at")
+    .select("vehicle_number,driver_mobile,latitude,longitude,recorded_at")
     .eq("vehicle_number",vehicle)
+    .in("driver_mobile",[a.phone,"+91"+a.phone,"91"+a.phone])
+    .gte("recorded_at",new Date(a.start).toISOString())
     .order("recorded_at",{ascending:false})
     .limit(1);
    if(r.error)throw r.error;
    const x=(r.data||[])[0];
-   if(x){
+   if(x&&validLiveGps(t.id,x)){
     const lat=Number(x.latitude),lng=Number(x.longitude);
     if(Number.isFinite(lat)&&Number.isFinite(lng)&&!(lat===0&&lng===0))return {lat,lng,time:x.recorded_at};
    }
   }catch(e){console.warn("[EKTA TRACKING] Latest GPS fetch failed; using loaded latest location:",e.message)}
  }
  const l=latestLocation(t.id),lat=Number(l?.latitude),lng=Number(l?.longitude);
+ if(!l||!validLiveGps(t.id,l))return null;
  return Number.isFinite(lat)&&Number.isFinite(lng)&&!(lat===0&&lng===0)?{lat,lng,time:l?.recorded_at||l?.timestamp||l?.created_at}:null;
 }
 function setFleetHistoryRange(range,start=null,end=null){
@@ -4568,7 +4607,22 @@ async function exportTracking(){
   }
  }
  if(!list.length){alertUser(category==="FASTAG"?"No FASTag location data loaded. Wait for FASTag locations to appear on Tracking, then export again.":"No records available for this report.");return}
- const rows=[headers,...list],filename=`ekta-tracking-${category.toLowerCase()}-${category.startsWith("DATE_")?($("etExcelDate")?.value+"_to_"+($("etExcelToDate")?.value||$("etExcelDate")?.value)):today()}`;
+ const filename=`ekta-tracking-${category.toLowerCase()}-${category.startsWith("DATE_")?($("etExcelDate")?.value+"_to_"+($("etExcelToDate")?.value||$("etExcelDate")?.value)):today()}`;
+ showTrackingReportPreview({headers,list,sheetName,filename,category});
+}
+
+function showTrackingReportPreview(report){
+ const module=$("trackingModule");if(!module)return;
+ let modal=$("etTrackingReportPreview");
+ if(!modal){modal=document.createElement("div");modal.id="etTrackingReportPreview";modal.className="modal";module.appendChild(modal);}
+ modal.innerHTML=`<section role="dialog" aria-modal="true" aria-label="Report preview" class="et-report-preview"><header><div><strong>${esc($("etExcelCategory")?.selectedOptions[0]?.textContent||report.sheetName)}</strong><small>EKTA TRANSPORT — Report Preview</small></div><button type="button" data-close aria-label="Close">✕</button></header><div class="et-report-tools"><input type="search" placeholder="Search all columns…" aria-label="Search report"><b data-count></b><button type="button" data-export>Export Excel</button></div><div class="et-report-scroll" tabindex="0"><table><thead><tr>${report.headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody></tbody></table></div><footer>Excel exports the displayed records in the original column order.</footer></section>`;
+ const search=modal.querySelector("input"),body=modal.querySelector("tbody"),count=modal.querySelector("[data-count]");
+ let visible=report.list;
+ function draw(){const q=search.value.trim().toLowerCase();visible=q?report.list.filter(r=>r.some(v=>String(v??"").toLowerCase().includes(q))):report.list;body.innerHTML=visible.map(r=>`<tr>${report.headers.map((_,i)=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join("");count.textContent=`${visible.length} / ${report.list.length} records`;modal.querySelector("[data-export]").disabled=!visible.length;}
+ search.oninput=draw;modal.querySelector("[data-close]").onclick=()=>modal.classList.remove("show");modal.querySelector("[data-export]").onclick=()=>downloadTrackingReport({...report,list:visible});draw();modal.classList.add("show");search.focus();
+}
+function downloadTrackingReport({headers,list,sheetName,filename}){
+ const rows=[headers,...list];
  if(window.XLSX?.utils?.aoa_to_sheet&&window.XLSX?.writeFile){
   const sheet=window.XLSX.utils.aoa_to_sheet(rows);
   sheet['!cols']=headers.map((head,i)=>({wch:Math.min(42,Math.max(15,head.length+3,...list.slice(0,150).map(r=>String(r[i]??"").length+2)))}));
@@ -5079,8 +5133,24 @@ function marketTab(name){
 
 /* Single-vehicle location preview. This popup never renders the fleet marker collections. */
 let etSingleTruckMap=null,etSingleTruckMarker=null,etSingleTruckRequest=0;
+let etSingleTruckShare=null;
+function setSingleTruckShare(value){
+ etSingleTruckShare=value;
+ const actions=$("etSingleTruckLocationActions");if(actions)actions.hidden=!value;
+}
+function shareSingleTruckLocation(){
+ if(!etSingleTruckShare)return;
+ window.open("https://wa.me/?text="+encodeURIComponent(etSingleTruckShare.message),"_blank","noopener,noreferrer");
+}
+async function copySingleTruckLocation(){
+ if(!etSingleTruckShare)return;
+ const link=etSingleTruckShare.link;
+ try{await navigator.clipboard.writeText(link);alertUser("Location link copied.");}
+ catch(e){window.prompt("Copy Google Maps location link:",link);}
+}
 function closeSingleTruckLocation(){
  etSingleTruckRequest++;
+ setSingleTruckShare(null);
  $("etSingleTruckLocationModal")?.classList.remove("show");
  if(etSingleTruckMarker){etSingleTruckMarker.setMap(null);etSingleTruckMarker=null;}
 }
@@ -5093,6 +5163,7 @@ async function openSingleTruckLocation(truckId,source){
  const host=$("trackingModule");
  if(host && modal.parentElement!==host)host.appendChild(modal);
  const request=++etSingleTruckRequest;
+ setSingleTruckShare(null);
  title.textContent=`🚛 ${clean(t.truck_number)} — ${mode === "GPS" ? "GPS" : "FASTag"} Location`;
  detail.textContent="Loading this truck's last known location...";
  canvas.textContent="Loading map...";
@@ -5101,7 +5172,7 @@ async function openSingleTruckLocation(truckId,source){
  try{
   if(mode==="GPS"){
    const vehicle=clean(t.truck_number).toUpperCase();
-   const records=(gpsLocations||[]).filter(x=>clean(x.vehicle_number).toUpperCase()===vehicle)
+   const records=(gpsLocations||[]).filter(x=>clean(x.vehicle_number).toUpperCase()===vehicle&&validLiveGps(t.id,x))
     .sort((a,b)=>Date.parse(b.recorded_at||b.created_at||0)-Date.parse(a.recorded_at||a.created_at||0));
    const x=records.find(x=>validIndiaFastagPoint(Number(x.latitude),Number(x.longitude)));
    if(x)point={lat:Number(x.latitude),lng:Number(x.longitude),time:x.recorded_at||x.created_at,location:clean(x.location||x.address)};
@@ -5120,6 +5191,9 @@ async function openSingleTruckLocation(truckId,source){
   }
   if(request!==etSingleTruckRequest)return;
   if(!point){canvas.textContent="Location Not Available";detail.textContent=`No valid ${mode} coordinates found for ${clean(t.truck_number)}.`;return;}
+  const link=`https://www.google.com/maps?q=${point.lat},${point.lng}`;
+  const message=["*EKTA TRANSPORT*",`Vehicle No: ${clean(t.truck_number)}`,`Last Location: ${point.location||`${point.lat}, ${point.lng}`}`,`${mode==="GPS"?"Last GPS Update":"Last FASTag Update"}: ${point.time?fmtDT(point.time):"Unavailable"}`,"Google Maps Location:",link,`Location Source: ${mode==="GPS"?"GPS (Last known location)":"FASTag (Not Live GPS)"}`].join("\n");
+  setSingleTruckShare({link,message});
   await loadGoogleMapsAPI();
   if(request!==etSingleTruckRequest)return;
   canvas.textContent="";
@@ -5135,7 +5209,36 @@ async function openSingleTruckLocation(truckId,source){
  }
 }
 
-window.EktaTracking={openSingleTruckLocation,closeSingleTruckLocation,openFastagDriverAction,mapTripAction,openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewLocationImport,saveLocationImport,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,toggleFastagFullScreen,renderFastagVehicleList,setFastagListFilter,applyFastagMapFilter,selectFastagVehicle,closeFastagVehicleCard,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,closeFleetVehicleCard,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
+function openTripTrackingHistory(){
+ const host=$('trackingModule');let modal=$('etTripTrackingHistory');if(!modal){modal=document.createElement('div');modal.id='etTripTrackingHistory';modal.className='modal';host.appendChild(modal);}
+ modal.innerHTML=`<section class="et-report-preview et-trip-history-panel" style="width:min(96vw,1250px);height:88vh;background:white;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;color:#172b45"><header style="background:#123e70;color:white;padding:16px;display:flex;justify-content:space-between"><strong>TRIP TRACKING HISTORY</strong><button data-close>✕</button></header><div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-source="fastag" style="background:#dbeafe;color:#174a91">FASTag History</button><button class="btn" data-source="gps" style="background:#dcfce7;color:#08794b">GPS History</button><input data-vehicle placeholder="Vehicle No. (e.g. 2160)"><input data-party placeholder="Party Name / Code"><input data-trip placeholder="Trip ID"><button class="btn" data-back style="display:none">← Trips</button><button class="btn" data-search>Search Trips</button><button class="btn green" data-export disabled>Export Excel</button></div><div data-info style="padding:8px 14px">Search by vehicle, party or trip ID.</div><div data-results style="overflow:auto;flex:1;padding:12px"></div></section>`;
+ const q=s=>modal.querySelector(s),out=q('[data-results]'),info=q('[data-info]'),exp=q('[data-export]');let source='fastag',seq=0,chosen=null,report=null;
+ const norm=x=>String(x??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const stamp=x=>{const n=Date.parse(x||'');return Number.isFinite(n)?n:null};
+ const ist=n=>new Date(n+19800000).toISOString().slice(0,19);
+ const date=n=>ist(n).slice(0,10).split('-').reverse().join('-');
+ const time=n=>new Date(n).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+ const table=(headers,rows)=>`<table style="width:100%;border-collapse:collapse;text-align:left"><thead style="position:sticky;top:0;background:#e8eff8"><tr>${headers.map(x=>`<th style="padding:10px">${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(x=>`<td style="padding:9px;border-bottom:1px solid #e2e8f0">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+ function reset(){seq++;report=null;exp.disabled=true;}
+ function search(){reset();chosen=null;q('[data-back]').style.display='none';const v=norm(q('[data-vehicle]').value),p=norm(q('[data-party]').value),id=norm(q('[data-trip]').value);if(!v&&!p&&!id){out.innerHTML='';info.textContent='Enter at least one search field.';return;}const list=trips.filter(t=>{const tr=truck(t.truck_id),pa=party(t.party_id);return (!v||norm(tr?.truck_number).includes(v))&&(!p||(pa&&partySearchMatch(pa,q('[data-party]').value)||norm([t.party_name,t.party_code].join(' ')).includes(p)))&&(!id||norm(t.trip_number).includes(id)||norm(t.id).includes(id));});info.textContent=`${list.length} trips — ${source.toUpperCase()}`;out.innerHTML=list.map((t,i)=>`<button data-pick="${i}" style="display:block;width:100%;text-align:left;padding:12px;margin-bottom:6px;border:1px solid #ccd8e5;border-radius:8px;background:#f5f8fc;color:#172b45"><b>${esc(truck(t.truck_id)?.truck_number||'—')} · ${esc(t.trip_number||t.id)}</b> | ${esc(party(t.party_id)?.party_code||'')} ${esc(party(t.party_id)?.name||t.party_name||'—')} | ${esc(t.from_location||'—')} → ${esc(t.to_location||t.destination||'—')} | ${esc(t.lr_date||t.program_date||'—')} | ${esc(t.trip_status||'—')}</button>`).join('');out.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{chosen=list[Number(b.dataset.pick)];load(chosen);});}
+ async function load(t){reset();const token=seq,kind=source,vehicle=truck(t.truck_id)?.truck_number;out.innerHTML='';q('[data-back]').style.display='inline-block';info.textContent='Loading selected trip history…';try{
+ if(!vehicle)throw Error('Vehicle number missing.');if(/cancelled/i.test(t.trip_status||''))throw Error('Cancelled trip.');
+ let start=stamp(etStageStamp(t.notes,'RUNNING')),end=stamp(etStageStamp(t.notes,'EMPTY'));
+ if(start===null||(end===null&&(/completed/i.test(t.trip_status||'')||t.unloading_date))){const r=await S.from(T.driverRequests).select('requested_status,requested_at,created_at').eq('trip_id',t.id).eq('request_status','APPROVED').order('requested_at',{ascending:false});if(r.error)throw r.error;for(const a of r.data||[]){const n=stamp(a.requested_at||a.created_at);if(a.requested_status==='RUNNING'&&start===null)start=n;if(a.requested_status==='EMPTY'&&end===null)end=n;}}
+ if(start===null)throw Error('Exact RUNNING timestamp unavailable; history not guessed.');if(end===null){if(t.unloading_date||/completed/i.test(t.trip_status||''))throw Error('Exact EMPTY timestamp unavailable; history not guessed.');if(!/in transit|delivered/i.test(t.trip_status||'')&&!/RUNNING|REPORTING/i.test(t.tracking_status||''))throw Error('Trip is not RUNNING or REPORTING.');end=Date.now();}if(end<start)throw Error('Invalid trip timestamps.');
+ let headers=['Sr. No.','Date','Time',kind==='fastag'?'Toll Plaza Name':'Location'],rows=[];
+ if(kind==='fastag'){for(let offset=0;;offset+=500){const r=await S.from('fastag_transactions').select('id,toll_txn_date_time,toll_plaza_name').eq('vehicle_no',vehicle).eq('txn_mode','TOLLTXN').gte('toll_txn_date_time',ist(start)).lte('toll_txn_date_time',ist(end)).order('toll_txn_date_time').order('id').range(offset,offset+499);if(token!==seq)return;if(r.error)throw r.error;for(const a of r.data||[]){const n=Date.parse(a.toll_txn_date_time.replace(' ','T')+'+05:30');rows.push([rows.length+1,date(n),time(n),a.toll_plaza_name||'Not Available']);}if((r.data||[]).length<500)break;}}
+ else{for(let day=Date.parse(ist(start).slice(0,10)+'T00:00:00+05:30');day<=end;day+=86400000){for(const h of [6,12,20]){const target=day+h*3600000;if(target<start||target>end)continue;const r=await S.from(T.gps).select('recorded_at,latitude,longitude').eq('vehicle_number',vehicle).gte('recorded_at',new Date(Math.max(day,start)).toISOString()).lte('recorded_at',new Date(target).toISOString()).order('recorded_at',{ascending:false}).order('id',{ascending:false}).limit(1);if(token!==seq)return;if(r.error)throw r.error;const a=r.data?.[0];let place='Not Available';if(a&&a.latitude!=null&&a.longitude!=null)place=await reverseGeocodeGPS(a.latitude,a.longitude)||'Location name unavailable';if(token!==seq)return;rows.push([rows.length+1,date(target),a?time(stamp(a.recorded_at)):time(target),place]);}}}
+ if(token!==seq)return;
+ const pa=party(t.party_id),d=driver(t.driver_id);const dt=n=>date(n)+' '+time(n);const stage=(key,fallback)=>{const n=stamp(etStageStamp(t.notes,key));return n!==null?dt(n):fallback?String(fallback).slice(0,10).split('-').reverse().join('-')+' (date only)':'Not Available';};
+ const completed=!!t.unloading_date||/completed/i.test(t.trip_status||'');const mins=Math.floor((end-start)/60000);const duration=`${Math.floor(mins/1440)} Days ${Math.floor(mins%1440/60)}h ${mins%60}m`;
+ const details=[['Vehicle No',vehicle],['Driver Name',d?.name||'Not Available'],['Driver Mobile',d?.phone||'Not Available'],['Party Name',pa?.name||t.party_name||'Not Available'],['Party Code',pa?.party_code||t.party_code||'Not Available'],['Trip ID',t.trip_number||t.id],['From',t.from_location||t.loading_point||'—'],['To',t.to_location||t.destination||'—'],['Program Date / Time',stage('PROGRAM',t.program_date)],['Loading Date / Time',stage('LOADING',t.loading_date)],['Running Date / Time',dt(start)],['Reporting Date / Time',stage('REPORTING',t.reporting_date)],['Unloading / Empty Date / Time',completed?dt(end):'Pending'],['Running to '+(completed?'Empty':'Now'),duration],['Total Records',rows.length]];
+ report={headers,list:rows,details,sheetName:kind==='gps'?'GPS History':'FASTag History',filename:`${kind}_tracking_${vehicle}_${norm(t.trip_number||t.id)}`};info.textContent=`${kind.toUpperCase()} • ${rows.length} records • IST`;out.innerHTML=`<div class="et-th-heading">EKTA TRANSPORT — ${kind.toUpperCase()} TRACKING REPORT</div><div class="et-th-details">${details.map(([label,value])=>`<div><small>${esc(label)}</small><b>${esc(value)}</b></div>`).join('')}</div><h3>Movement History</h3>`+(rows.length?table(headers,rows):'No matching location records.');exp.disabled=false;
+ }catch(e){if(token===seq)info.textContent=e.message||String(e);}}
+ modal.querySelectorAll('[data-source]').forEach(b=>b.onclick=()=>{source=b.dataset.source;modal.querySelectorAll('[data-source]').forEach(x=>x.style.outline=x===b?'2px solid #475569':'none');if(chosen)load(chosen);else search();});q('[data-source="fastag"]').style.outline='2px solid #475569';q('[data-search]').onclick=search;q('[data-back]').onclick=search;let debounce;modal.querySelectorAll('input').forEach(i=>i.oninput=()=>{reset();chosen=null;clearTimeout(debounce);debounce=setTimeout(search,180);});modal.querySelectorAll('input').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(debounce);search();}});q('[data-close]').onclick=()=>{clearTimeout(debounce);reset();modal.classList.remove('show');};exp.onclick=()=>{if(!report)return;const r=report,top=[['EKTA TRANSPORT — '+r.sheetName],...r.details,[],r.headers],all=[...top,...r.list];if(window.XLSX?.utils?.aoa_to_sheet&&window.XLSX?.writeFile){const ws=XLSX.utils.aoa_to_sheet(all);ws['!cols']=[{wch:34},{wch:65},{wch:18},{wch:55}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:3}}];ws['!autofilter']={ref:`A${top.length}:D${all.length}`};const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,r.sheetName);XLSX.writeFile(wb,r.filename+'.xlsx');}else csvDownload(all,r.filename+'.csv');};modal.classList.add('show');
+}
+
+window.EktaTracking={openTripTrackingHistory,shareSingleTruckLocation,copySingleTruckLocation,openSingleTruckLocation,closeSingleTruckLocation,openFastagDriverAction,mapTripAction,openDriverRequestsForTruck,rejectDriverRequest,toggleSecondDestination,copyCurrentDriverDetails,programPartyKeydown,undoTripStage,saveEmptyFrom,marketFinalView,openMarketEwayEdit,openMarketVehicles,closeMarketVehicles,marketTab,sendStatusNotification,openDriverAction,saveDriverAction,previewNewDriver,toggleNewDriverForm,createDriverForChange,openAssignDriver,quickDriverPhoneChanged,saveQuickDriverAssignment,startTruckBreakdown,startBreakdown,resolveBreakdown,openPendingProgram,savePendingProgram,toggleAIProgramEdit,toggleAIProgramRow,editAIProgramRow,openTripBilling,suggestBillingParty,saveTripBilling,init:()=>{},render,refresh,toggleHeaderPanel,previewLocationImport,saveLocationImport,previewAIUpload,prepareProgramUpload,confirmAIPrograms,prepareEwayUpload,approveDriverRequest,openDriverProgramRequest,rejectDriverProgramRequest,setStatusFilter,resetFilters,shiftDate,setToday,viewAllTracking,openProgram,openProgramForTruck,editProgramStageDate,openQuickProgram,closeQuickProgram,continueQuickProgram,searchQuickProgramParty,saveProgram,openTripAction,quickNextStage,confirmLoading,confirmLR,confirmReporting,confirmUnloading,openTruck,cancelProgram,selectTruck,rowKey,openEwayRecords,clearEwayFilters,openEwaySmartEntry,readEwayPastedText,saveEwayRecord,openHistoryRecords,renderHistoryRecords,openFinalReport,closeFinal,renderFinal,finalAll,finalDateChanged,saveDetentionCharge,finalShift,finalToday,sendSelectedDateToPOD,exportTracking,exportFinal,closeModal,closeTracking,refreshMap,openSelectedInGoogleMaps,openFleetMap,closeFleetMap,refreshFleetMap,openFastagMap,closeFastagMap,refreshFastagMap,toggleFastagFullScreen,renderFastagVehicleList,setFastagListFilter,applyFastagMapFilter,selectFastagVehicle,closeFastagVehicleCard,showAllFastagVehicles,setFastagHistoryRange,applyFastagCustomHistory,focusFastagVisit,openSelectedMapFullScreen,closeSelectedMapFullScreen,setFleetFilter,renderFleetVehicleList,closeFleetVehicleCard,selectFleetVehicle,focusFleetRoute,setFleetHistoryRange,applyFleetCustomHistory,showAllFleetVehicles,fleetViewRoad,fleetViewStreet,fleetViewSatellite,closeEwayPage,refreshEwayPage,ewayToday,renderEwayPage,toggleEwayMenu,openEwayTripDetails,openEwayEdit,addEwayBillRow,removeEwayBillRow,toggleEwayBills,tryEwayAIRead,openEwayDocument,openManualLocation,showLocationSuggestions,chooseLocationSuggestion,saveManualLocation,openFinalView,openFinalEdit,saveInlineFinalEdit,cancelInlineFinalEdit,refreshInlineFinalDerived,openQuickParty,saveQuickParty,scrollActivePage,quickPartyAutoZone};
 
 
 /* Fleet document expiry popup — read-only, isolated integration. */
