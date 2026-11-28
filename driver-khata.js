@@ -224,6 +224,7 @@ $('kmExcelFile').addEventListener('change',()=>{$('kmFileName').textContent=$('k
  let loaded=false, loading=null, all=[] , masterCount=0;
  const routeSnapshotKey='ekta-dk-fixed-route-snapshot-v1';
  let changedRoutes=new Map();
+ let dayRates=[];
  const fixedPhotoUrls=new Map();
  const fixedInitials=name=>clean(name).split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'?';
  function fixedDriverCell(r){
@@ -258,8 +259,9 @@ $('kmExcelFile').addEventListener('change',()=>{$('kmFileName').textContent=$('k
   el('fixedTripCount').textContent=rows.length;el('fixedAmount').textContent=rupee(rows.filter(r=>r.matched).reduce((s,r)=>s+r.amount,0));el('fixedMissing').textContent=rows.filter(r=>!r.matched).length;el('fixedMasterCount').textContent=masterCount;
   el('fixedRows').innerHTML=rows.map(r=>{const missing=r.status==='Missing rate'&&r.from&&r.to;
    const cell=r.matched?rupee(r.amount):(missing?`<span class="fixed-rate-editor"><input type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹ Amount" aria-label="Fixed Kharcha for ${esc(r.route)}" data-rate-input="${esc(r.id)}"><button type="button" class="fixed-rate-save" data-rate-save="${esc(r.id)}">Save Rate</button></span>`:'—');
-   return `<tr><td>${esc(r.date)}</td><td>${esc(r.truck)}</td><td>${fixedDriverCell(r)}</td><td>${esc(r.route)}</td><td>${cell}</td><td class="${r.matched?'fixed-ok':'fixed-bad'}">${esc(r.status)}${r.changed?' · Tracking route changed':''}</td></tr>`;
-  }).join('')||'<tr><td colspan="6" class="empty">No matching trips.</td></tr>';
+   const daysCell=r.dayIds.length?`<span class="fixed-rate-editor"><input type="number" min="0.01" max="999999.99" step="0.01" placeholder="Days" aria-label="Fixed Days for ${esc(r.route)}" data-days-input="${esc(r.id)}" value="${esc(r.days??'')}"><button type="button" class="fixed-rate-save" data-days-save="${esc(r.id)}">Save Days</button></span>${r.daysConflict?' <small>Review conflicting days</small>':''}`:'Save rate first';
+   return `<tr><td>${esc(r.date)}</td><td>${esc(r.truck)}</td><td>${fixedDriverCell(r)}</td><td>${esc(r.route)}</td><td>${cell}</td><td>${daysCell}</td><td class="${r.matched?'fixed-ok':'fixed-bad'}">${esc(r.status)}${r.changed?' · Tracking route changed':''}</td></tr>`;
+  }).join('')||'<tr><td colspan="7" class="empty">No matching trips.</td></tr>';
  }
  // Save into the SAME fixed_kharcha_rates master used by Trip Accounts.
  // Both directions share a single canonical route pair. Never silently overwrite an existing rate.
@@ -295,6 +297,28 @@ $('kmExcelFile').addEventListener('change',()=>{$('kmFileName').textContent=$('k
   }catch(e){status('Fixed Kharcha was not saved: '+e.message,true);console.error('[Driver Khata rate save]',e)}
   finally{saving=false;if(input.isConnected)input.disabled=false;}
  }
+ async function saveDays(tripId,input){
+  if(saving||!input)return;
+  const r=all.find(x=>x.id===tripId),raw=input.value.trim(),days=Number(raw);
+  if(!r||!r.dayIds.length||!raw||!Number.isFinite(days)||days<0.01||days>999999.99||Math.abs(days*100-Math.round(days*100))>0.000001){status('Enter positive Fixed Days with up to two decimal places.',true);return;}
+  if(!window.confirm(`Save ${days} days for ${r.from} ↔ ${r.to} (both directions)? Fixed Kharcha will not change.`))return;
+  saving=true;input.disabled=true;
+  try{
+   const pair=(a,b)=>[norm(a),norm(b)].sort().join('|');
+   const fresh=(await readAll('fixed_kharcha_rates')).filter(x=>pair(x.from_location,x.to_location)===pair(r.from,r.to));
+   if(!fresh.length)throw Error('Route master missing. Refresh first.');
+   const ids=fresh.map(x=>x.id);
+   const {data,error}=await db().from('fixed_kharcha_rates').update({fixed_days:days}).in('id',ids).select('id,fixed_days');
+   if(error)throw Error(error.message);
+   if(!data||data.length!==ids.length||data.some(x=>Number(x.fixed_days)!==days))throw Error('Save not confirmed. Refresh and verify.');
+   const verified=(await readAll('fixed_kharcha_rates')).filter(x=>pair(x.from_location,x.to_location)===pair(r.from,r.to));
+   if(!verified.length||verified.some(x=>Number(x.fixed_days)!==days))throw Error('Read-back mismatch. Refresh and verify.');
+   dayRates=dayRates.map(x=>ids.includes(x.id)?{...x,fixed_days:days}:x);
+   for(const row of all)if(pair(row.from,row.to)===pair(r.from,r.to)){row.days=days;row.daysConflict=false;row.dayIds=ids;}
+   render();status(`Saved and verified ${days} days for ${r.from} ↔ ${r.to}.`);
+  }catch(e){status('Fixed Days save not confirmed: '+e.message,true);}finally{saving=false;if(input.isConnected)input.disabled=false;}
+ }
+ el('fixedRows').addEventListener('click',e=>{const b=e.target.closest('[data-days-save]');if(b)void saveDays(b.dataset.daysSave,b.closest('tr').querySelector('[data-days-input]'));});
  el('fixedRows').addEventListener('click',e=>{const btn=e.target.closest('[data-rate-save]');if(btn)void saveRate(btn.dataset.rateSave)});
  el('fixedRows').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-rate-input]')){e.preventDefault();void saveRate(e.target.dataset.rateInput)}});
 
@@ -304,16 +328,17 @@ $('kmExcelFile').addEventListener('change',()=>{$('kmFileName').textContent=$('k
  const tm=new Map(trucks.map(t=>[clean(t.id),t])),dm=new Map(drivers.map(d=>[clean(d.id),d]));const truckByNo=new Map(trucks.map(t=>[norm(truckNo(t)),t]));
  const routeKey=(a,b)=>norm(a)+'|'+norm(b);
  const rateMap=new Map();for(const r of rates){const from=field(r,['from_location','from_city','from','origin','source','loading_point','from_place']),to=field(r,['to_location','to_city','to','destination','dest','unloading_point','to_place']);const amount=Number(field(r,['fixed_kharcha','fixed_expense','fixed_amount','amount','rate','kharcha']));if(!from||!to||!Number.isFinite(amount)||amount<0)continue;for(const key of [routeKey(from,to),routeKey(to,from)]){const arr=rateMap.get(key)||[];arr.push({amount,rate:r});rateMap.set(key,arr)}}
+ dayRates=rates;
  masterCount=rates.length;
  all=trips.filter(t=>{const loading=clean(t.loading_date);const state=clean(t.trip_status).toLowerCase();return !!loading && state!=='cancelled';}).map(t=>{const truck=tm.get(clean(field(t,['truck_id','vehicle_id'])))||truckByNo.get(norm(field(t,['truck_number','vehicle_number','vehicle_no','truck_no'])))||{};const truckText=clean(truckNo(truck)||field(t,['truck_number','vehicle_number','vehicle_no','truck_no']))||'—';const from=clean(field(t,['from_location','from_city','from','origin','source','loading_point','from_place'])),to=clean(field(t,['to_location','to_city','to','destination','dest','unloading_point','to_place']));const tripDate=clean(t.loading_date).slice(0,10); let d=dm.get(clean(field(t,['driver_id','assigned_driver_id'])))||null;
  if(!d){const relevant=assignments.filter(a=>clean(a.truck_id)===clean(truck.id)&&clean(field(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at'])).slice(0,10)<=tripDate&&(!field(a,['unassigned_at','end_date','to_date','left_at','released_at'])||clean(field(a,['unassigned_at','end_date','to_date','left_at','released_at'])).slice(0,10)>=tripDate));relevant.sort((a,b)=>clean(field(b,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at'])).localeCompare(clean(field(a,['assigned_at','start_date','from_date','joined_at','assignment_date','created_at']))));if(relevant.length)d=dm.get(clean(relevant[0].driver_id))||null}
- const options=rateMap.get(routeKey(from,to))||[];const amounts=[...new Set(options.map(o=>o.amount))];const matched=!!from&&!!to&&amounts.length===1;const status=!from||!to?'Route missing':!options.length?'Missing rate':amounts.length>1?'Conflicting rates':'Matched';return {id:clean(t.id),truck:truckText,driver:clean(driverName(d)||field(t,['driver_name']))||'—',driverId:d?.id??null,route:(from||'—')+' → '+(to||'—'),from,to,date:tripDate,matched,amount:matched?amounts[0]:0,status};});
+ const options=rateMap.get(routeKey(from,to))||[];const dayMatches=dayRates.filter(x=>from&&to&&[norm(x.from_location),norm(x.to_location)].sort().join('|')===[norm(from),norm(to)].sort().join('|'));const dayValues=[...new Set(dayMatches.map(x=>x.fixed_days==null?null:Number(x.fixed_days)))];const amounts=[...new Set(options.map(o=>o.amount))];const matched=!!from&&!!to&&amounts.length===1;const status=!from||!to?'Route missing':!options.length?'Missing rate':amounts.length>1?'Conflicting rates':'Matched';return {id:clean(t.id),truck:truckText,driver:clean(driverName(d)||field(t,['driver_name']))||'—',driverId:d?.id??null,route:(from||'—')+' → '+(to||'—'),from,to,date:tripDate,dayIds:dayMatches.map(x=>x.id),days:dayValues.length===1?dayValues[0]:null,daysConflict:dayValues.length>1,matched,amount:matched?amounts[0]:0,status};});
  // Browser-only comparison: warns on changes seen between refreshes, without database writes.
  let previous={};try{previous=JSON.parse(localStorage.getItem(routeSnapshotKey)||'{}')||{}}catch{}
  const current={};changedRoutes=new Map();
  for(const r of all){if(!r.id)continue;current[r.id]=r.route;if(previous[r.id]&&previous[r.id]!==r.route){r.changed=true;changedRoutes.set(r.id,{old:previous[r.id],next:r.route,truck:r.truck});}}
  try{localStorage.setItem(routeSnapshotKey,JSON.stringify(current))}catch{}
- all.sort((a,b)=>b.date.localeCompare(a.date)||a.truck.localeCompare(b.truck));loaded=true;render();void loadFixedDriverPhotos(drivers);status(`${all.length} loaded trips · ${masterCount} route master rows · ${all.filter(r=>r.matched).length} matched · ${all.filter(r=>!r.matched).length} missing/review. ${changedRoutes.size?changedRoutes.size+' tracking route change(s) detected on this browser. ':''}Read-only. Cancelled trips excluded.`);
+ all.sort((a,b)=>b.date.localeCompare(a.date)||a.truck.localeCompare(b.truck));loaded=true;render();void loadFixedDriverPhotos(drivers);status(`${all.length} loaded trips · ${masterCount} route master rows · ${all.filter(r=>r.matched).length} matched · ${all.filter(r=>!r.matched).length} missing/review. ${changedRoutes.size?changedRoutes.size+' tracking route change(s) detected on this browser. ':''}Cancelled trips excluded.`);
  }catch(e){status('Could not load Trip Fixed Kharcha: '+e.message,true);console.error('[Driver Khata Fixed Kharcha]',e)}})();try{await loading}finally{loading=null}}
  ['fixedTruckSearch','fixedFromDate','fixedToDate'].forEach(id=>el(id).addEventListener('input',render));el('fixedRefresh').addEventListener('click',()=>load(true));window.ektaLoadFixedTrips=()=>load();window.ektaFixedHisabRows=()=>loaded?all.map(r=>({...r})):null;window.ektaRefreshFixedTrips=()=>load(true);
 })();
