@@ -1045,6 +1045,13 @@
 #etEwayPage .et-eway-filters .btn{white-space:nowrap;height:36px}
 @media(max-width:1150px){#etEwayPage .et-eway-filters{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:650px){#etEwayPage .et-eway-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#etDriverActionModal .et-wa-grid:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+#etDriverActionModal .et-wa-party{display:flex;flex-direction:column;gap:7px;min-width:0;overflow-wrap:anywhere;padding:14px;border:1px solid #b9ddcf;border-radius:12px;background:#effaf5;color:#173653}
+#etDriverActionModal .et-wa-party small{font-weight:800;color:#39735e}
+.et-wa-link{color:#087b42;font-weight:800;text-decoration:none;overflow-wrap:anywhere}
+#etDriverActionModal .et-wa-party .et-wa-link:last-child{background:#d1fae5;border:1px solid #a4dec0;border-radius:8px;padding:9px;text-align:center}
+.et-wa-missing{color:#79572c;font-size:12px}
+@media(max-width:650px){#etDriverActionModal .et-wa-grid:not([hidden]){grid-template-columns:1fr}}
 </style>
 <style>
 #etTrackingReportPreview{z-index:105000!important;padding:12px;}
@@ -2883,6 +2890,7 @@
  <div class="mb"><input type="hidden" id="etDriverActionTruckId">
   <div class="et-dm-copybar"><button type="button" class="btn et-dm-copybtn" id="etDriverCopyBtn" onclick="window.EktaTracking.copyCurrentDriverDetails()">▢ Copy Details</button><span id="etDriverCopyFeedback" role="status" aria-live="polite"></span></div>
   <div class="et-dm-profile" id="etDriverActionProfile"></div><div id="etDriverActionRequests" style="display:none"></div><div id="etDriverActionInfo" style="display:none"></div>
+  <div id="etDriverPartyShare" class="et-wa-grid" hidden></div>
   <div class="field" style="margin-bottom:12px"><label>Effective Date &amp; Time (editable, local time)</label><input id="etDriverActionTime" type="datetime-local"></div>
   <div class="et-dm-section"><h4>New Driver</h4>
    <div class="field"><label>Choose an available Driver from Driver Master</label><select id="etDriverActionNew" onchange="window.EktaTracking.previewNewDriver()"><option value="">Select available driver</option></select></div>

@@ -468,6 +468,14 @@ function etStatusTimer(r){
  if(!ET_TIMER_STAGES.has(stage))return "";
  const start=etTimerStart(r);
  if(!start)return `<div class="et-status-timer et-timer-${r.status==="NO_DRIVER"?"no_driver":stage.toLowerCase()}" title="No reliable stage start date available">◷ —</div>`;
+ // DELAY card only: use the same route allowance as delayed().
+ if(filterStatus==="DELAY"&&stage==="RUNNING"&&r.delay){
+  const deadline=etDelayDeadline(r.trip);
+  if(Number.isFinite(deadline)){
+   const stamp=new Date(deadline).toISOString();
+   return `<div class="et-status-timer et-timer-delayed" data-et-timer-start="${esc(stamp)}" data-et-delay-timer="1" title="Actual delay beyond fixed route time">◷ <span>DELAY: ${etTimerText(stamp)}</span></div>`;
+  }
+ }
  const timerColor=stage==="RUNNING"&&r.delay?"delayed":r.status==="NO_DRIVER"?"no_driver":stage.toLowerCase();
  return `<div class="et-status-timer et-timer-${timerColor}" data-et-timer-start="${esc(start.time)}" title="${start.approx?"Estimated from existing date (exact start time not stored)":"Exact stage entry time"}">◷ <span>${start.approx?"~":""}${etTimerText(start.time)}</span></div>`;
 }
@@ -476,7 +484,7 @@ function updateStatusTimers(){
  if($("etRows")&&$("trackingModule")?.style.display!=="none"&&selectedTrackingDate()===today()){const signature=trips.filter(delayed).map(t=>String(t.id)).sort().join("|");if(signature!==etLastDelaySignature){etLastDelaySignature=signature;render();}}
  document.querySelectorAll("[data-et-timer-start]").forEach(el=>{
   const stamp=el.getAttribute("data-et-timer-start");
-  const text=el.querySelector("span");if(text)text.textContent=(el.title.startsWith("Estimated")?"~":"")+etTimerText(stamp);
+  const text=el.querySelector("span");if(text)text.textContent=(el.hasAttribute("data-et-delay-timer")?"DELAY: ":el.title.startsWith("Estimated")?"~":"")+etTimerText(stamp);
   el.classList.remove("et-timer-over");
  });
 }
@@ -494,13 +502,17 @@ async function etReadFixedDays(){
  try{const rows=[];for(let offset=0;offset<100000;offset+=500){const r=await S.from("fixed_kharcha_rates").select("id,from_location,to_location,fixed_days").order("id").range(offset,offset+499);if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<500)return etBuildFixedDays(rows);}throw Error("Route master pagination limit");}
  catch(e){console.warn("[EKTA TRACKING] Fixed Days unavailable:",e);return new Map();}
 }
-function delayed(trip){
- if(!trip||statusOf(trip)!=="RUNNING")return false;
+function etDelayDeadline(trip){
+ if(!trip||statusOf(trip)!=="RUNNING")return NaN;
  const from=trip.from_location||trip.from_city||trip.from||trip.origin||trip.source||trip.loading_point||trip.from_place;
  const to=trip.to_location||trip.to_city||trip.to||trip.destination||trip.dest||trip.unloading_point||trip.to_place;
  const days=etFixedDays.get(etRouteKey(from,to));
  const start=etStageStamp(trip.notes,"RUNNING"),ms=Date.parse(start);
- return Number.isFinite(days)&&Number.isFinite(ms)&&Date.now()-ms>days*86400000;
+ return Number.isFinite(days)&&Number.isFinite(ms)?ms+days*86400000:NaN;
+}
+function delayed(trip){
+ const deadline=etDelayDeadline(trip);
+ return Number.isFinite(deadline)&&Date.now()>deadline;
 }
 function hasAlert(trip){const notes=clean(trip?.notes).replace(/\[TRACKING:BREAKDOWN_EVENTS=[^\]]*\]/gi,"");const s=[notes,trip?.remark,trip?.current_location].join(" ").toLowerCase();return !!activeBreakdown(trip)||/breakdown|accident|emergency/.test(s)}
 
@@ -4953,7 +4965,7 @@ function driverProfileMarkup(d,truckNumber){
  const name=clean(d?.name)||"No Driver",photo=driverPhotoUrl(d);
  const safe=/^https:\/\//i.test(photo)?photo:"";
  const visual=safe?`<img class="et-dm-photo" src="${esc(safe)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="et-dm-photo" style="display:none;align-items:center;justify-content:center;font-size:24px;font-weight:900">${esc(driverInitials(d))}</span>`:`<span class="et-dm-photo" style="display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900">${esc(driverInitials(d))}</span>`;
- return `${visual}<div style="flex:1;min-width:0"><b>${esc(name)} (${esc(d?.driver_code||"—")})</b><p>📞 ${esc(d?.phone||"—")} &nbsp; | &nbsp; 🪪 DL: ${esc(d?.license_number||"—")}</p>${truckNumber?`<span class="et-dm-chip">🚚 ${esc(truckNumber)}</span>`:""}</div>`;
+ return `${visual}<div style="flex:1;min-width:0"><b>${esc(name)} (${esc(d?.driver_code||"—")})</b><p>📞 ${truckNumber&&etDriverWaPhone(d?.phone)?`<a href="${esc(etDriverWaLink(etDriverWaPhone(d.phone)))}" target="_blank" rel="noopener noreferrer" style="color:#087a4b;text-decoration:underline">${esc(d.phone)}</a>`:esc(d?.phone||"—")} &nbsp; | &nbsp; 🪪 DL: ${esc(d?.license_number||"—")}</p>${truckNumber?`<span class="et-dm-chip">🚚 ${esc(truckNumber)}</span>`:""}</div>`;
 }
 function previewNewDriver(){const d=driver(clean($("etDriverActionNew")?.value));$("etDriverActionPreview").innerHTML=d?`<div class="et-dm-profile">${driverProfileMarkup(d,"")}</div>`:"";}
 function toggleNewDriverForm(){$("etDriverActionCreate")?.classList.toggle("show");}
@@ -5060,6 +5072,40 @@ async function copyCurrentDriverDetails(){
   if(feedback)feedback.textContent="✓ Copied";
  }catch(e){if(feedback)feedback.textContent="Copy failed — check browser permission";}
 }
+function etWhatsAppNumber(value){
+ const raw=clean(value);if(!/^\+?[\d\s().-]+$/.test(raw))return "";
+ const n=raw.replace(/\D/g,"");if(/^[6-9]\d{9}$/.test(n))return "91"+n;
+ if(/^91[6-9]\d{9}$/.test(n))return n;if(/^0[6-9]\d{9}$/.test(n))return "91"+n.slice(1);return "";
+}
+function etWaLink(phone,label,message=""){
+ const n=etWhatsAppNumber(phone);return n?`<a class="et-wa-link" target="_blank" rel="noopener noreferrer" href="https://wa.me/${n}${message?"?text="+esc(encodeURIComponent(message)):""}">${esc(label)}</a>`:`<span class="et-wa-missing">${esc(label)} — valid mobile required</span>`;
+}
+let etWaRequest=0;
+async function etRenderPartyShare(truckId){
+ const seq=++etWaRequest,el=$("etDriverPartyShare");if(!el)return;
+ const t=truck(truckId),a=activeAssignment(truckId),d=a?driver(a.driver_id):null;
+ const trip=activeTrip(truckId);el.innerHTML="";el.hidden=true;
+ if(!t||!d||!trip||!["PROGRAM","LOADING","RUNNING","REPORTING"].includes(statusOf(trip)))return;
+ el.hidden=false;el.innerHTML='<div class="et-wa-party">Loading party contact…</div>';
+ if(!trip.party_id){el.innerHTML='<div class="et-wa-party">Party not assigned to active trip.</div>';return;}
+ try{
+ const res=await S.from(T.parties).select("id,name,mobile").eq("id",trip.party_id).maybeSingle();
+ if(seq!==etWaRequest||clean($("etDriverActionTruckId")?.value)!==String(truckId))return;
+ if(res.error)throw res.error;const p=res.data;if(!p)throw new Error("Party not found");
+ const name=clean(p.name)||"—",phone=clean(p.mobile),dp=clean(d.phone);
+ const from=clean(trip.from_location||trip.loading_point)||"Pending",to=clean(trip.to_location||trip.destination)||"Pending";
+ const w=clean(getNote(trip.notes,"TRANSPORTER_WEIGHT_TON"));
+ const weight=w&&w.toUpperCase()!=="PENDING"?w+" TON":"Pending";
+ const f=trip.freight_amount??trip.revenue,entered=getNote(trip.notes,"FREIGHT_FINAL_ENTERED")==="YES"||getNote(trip.notes,"FREIGHT_ENTERED_AT_PROGRAM")==="YES"||(getNote(trip.notes,"FREIGHT_ENTERED_AT_PROGRAM")!=="NO"&&Number(f)>0);
+ const freight=entered&&f!==null&&f!==undefined&&clean(f)!==""&&Number.isFinite(Number(f))?"₹"+Number(f).toLocaleString("en-IN"):"Pending";
+ const toDriver=`Party Name: ${name}\nMobile No: ${phone}`;
+ const toParty=`*EKTA TRANSPORT*\n*Vehicle Placement Confirmation*\n\nVehicle No: ${clean(t.truck_number)}\nDriver Name: ${clean(d.name)}\nDriver Mobile: ${dp}\nFrom: ${from}\nTo: ${to}\nWeight: ${weight}\nFreight: ${freight}`;
+ el.innerHTML=`<div class="et-wa-party"><small>DRIVER WHATSAPP</small><b>${esc(d.name)}</b>${etWaLink(dp,dp||"Mobile missing")}${etWhatsAppNumber(phone)?etWaLink(dp,"Send Party Details",toDriver):'<span class="et-wa-missing">Party mobile missing or invalid</span>'}</div><div class="et-wa-party"><small>PROGRAM PARTY</small><b>${esc(name)}</b>${etWaLink(phone,phone||"Mobile missing")}<span>${esc(from)} → ${esc(to)}</span><span>Weight: ${esc(weight)} · Freight: ${esc(freight)}</span>${etWhatsAppNumber(dp)?etWaLink(phone,"Send Driver Details",toParty):'<span class="et-wa-missing">Driver mobile missing or invalid</span>'}</div>`;
+ }catch(e){if(seq===etWaRequest)el.innerHTML='<div class="et-wa-party">Party contact unavailable. Check Party Master or refresh.</div>';}
+}
+
+function etDriverWaPhone(v){return etWhatsAppNumber(v);}
+function etDriverWaLink(phone,message=""){return "https://wa.me/"+phone+(message?"?text="+encodeURIComponent(message):"");}
 function openDriverAction(truckId){
  const t=truck(truckId),a=activeAssignment(truckId),d=a?driver(a.driver_id):null;
  if(!t||!a||!d)return alertUser("No active assignment found. Refresh Tracking.");
@@ -5068,6 +5114,7 @@ function openDriverAction(truckId){
  $("etDriverActionTime").value=driverLocalNow();if($("etDriverCopyFeedback"))$("etDriverCopyFeedback").textContent="";
  const options=drivers.filter(x=>clean(x.status).toLowerCase()==="active"&&String(x.id)!==String(d.id)&&!assignments.some(a=>String(a.driver_id)===String(x.id)&&clean(a.status).toLowerCase()==="active"));
  $("etDriverActionNew").innerHTML='<option value="">Select available driver</option>'+options.map(x=>`<option value="${esc(x.id)}">${esc(x.driver_code||"")} — ${esc(x.name)} (${esc(x.phone||"")})</option>`).join("");
+ etRenderPartyShare(truckId);
  renderDriverRequestsInModal(truckId);$("etDriverActionModal").classList.add("show");loadTrackingDriverPhotos().then(()=>{if($("etDriverActionModal")?.classList.contains("show"))$("etDriverActionProfile").innerHTML=driverProfileMarkup(d,t.truck_number)});
 }
 async function saveDriverAction(mode){
